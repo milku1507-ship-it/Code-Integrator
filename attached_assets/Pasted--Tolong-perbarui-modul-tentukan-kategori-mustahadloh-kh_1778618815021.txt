@@ -1,0 +1,84 @@
+
+"Tolong perbarui modul tentukan_kategori_mustahadloh khusus untuk bagian KELOMPOK MU'TADAH GHOIRU MUMAYYIZAH. Tambahkan variabel perhitungan qodlo dan aturan ibadah (hal yang wajib dan haram) untuk 4 kategori ini secara mendetail.
+Ganti blok logika Mu'tadah Ghoiru Mumayyizah sebelumnya dengan kode Python di bawah ini:
+       # Jika tidak bisa membedakan darah (Ghoiru Mumayyizah), dipecah jadi 4:
+        else:
+            qodlo_hari = 0
+            pesan_qodlo = ""
+            aturan_ibadah = ""
+
+            # 1. Dzakiroh Li'adatiha Qodron wa Waqtan (Ingat Semua)
+            if ingat_kebiasaan == "ingat_semua":
+                hasil += "Kategori: (4) MU'TADAH GHOIRU MUMAYYIZAH (Ingat Durasi dan Waktu).\n"
+                hasil += f"Hukum: Dikembalikan ke Adat lama. {kebiasaan_hari} hari pertama = HAIDL, sisanya = ISTIHADLOH.\n"
+
+                if is_bulan_pertama_istihadloh:
+                    qodlo_hari = 15 - kebiasaan_hari
+                    pesan_qodlo = f"\n[QODLO MASA PENANTIAN]: Karena ini bulan pertama, Anda wajib mengqodlo sholat/puasa selama {qodlo_hari} hari yang ditinggalkan saat menanti 15 hari."
+
+                aturan_ibadah = (
+                    "\n[ATURAN IBADAH]: "
+                    f"\n- Selama {kebiasaan_hari} hari pertama, Anda haram sholat, puasa, dan jima'. "
+                    "\n- Setelah masa adat tersebut habis, Anda WAJIB MANDI BESAR. "
+                    "\n- Pada hari-hari istihadloh sisanya, Anda wajib sholat, puasa, dan halal berhubungan suami istri, dengan menggunakan tata cara bersuci mustahadloh."
+                )
+
+            # 2. Dzakiroh Waktan la Qodron (Lupa Durasi, Ingat Waktu)
+            elif ingat_kebiasaan == "ingat_waktu":
+                hasil += "Kategori: (7) MU'TADAH GHOIRU MUMAYYIZAH (Ingat Waktu Mulai, Lupa Durasi).\n"
+                hasil += "Hukum: Hari/waktu yang diyakini biasa mulai haid = HAIDL (24 Jam pertama). Sisanya yang meragukan dihukumi Mutahayyiroh.\n"
+
+                if is_bulan_pertama_istihadloh:
+                    qodlo_hari = 15 - 1
+                    pesan_qodlo = f"\n[QODLO MASA PENANTIAN]: Durasi haid Anda diyakini hanya 1 hari (24 jam) pertama. Anda wajib mengqodlo sholat selama {qodlo_hari} hari (Hari ke-2 hingga ke-15)."
+
+                aturan_ibadah = (
+                    "\n[ATURAN IBADAH (IHTIYAT)]:"
+                    "\n- Anda dihukumi Mutahayyiroh pada hari-hari yang meragukan."
+                    "\n- KEWAJIBAN: Wajib sholat fardlu/sunah, puasa, thowaf. Namun Anda WAJIB MANDI BESAR SETIAP KALI AKAN SHOLAT FARDLU."
+                    "\n- LARANGAN (HARAM): Bersetubuh (bersentuhan kulit pusar hingga lutut dengan suami), membaca Al-Qur'an di luar sholat, menyentuh/membawa mushaf, dan berdiam di dalam masjid."
+                )
+
+            # 3. Dzakiroh Qodron la Waktan (Ingat Durasi, Lupa Waktu)
+            elif ingat_kebiasaan == "ingat_durasi":
+                hasil += "Kategori: (6) MU'TADAH GHOIRU MUMAYYIZAH (Ingat Durasi, Lupa Waktu).\n"
+                hasil += f"Hukum: Haidl Anda sejumlah {kebiasaan_hari} hari, namun karena lupa tanggal mulainya, hari yang dimungkinkan suci dan haid dihukumi Mutahayyiroh.\n"
+
+                if is_bulan_pertama_istihadloh:
+                    qodlo_hari = 15 - kebiasaan_hari
+                    pesan_qodlo = f"\n[QODLO MASA PENANTIAN]: Durasi haid Anda {kebiasaan_hari} hari. Sisa hari di masa penantian wajib diqodlo, yakni sebanyak {qodlo_hari} hari."
+
+                aturan_ibadah = (
+                    "\n[ATURAN IBADAH (IHTIYAT)]:"
+                    "\n- Pada hari yang meragukan, Anda dihukumi Mutahayyiroh."
+                    "\n- KEWAJIBAN: Wajib sholat, puasa, thowaf. Anda WAJIB MANDI BESAR SETIAP KALI AKAN SHOLAT FARDLU di hari yang dimungkinkan putusnya haid."
+                    "\n- LARANGAN (HARAM): Bersetubuh, membaca Al-Qur'an di luar sholat, menyentuh/membawa mushaf, dan berdiam di masjid."
+                )
+
+            # 4. Mutahayyiroh / Nasiyah (Lupa Total)
+            elif ingat_kebiasaan == "lupa_semua":
+                hasil += "Kategori: (5) MU'TADAH MUTAHAYYIROH / NASIYAH (Lupa Total).\n"
+                hasil += "Hukum: Anda dalam keadaan Mutahayyiroh (kebingungan penuh). Haid hanya diakui 24 jam pertama sebagai batas minimal mutlak.\n"
+
+                if is_bulan_pertama_istihadloh:
+                    qodlo_hari = 15 - 1
+                    pesan_qodlo = f"\n[QODLO MASA PENANTIAN]: Karena lupa total, batas haid yang diakui hanya 1 hari 1 malam. Anda wajib mengqodlo sholat selama {qodlo_hari} hari (Hari ke-2 hingga ke-15)."
+
+                aturan_ibadah = (
+                    "\n[ATURAN IBADAH (MUTAHAYYIROH)]:"
+                    "\n- Anda dihukumi sebagaimana orang suci dalam hal kewajiban ibadah."
+                    "\n- KEWAJIBAN: Wajib mengerjakan sholat 5 waktu, puasa, dan thowaf. Anda WAJIB MANDI BESAR SETIAP KALI AKAN SHOLAT FARDLU (karena tidak tahu kapan haid benar-benar berhenti)."
+                    "\n- LARANGAN (HARAM): Bersetubuh (bersentuhan kulit dengan suami), membaca ayat Al-Qur'an di luar sholat, menyentuh/membawa Al-Qur'an, lewat di masjid (jika takut menetes), dan berdiam diri di masjid."
+                )
+
+            # Menggabungkan hasil
+            hasil += pesan_qodlo + aturan_ibadah
+
+"
+
+Penjelasan Fiqh dari Penambahan Kode Ini:
+Berdasarkan kitab Uyunul Masa-il Linnisa', penambahan variabel aturan_ibadah di atas sangat vital karena membedakan secara tegas tindakan apa yang boleh dan tidak boleh dilakukan:
+Golongan yang Ingat Semua: Mereka hanya menunggu sampai masa adatnya habis, mandi besar satu kali, dan setelah itu bebas beribadah layaknya orang suci biasa (termasuk halal berhubungan suami istri) asalkan melakukan wudlu khusus setiap waktu sholat.
+Golongan yang Lupa (Mutahayyiroh): Ini yang paling rumit. Karena mereka lupa kapan tepatnya masa suci dan haid mereka, maka hukum asal beribadahnya harus Ihtiyat (Berhati-hati). Kitab menetapkan bahwa Mutahayyiroh wajib sholat seperti orang suci, namun ia wajib mandi besar setiap kali mau sholat fardlu karena setiap waktu tersebut memiliki kemungkinan sebagai waktu putusnya haid.
+Larangan (Keharaman) Mutahayyiroh: Walaupun wajib sholat, Mutahayyiroh diharamkan bersentuhan kulit antara pusar sampai lutut dengan suami (berhubungan badan), membaca Al-Qur'an, menyentuh mushaf, dan berdiam di masjid (i'tikaf) untuk menjaga kehati-hatian karena ia dimungkinkan masih dalam keadaan haid.
+Dengan kode ini, user aplikasi tidak hanya mendapatkan hasil perhitungan qodlo, tetapi juga SOP lengkap (apa yang wajib dan haram dilakukan setiap hari) secara akurat!

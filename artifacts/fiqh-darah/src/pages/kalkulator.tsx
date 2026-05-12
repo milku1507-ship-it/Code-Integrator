@@ -48,6 +48,7 @@ import {
   jalankanMesinFiqh,
   InputUser,
   HasilAnalisis,
+  AturanIbadah,
   FaseItem,
   FaseDarahItem,
   MasaBersihItem,
@@ -1260,6 +1261,45 @@ export default function Kalkulator() {
                     <p className="text-foreground leading-relaxed">
                       {hasil.hutangIbadah}
                     </p>
+                  </div>
+                )}
+
+                {hasil.aturanIbadah && (
+                  <div className="p-6 sm:p-8 bg-violet-50/60 dark:bg-violet-950/20 border-l-4 border-violet-400">
+                    <h3 className="text-lg font-medium mb-4 text-violet-800 dark:text-violet-300 flex items-center gap-2">
+                      <Info className="w-5 h-5" />
+                      {hasil.aturanIbadah.judul}
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-2">
+                          Wajib / Kewajiban
+                        </p>
+                        <ul className="space-y-2">
+                          {hasil.aturanIbadah.wajib.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-foreground leading-relaxed">
+                              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {hasil.aturanIbadah.haram.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wide mb-2">
+                            Haram / Larangan
+                          </p>
+                          <ul className="space-y-2">
+                            {hasil.aturanIbadah.haram.map((item, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-foreground leading-relaxed">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

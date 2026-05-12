@@ -48,6 +48,12 @@ export interface SiklusInfo {
   tipe: "haidl_normal" | "istihadloh" | "error";
 }
 
+export interface AturanIbadah {
+  judul: string;
+  wajib: string[];
+  haram: string[];
+}
+
 export interface HasilAnalisis {
   kesimpulan: string;
   kategori: string;
@@ -56,6 +62,7 @@ export interface HasilAnalisis {
   qodloSholatMulai: string;
   qodloSholat: string;
   hutangIbadah: string;
+  aturanIbadah?: AturanIbadah;
   panduanBersuci: string;
   tipeHasil: "haidl_normal" | "nifas" | "istihadloh" | "error";
   daftarSiklus?: SiklusInfo[];
@@ -131,6 +138,7 @@ interface KategoriResult {
   kategori: string;
   hukum: string;
   haidJamSebenarnya: number | null;
+  aturanIbadah?: AturanIbadah;
 }
 
 function tentukanKategoriMushtadloh(
@@ -166,29 +174,83 @@ function tentukanKategoriMushtadloh(
         haidJamSebenarnya: kuatJam,
       };
     } else {
+      // ── Mu'tadah Ghoiru Mumayyizah — 4 Sub-Kategori ──
       if (ingatKebiasaan === "ingat_semua") {
         return {
           kategori: "Mu'tadah Ghoiru Mumayyizah — Dzakiroh Li'adatiha Qodran wa Waqtan (Golongan 4)",
           hukum: `Dikembalikan ke adat lama. ${kebiasaanHari} hari pertama adalah HAIDL. Sisanya adalah ISTIHADLOH.`,
           haidJamSebenarnya: kebiasaanHari * 24,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (Ingat Durasi & Waktu Adat)",
+            wajib: [
+              `Selama ${kebiasaanHari} hari pertama (masa adat haid): berlaku hukum haid — haram sholat, puasa, jima', membaca Al-Qur'an, menyentuh mushaf, dan berdiam di masjid.`,
+              `Setelah masa adat ${kebiasaanHari} hari selesai: wajib mandi besar (mandi wajib) segera.`,
+              "Pada hari-hari istihadloh setelah masa adat: wajib sholat dan puasa, serta halal berhubungan suami-istri — dengan menggunakan tata cara bersuci mustahadloh (lihat panduan bersuci di bawah).",
+            ],
+            haram: [
+              `Selama ${kebiasaanHari} hari pertama: sholat, puasa, jima' (bersetubuh), membaca Al-Qur'an di luar sholat, menyentuh/membawa mushaf, dan berdiam di masjid.`,
+            ],
+          },
         };
       } else if (ingatKebiasaan === "lupa_semua") {
         return {
           kategori: "Mu'tadah Mutahayyiroh / Nasiyah (Golongan 5)",
-          hukum: "Keadaan membingungkan. Wajib ihtiyat (berhati-hati). Wajib mandi setiap akan sholat fardlu. Haram membaca Al-Qur'an di luar sholat.",
-          haidJamSebenarnya: null,
+          hukum: "Keadaan membingungkan (lupa total). Wajib ihtiyat (berhati-hati). Haid hanya diakui 24 jam pertama sebagai batas minimal mutlak.",
+          haidJamSebenarnya: 24,
+          aturanIbadah: {
+            judul: "Aturan Ibadah Mutahayyiroh / Nasiyah (Ihtiyat Penuh)",
+            wajib: [
+              "Wajib mengerjakan sholat 5 waktu, puasa, dan thowaf — dihukumi seperti orang suci dalam hal kewajiban ibadah.",
+              "Wajib mandi besar setiap kali akan sholat fardlu, karena tidak diketahui kapan haid benar-benar berhenti.",
+            ],
+            haram: [
+              "Bersetubuh (bersentuhan kulit antara pusar hingga lutut dengan suami).",
+              "Membaca ayat Al-Qur'an di luar sholat.",
+              "Menyentuh atau membawa mushaf Al-Qur'an.",
+              "Lewat di dalam masjid jika khawatir menetes darah.",
+              "Berdiam diri di masjid (i'tikaf).",
+            ],
+          },
         };
       } else if (ingatKebiasaan === "ingat_durasi") {
         return {
           kategori: "Mu'tadah Ghoiru Mumayyizah — Ingat Durasi, Lupa Waktu (Golongan 6)",
-          hukum: `Haidl sejumlah ${kebiasaanHari} hari, namun karena lupa tanggal mulainya, hari yang diyakini harus diteliti lebih lanjut.`,
+          hukum: `Haidl sejumlah ${kebiasaanHari} hari, namun karena lupa tanggal mulainya, hari-hari yang dimungkinkan sebagai haid atau suci dihukumi Mutahayyiroh.`,
           haidJamSebenarnya: kebiasaanHari * 24,
+          aturanIbadah: {
+            judul: "Aturan Ibadah Ihtiyat (Ingat Durasi, Lupa Waktu Mulai)",
+            wajib: [
+              "Pada hari-hari yang diragukan (dimungkinkan haid atau suci): dihukumi Mutahayyiroh.",
+              "Wajib sholat, puasa, dan thowaf pada hari-hari yang diragukan tersebut.",
+              `Wajib mandi besar setiap kali akan sholat fardlu pada hari-hari yang dimungkinkan sebagai waktu berakhirnya haid (sekitar ${kebiasaanHari} hari yang kemungkinan menjadi akhir masa haid).`,
+            ],
+            haram: [
+              "Bersetubuh (bersentuhan kulit antara pusar hingga lutut dengan suami) pada hari-hari yang diragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
+              "Menyentuh atau membawa mushaf Al-Qur'an pada hari-hari yang diragukan.",
+              "Berdiam diri di masjid (i'tikaf) pada hari-hari yang diragukan.",
+            ],
+          },
         };
       } else {
         return {
           kategori: "Mu'tadah Ghoiru Mumayyizah — Ingat Waktu, Lupa Durasi (Golongan 7)",
-          hukum: "Waktu yang diyakini biasa mulai haidl adalah HAIDL. Waktu yang diyakini suci adalah ISTIHADLOH.",
-          haidJamSebenarnya: null,
+          hukum: "Hari/waktu yang diyakini biasa mulai haid = HAIDL (24 jam pertama). Hari-hari setelahnya yang meragukan dihukumi Mutahayyiroh.",
+          haidJamSebenarnya: 24,
+          aturanIbadah: {
+            judul: "Aturan Ibadah Ihtiyat (Ingat Waktu Mulai, Lupa Durasi)",
+            wajib: [
+              "Hari pertama (24 jam yang diyakini sebagai awal haid): berlaku hukum haid penuh — haram sholat, puasa, jima', dsb.",
+              "Pada hari-hari setelahnya yang meragukan (dihukumi Mutahayyiroh): wajib sholat, puasa, dan thowaf.",
+              "Wajib mandi besar setiap kali akan sholat fardlu pada hari-hari yang meragukan tersebut.",
+            ],
+            haram: [
+              "Bersetubuh (bersentuhan kulit antara pusar hingga lutut dengan suami) pada hari-hari yang meragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang meragukan.",
+              "Menyentuh atau membawa mushaf Al-Qur'an pada hari-hari yang meragukan.",
+              "Berdiam diri di masjid (i'tikaf) pada hari-hari yang meragukan.",
+            ],
+          },
         };
       }
     }
@@ -243,7 +305,7 @@ function analyzeSingleSiklus(
   statusPengalaman: StatusPengalaman,
   ingatKebiasaan: IngatKebiasaan,
   kebiasaanHaidHari: number,
-): SiklusInfo & { haidJamSebenarnya?: number | null; kategoriStr?: string } {
+): SiklusInfo & { haidJamSebenarnya?: number | null; kategoriStr?: string; aturanIbadah?: AturanIbadah } {
   const darahFases = items.filter((f): f is FaseDarahItem => f.tipe === "darah");
   const bersihFases = items.filter((f): f is MasaBersihItem => f.tipe === "bersih");
 
@@ -306,7 +368,7 @@ function analyzeSingleSiklus(
     lemahJam = totalJam;
   }
 
-  const { kategori, hukum, haidJamSebenarnya } = tentukanKategoriMushtadloh(
+  const { kategori, hukum, haidJamSebenarnya, aturanIbadah } = tentukanKategoriMushtadloh(
     statusPengalaman,
     isTamyiz,
     ingatKebiasaan,
@@ -325,6 +387,7 @@ function analyzeSingleSiklus(
     tipe: "istihadloh",
     haidJamSebenarnya,
     kategoriStr: kategori,
+    aturanIbadah,
   };
 }
 
@@ -494,6 +557,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       qodloSholatMulai: qodloMulai,
       qodloSholat: qodloBerhenti,
       hutangIbadah: hutang,
+      aturanIbadah: s.aturanIbadah,
       panduanBersuci: PANDUAN_BERSUCI,
       tipeHasil: "istihadloh",
       daftarSiklus: hasBersihItem ? daftarSiklusInfo : undefined,
@@ -507,6 +571,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
 
   // Hutang only computed per-istihadloh cycle when meaningful
   let hutangMulti = "";
+  let aturanIbadahMulti: AturanIbadah | undefined;
   if (anyIstihadloh) {
     const istihadlohSiklus = daftarSiklusInfo.filter((s) => s.tipe === "istihadloh");
     if (istihadlohSiklus.length === 1) {
@@ -516,12 +581,15 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
         sIt.kategoriStr ?? "",
         isBulanPertamaIstihadloh,
       );
+      aturanIbadahMulti = sIt.aturanIbadah;
     } else if (istihadlohSiklus.length > 1) {
       if (!isBulanPertamaIstihadloh) {
         hutangMulti = `Karena Anda sudah mengetahui adat/batas darah dari bulan-bulan sebelumnya, tidak diperlukan masa penantian 15 hari pada siklus manapun. Anda langsung mandi wajib setiap masa haid berakhir. Tidak ada hutang sholat/puasa masa penantian.`;
       } else {
         hutangMulti = `Terdapat ${istihadlohSiklus.length} siklus istihadloh dan ini adalah bulan pertama Anda mengalaminya. Setiap siklus memiliki hutang ibadah masa penantian masing-masing. Silakan konsultasikan dengan ustadzah atau kyai untuk perhitungan rinci per siklus.`;
       }
+      // Use aturan ibadah from the last istihadloh siklus as representative
+      aturanIbadahMulti = istihadlohSiklus[istihadlohSiklus.length - 1].aturanIbadah;
     }
   }
 
@@ -539,6 +607,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     qodloSholatMulai: qodloMulai,
     qodloSholat: qodloBerhenti,
     hutangIbadah: hutangMulti,
+    aturanIbadah: aturanIbadahMulti,
     panduanBersuci: anyIstihadloh ? PANDUAN_BERSUCI : "",
     tipeHasil: anyIstihadloh ? "istihadloh" : "haidl_normal",
     daftarSiklus: daftarSiklusInfo,
