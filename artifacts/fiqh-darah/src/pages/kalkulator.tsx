@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { jalankanMesinFiqh, InputUser, HasilAnalisis, FaseDarah } from "@/lib/fiqhEngine";
@@ -207,49 +207,30 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>Kondisi Saat Darah Keluar</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="grid sm:grid-cols-2 gap-4"
-                          data-testid="radio-kondisi"
-                        >
-                          <FormItem>
-                            <FormControl>
-                              <div className={cn(
-                                "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                field.value === "haidl" ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
-                              )}>
-                                <RadioGroupItem value="haidl" className="sr-only" />
-                                <div className={cn(
-                                  "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                                  field.value === "haidl" ? "border-primary" : "border-muted-foreground"
-                                )}>
-                                  {field.value === "haidl" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                </div>
-                                <span className="font-medium">Haidl (Biasa)</span>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                          <FormItem>
-                            <FormControl>
-                              <div className={cn(
-                                "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                field.value === "nifas" ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
-                              )}>
-                                <RadioGroupItem value="nifas" className="sr-only" />
-                                <div className={cn(
-                                  "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                                  field.value === "nifas" ? "border-primary" : "border-muted-foreground"
-                                )}>
-                                  {field.value === "nifas" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                </div>
-                                <span className="font-medium">Nifas (Setelah Melahirkan)</span>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
+                      <div className="grid sm:grid-cols-2 gap-4" data-testid="radio-kondisi">
+                        {(["haidl", "nifas"] as const).map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => field.onChange(val)}
+                            data-testid={`radio-kondisi-${val}`}
+                            className={cn(
+                              "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all text-left w-full",
+                              field.value === val ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+                              field.value === val ? "border-primary" : "border-muted-foreground"
+                            )}>
+                              {field.value === val && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                            </div>
+                            <span className="font-medium">
+                              {val === "haidl" ? "Haidl (Biasa)" : "Nifas (Setelah Melahirkan)"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -261,55 +242,34 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>Status Pengalaman Haid</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="grid sm:grid-cols-2 gap-4"
-                          data-testid="radio-pengalaman"
-                        >
-                          <FormItem>
-                            <FormControl>
+                      <div className="grid sm:grid-cols-2 gap-4" data-testid="radio-pengalaman">
+                        {([
+                          { val: "mubtadiah", label: "Mubtadi'ah", desc: "Baru pertama kali mengalami haid." },
+                          { val: "mutadah",   label: "Mu'tadah",   desc: "Sudah pernah haid dan suci sebelumnya." },
+                        ] as const).map(({ val, label, desc }) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => field.onChange(val)}
+                            data-testid={`radio-pengalaman-${val}`}
+                            className={cn(
+                              "flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all text-left w-full",
+                              field.value === val ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
                               <div className={cn(
-                                "flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                field.value === "mubtadiah" ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
+                                "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+                                field.value === val ? "border-primary" : "border-muted-foreground"
                               )}>
-                                <div className="flex items-center gap-3">
-                                  <RadioGroupItem value="mubtadiah" className="sr-only" />
-                                  <div className={cn(
-                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                                    field.value === "mubtadiah" ? "border-primary" : "border-muted-foreground"
-                                  )}>
-                                    {field.value === "mubtadiah" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                  </div>
-                                  <span className="font-medium">Mubtadi'ah</span>
-                                </div>
-                                <span className="text-sm text-muted-foreground pl-8">Baru pertama kali mengalami haid.</span>
+                                {field.value === val && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                               </div>
-                            </FormControl>
-                          </FormItem>
-                          <FormItem>
-                            <FormControl>
-                              <div className={cn(
-                                "flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                field.value === "mutadah" ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
-                              )}>
-                                <div className="flex items-center gap-3">
-                                  <RadioGroupItem value="mutadah" className="sr-only" />
-                                  <div className={cn(
-                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                                    field.value === "mutadah" ? "border-primary" : "border-muted-foreground"
-                                  )}>
-                                    {field.value === "mutadah" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                                  </div>
-                                  <span className="font-medium">Mu'tadah</span>
-                                </div>
-                                <span className="text-sm text-muted-foreground pl-8">Sudah pernah haid dan suci sebelumnya.</span>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
+                              <span className="font-medium">{label}</span>
+                            </div>
+                            <span className="text-sm text-muted-foreground pl-8">{desc}</span>
+                          </button>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -366,7 +326,7 @@ export default function Kalkulator() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Warna Darah</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger data-testid={`select-warna-${index}`}>
                                     <SelectValue placeholder="Pilih warna" />
@@ -503,7 +463,7 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Seberapa baik Anda mengingat kebiasaan haid sebelumnya?</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-ingat-kebiasaan">
                             <SelectValue placeholder="Pilih status" />
@@ -570,7 +530,7 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Saat darah dipastikan berhenti total (bersih), pada waktu sholat apa?</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-waktu-berhenti">
                             <SelectValue placeholder="Pilih waktu" />
