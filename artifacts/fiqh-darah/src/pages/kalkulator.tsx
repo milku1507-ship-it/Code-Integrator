@@ -24,7 +24,11 @@ const faseSchema = z.object({
   warna: z.enum(["hitam", "merah", "merah kekuningan", "kuning", "keruh"], { required_error: "Pilih warna darah" }),
   kental: z.boolean(),
   bau: z.boolean(),
-  hari: z.coerce.number().min(0.5, "Minimal setengah hari (0.5)").max(100, "Jumlah hari tidak valid"),
+  hari: z.coerce.number().min(0, "Tidak boleh negatif").max(100, "Jumlah hari tidak valid"),
+  jam: z.coerce.number().min(0, "Tidak boleh negatif").max(23, "Maksimal 23 jam (gunakan hari untuk lebih dari 24 jam)"),
+}).refine(data => (data.hari * 24 + data.jam) > 0, {
+  message: "Masukkan minimal 1 jam atau setengah hari (0.5)",
+  path: ["hari"],
 });
 
 const step2Schema = z.object({
@@ -65,7 +69,7 @@ export default function Kalkulator() {
   const form2 = useForm<z.infer<typeof step2Schema>>({
     resolver: zodResolver(step2Schema),
     defaultValues: {
-      daftarFaseDarah: formData.daftarFaseDarah || [{ warna: "merah", kental: false, bau: false, hari: 1 }],
+      daftarFaseDarah: formData.daftarFaseDarah || [{ warna: "merah", kental: false, bau: false, hari: 1, jam: 0 }],
     },
   });
 
@@ -356,13 +360,28 @@ export default function Kalkulator() {
 
                         <FormField
                           control={form2.control}
-                          name={`daftarFaseDarah.\${index}.hari`}
+                          name={`daftarFaseDarah.${index}.hari`}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Jumlah Hari</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.5" {...field} data-testid={`input-hari-\${index}`} />
+                                <Input type="number" min="0" step="1" placeholder="0" {...field} data-testid={`input-hari-${index}`} />
                               </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form2.control}
+                          name={`daftarFaseDarah.${index}.jam`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tambah Jam (0–23)</FormLabel>
+                              <FormControl>
+                                <Input type="number" min="0" max="23" step="1" placeholder="0" {...field} data-testid={`input-jam-${index}`} />
+                              </FormControl>
+                              <FormDescription>Opsional — untuk durasi yang tidak genap hari.</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -417,7 +436,7 @@ export default function Kalkulator() {
                     type="button"
                     variant="outline"
                     className="w-full border-dashed border-2 bg-transparent hover:bg-muted"
-                    onClick={() => append({ warna: "merah", kental: false, bau: false, hari: 1 })}
+                    onClick={() => append({ warna: "merah", kental: false, bau: false, hari: 1, jam: 0 })}
                     data-testid="btn-add-fase"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Tambah Fase Darah

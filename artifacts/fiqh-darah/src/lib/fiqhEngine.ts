@@ -9,6 +9,7 @@ export interface FaseDarah {
   kental: boolean;
   bau: boolean;
   hari: number;
+  jam: number;
 }
 
 export interface InputUser {
@@ -31,7 +32,7 @@ export interface HasilAnalisis {
   tipeHasil: "haidl_normal" | "nifas" | "istihadloh" | "error";
 }
 
-function skorWarnaSifat(warna: WarnaDarah, kental: boolean, bau: boolean): number {
+function skorWarnaSifat(fase: FaseDarah): number {
   const hierarki: Record<WarnaDarah, number> = {
     hitam: 5,
     merah: 4,
@@ -39,10 +40,20 @@ function skorWarnaSifat(warna: WarnaDarah, kental: boolean, bau: boolean): numbe
     kuning: 2,
     keruh: 1,
   };
-  let skor = hierarki[warna] ?? 0;
-  if (kental) skor += 1;
-  if (bau) skor += 1;
+  let skor = hierarki[fase.warna] ?? 0;
+  if (fase.kental) skor += 1;
+  if (fase.bau) skor += 1;
   return skor;
+}
+
+function jamKeFaseDarah(fase: FaseDarah): number {
+  return (fase.jam || 0) + (fase.hari || 0) * 24;
+}
+
+function formatDurasi(jam: number): string {
+  const hari = jam / 24;
+  if (jam % 24 === 0) return `${hari} hari`;
+  return `${hari.toFixed(1)} hari (${jam} jam)`;
 }
 
 function kalkQodloSholat(waktu: WaktuBerhenti): string {
@@ -58,11 +69,10 @@ function kalkQodloSholat(waktu: WaktuBerhenti): string {
 }
 
 const PANDUAN_BERSUCI = `Tata Cara Bersuci bagi Wanita Mustahadloh:
-1. Bersihkan farji dari najis darah yang keluar.
-2. Sumbat farji dengan kapas/pembalut (kecuali sedang puasa atau terasa sakit).
-3. Wudlu harus dengan 'muwalah' (terus-menerus — tidak boleh putus sampai anggota tubuh kering).
-4. Niat wudlu: "Niat berwudlu agar diperbolehkan melaksanakan sholat" (bukan menghilangkan hadats).
-5. Segera laksanakan sholat fardlu.
+1. Bersihkan farji dari najis darah yang keluar, lalu sumbat dengan kapas/pembalut.
+2. Wudlu dilakukan SETELAH masuk waktu sholat.
+3. Niat wudlu: "Niat berwudlu agar diperbolehkan melaksanakan sholat" (Istibahah — bukan menghilangkan hadats).
+4. Segera laksanakan sholat setelah wudlu (Muwalah — tidak boleh terputus).
 *PENTING: Satu rangkaian bersuci ini HANYA berlaku untuk 1 kali sholat fardlu.`;
 
 function tentukanKategoriMushtadloh(
@@ -70,14 +80,17 @@ function tentukanKategoriMushtadloh(
   isTamyiz: boolean,
   ingatKebiasaan: IngatKebiasaan,
   kebiasaanHari: number,
-  darahKuatHari: number,
-  darahLemahHari: number
+  kuatJam: number,
+  lemahJam: number
 ): { kategori: string; hukum: string } {
+  const kuatLabel = formatDurasi(kuatJam);
+  const lemahLabel = formatDurasi(lemahJam);
+
   if (statusPengalaman === "mubtadiah") {
     if (isTamyiz) {
       return {
         kategori: "Mubtadi'ah Mumayyizah (Golongan 1)",
-        hukum: `${darahKuatHari} hari darah kuat adalah HAIDL. ${darahLemahHari} hari darah lemah adalah ISTIHADLOH.`,
+        hukum: `${kuatLabel} darah kuat adalah HAIDL. ${lemahLabel} darah lemah adalah ISTIHADLOH.`,
       };
     } else {
       return {
@@ -89,7 +102,7 @@ function tentukanKategoriMushtadloh(
     if (isTamyiz) {
       return {
         kategori: "Mu'tadah Mumayyizah (Golongan 3)",
-        hukum: `${darahKuatHari} hari darah kuat adalah HAIDL. ${darahLemahHari} hari darah lemah adalah ISTIHADLOH.`,
+        hukum: `${kuatLabel} darah kuat adalah HAIDL. ${lemahLabel} darah lemah adalah ISTIHADLOH.`,
       };
     } else {
       if (ingatKebiasaan === "ingat_semua") {
@@ -128,26 +141,28 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     waktuBerhentiTotal,
   } = input;
 
-  const totalHari = daftarFaseDarah.reduce((sum, f) => sum + f.hari, 0);
+  // 1. Konversi semua durasi ke jam untuk akurasi
+  const totalJam = daftarFaseDarah.reduce((sum, f) => sum + jamKeFaseDarah(f), 0);
+  const totalHariFloat = totalJam / 24;
 
-  // 1. Cek usia minimal
+  // 2. Cek usia minimal (9 Tahun Qomariyah)
   if (usiaTahun < 9 && kondisiAwal !== "nifas") {
     return {
       kesimpulan: "Darah Istihadloh (Darah Penyakit)",
       kategori: "",
       hukumHaidl: "",
-      hukumIstihadloh: "Usia belum mencapai batas minimal 9 tahun Qomariyah sehingga darah tidak bisa dihukumi haidl.",
+      hukumIstihadloh: `Usia belum mencapai batas minimal 9 tahun Qomariyah. Total darah: ${totalJam} jam.`,
       qodloSholat: "",
       panduanBersuci: "",
       tipeHasil: "error",
     };
   }
 
-  // 2. Deteksi Nifas
+  // 3. Deteksi Nifas (maks 60 hari = 1440 jam)
   if (kondisiAwal === "nifas") {
-    if (totalHari <= 60) {
+    if (totalJam <= 1440) {
       return {
-        kesimpulan: `Semua darah (${totalHari} hari) adalah NIFAS`,
+        kesimpulan: `Semua darah (${formatDurasi(totalJam)}) adalah NIFAS`,
         kategori: "Nifas Normal",
         hukumHaidl: "",
         hukumIstihadloh: "",
@@ -168,24 +183,24 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     }
   }
 
-  // 3. Deteksi Haidl Normal (1–15 hari)
-  if (totalHari < 1) {
+  // 4. Deteksi Haidl Normal (min 24 jam, maks 360 jam / 15 hari)
+  if (totalJam < 24) {
     return {
       kesimpulan: "Darah Istihadloh",
       kategori: "",
       hukumHaidl: "",
-      hukumIstihadloh: "Durasi kurang dari batas minimal haid (24 jam / 1 hari).",
+      hukumIstihadloh: `Total darah baru ${totalJam} jam — kurang dari syarat minimal 24 jam (1 hari 1 malam).`,
       qodloSholat: "",
       panduanBersuci: "",
       tipeHasil: "error",
     };
   }
 
-  if (totalHari >= 1 && totalHari <= 15) {
+  if (totalJam >= 24 && totalJam <= 360) {
     return {
-      kesimpulan: `Semua darah (${totalHari} hari) adalah HAIDL`,
+      kesimpulan: `Semua darah (${formatDurasi(totalJam)}) adalah HAIDL`,
       kategori: "Haidl Normal",
-      hukumHaidl: `Durasi ${totalHari} hari memenuhi syarat haidl (minimal 1 hari, maksimal 15 hari).`,
+      hukumHaidl: `Durasi ${formatDurasi(totalJam)} memenuhi syarat haidl (minimal 24 jam, maksimal 15 hari / 360 jam).`,
       hukumIstihadloh: "",
       qodloSholat: kalkQodloSholat(waktuBerhentiTotal),
       panduanBersuci: "",
@@ -193,38 +208,38 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     };
   }
 
-  // 4. Istihadloh (> 15 hari) — Analisis Tamyiz
+  // 5. Istihadloh (> 360 jam) — Analisis Tamyiz berbasis jam
   let isTamyiz = false;
-  let darahKuatHari = 0;
-  let darahLemahHari = 0;
+  let kuatJam = 0;
+  let lemahJam = 0;
 
   if (daftarFaseDarah.length >= 2) {
     const fase1 = daftarFaseDarah[0];
     const fase2 = daftarFaseDarah[1];
-    const skor1 = skorWarnaSifat(fase1.warna, fase1.kental, fase1.bau);
-    const skor2 = skorWarnaSifat(fase2.warna, fase2.kental, fase2.bau);
+    const skor1 = skorWarnaSifat(fase1);
+    const skor2 = skorWarnaSifat(fase2);
+    const jam1 = jamKeFaseDarah(fase1);
 
-    if (skor1 > skor2 && fase1.hari >= 1 && fase1.hari <= 15) {
-      darahKuatHari = fase1.hari;
-      darahLemahHari = fase2.hari;
+    if (skor1 > skor2 && jam1 >= 24 && jam1 <= 360) {
+      kuatJam = jam1;
+      lemahJam = totalJam - kuatJam;
 
-      // Cek apakah ada fase ke-3 yang kuat lagi
+      // Cek apakah ada fase ke-3 yang lebih kuat (atau sama kuatnya) dengan fase 1
       let adaFase3Kuat = false;
       if (daftarFaseDarah.length > 2) {
-        const fase3 = daftarFaseDarah[2];
-        const skor3 = skorWarnaSifat(fase3.warna, fase3.kental, fase3.bau);
+        const skor3 = skorWarnaSifat(daftarFaseDarah[2]);
         if (skor3 >= skor1) adaFase3Kuat = true;
       }
 
-      // Syarat lemah >= 15 hari HANYA berlaku jika diselingi darah kuat lagi
-      if (adaFase3Kuat && darahLemahHari < 15) {
+      // Syarat darah lemah >= 15 hari HANYA berlaku jika diselingi darah kuat lagi
+      if (adaFase3Kuat && lemahJam < 360) {
         isTamyiz = false;
       } else {
         isTamyiz = true;
       }
     }
   } else {
-    darahLemahHari = totalHari;
+    lemahJam = totalJam;
   }
 
   const { kategori, hukum } = tentukanKategoriMushtadloh(
@@ -232,12 +247,12 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     isTamyiz,
     ingatKebiasaan,
     kebiasaanHaidHari,
-    darahKuatHari,
-    darahLemahHari
+    kuatJam,
+    lemahJam
   );
 
   return {
-    kesimpulan: `Darah Istihadloh (melebihi batas maksimal haid 15 hari)`,
+    kesimpulan: `Darah Istihadloh (total ${formatDurasi(totalJam)} — melebihi batas maksimal haid 15 hari)`,
     kategori,
     hukumHaidl: "",
     hukumIstihadloh: hukum,

@@ -1,0 +1,100 @@
+# ====================================================================
+# MESIN LOGIKA FIQH - VERSI SUPPORT INPUT JAM (PRECISION ENGINE)
+# ====================================================================
+
+def panduan_bersuci_mustahadloh():
+    return (
+        "\n[TATA CARA BERSUCI MUSTAHADLOH]\n"
+        "1. Bersihkan farji, sumbat dengan kapas, dan gunakan pembalut.\n"
+        "2. Wudlu dilakukan SETELAH masuk waktu sholat.\n"
+        "3. Wudlu diniatkan untuk diperbolehkan sholat (Istibahah), bukan menghilangkan hadats.\n"
+        "4. Segera sholat setelah wudlu (Muwalah).\n"
+    )
+
+def kalkulator_qodlo_sholat(waktu_berhenti):
+    if not waktu_berhenti: return ""
+    waktu = waktu_berhenti.lower().strip()
+    if waktu == 'ashar':
+        return "\n[QODLO]: Wajib qodlo DZUHUR dan ASHAR (karena waktu Ashar bisa menjamak Dzuhur)."
+    elif waktu == 'isya':
+        return "\n[QODLO]: Wajib qodlo MAGHRIB dan ISYA' (karena waktu Isya bisa menjamak Maghrib)."
+    else:
+        return f"\n[QODLO]: Wajib qodlo sholat {waktu.upper()}."
+
+def skor_warna_sifat(fase):
+    hierarki = {"hitam": 5, "merah": 4, "merah kekuningan": 3, "kuning": 2, "keruh": 1}
+    warna = fase.get('warna', '').lower().strip()
+    skor = hierarki.get(warna, 0)
+    if fase.get('kental'): skor += 1
+    if fase.get('bau'): skor += 1
+    return skor
+
+def mesin_utama_aplikasi(usia_tahun, kondisi_awal, daftar_fase_darah, status_pengalaman, ingat_kebiasaan="lupa_semua", kebiasaan_haid_hari=0, waktu_berhenti_total=""):
+    
+    # 1. Konversi Durasi ke Jam untuk Akurasi
+    # User sekarang bisa input 'hari' atau 'jam' di dalam daftar_fase_darah
+    total_jam = 0
+    for fase in daftar_fase_darah:
+        jam_fase = fase.get('jam', 0) + (fase.get('hari', 0) * 24)
+        fase['total_jam_fase'] = jam_fase # Simpan hasil konversi ke tiap fase
+        total_jam += jam_fase
+
+    total_hari_float = total_jam / 24
+
+    # 2. Cek Usia Minimal (9 Tahun Qomariyah)
+    if usia_tahun < 9 and kondisi_awal != "nifas":
+        return f"HASIL: ISTIHADLOH.\nAlasan: Usia belum 9 tahun. Total darah: {total_jam} jam."
+
+    # 3. Deteksi Haid Normal (Syarat: Minimal 24 Jam, Maksimal 15 Hari/360 Jam)
+    if total_jam <= 360 and kondisi_awal != "nifas":
+        if total_jam < 24:
+            return f"HASIL: ISTIHADLOH.\nAlasan: Total darah baru {total_jam} jam (Kurang dari syarat minimal 24 jam)."
+        
+        res = f"KESIMPULAN: SEMUA DARAH ({total_hari_float:.1f} Hari / {total_jam} Jam) ADALAH HAIDL."
+        res += kalkulator_qodlo_sholat(waktu_berhenti_total)
+        return res
+
+    # 4. Deteksi Istihadloh (> 15 Hari / 360 Jam) dengan Tamyiz
+    is_tamyiz = False
+    kuat_jam = 0
+    lemah_jam = 0
+
+    if len(daftar_fase_darah) >= 2:
+        skor1 = skor_warna_sifat(daftar_fase_darah[0])
+        skor2 = skor_warna_sifat(daftar_fase_darah[1])
+
+        if skor1 > skor2:
+            kuat_jam = daftar_fase_darah[0]['total_jam_fase']
+            lemah_jam = total_jam - kuat_jam
+            
+            # Syarat Tamyiz: Kuat tidak lebih dari 15 hari (360 jam) & Kuat minimal 24 jam
+            if 24 <= kuat_jam <= 360:
+                is_tamyiz = True
+
+    # Penentuan Kategori berdasarkan status_pengalaman (Mubtadi'ah/Mu'tadah)
+    # ... (Logika kategori sama dengan sebelumnya, namun menggunakan jam untuk akurasi)
+    
+    hasil_final = f"KESIMPULAN: DARAH ISTIHADLOH (Total: {total_hari_float:.1f} Hari).\n"
+    if is_tamyiz:
+        hasil_final += f"Status: MUMAYYIZAH. Haid = {kuat_jam/24:.1f} hari darah kuat. Istihadloh = {lemah_jam/24:.1f} hari darah lemah."
+    else:
+        hasil_final += "Status: GHOIRU MUMAYYIZAH. Hukum dikembalikan ke 1 hari 1 malam (Mubtadi'ah) atau Adat (Mu'tadah)."
+
+    hasil_final += "\n" + panduan_bersuci_mustahadloh()
+    hasil_final += kalkulator_qodlo_sholat(waktu_berhenti_total)
+
+    return hasil_final
+
+# --- CONTOH PENGGUNAAN DENGAN INPUT JAM ---
+data_input = {
+    "usia_tahun": 20,
+    "kondisi_awal": "haidl",
+    "status_pengalaman": "mubtadiah",
+    "daftar_fase_darah": [
+        {"warna": "merah", "kental": True, "bau": True, "hari": 0, "jam": 30}, # Input 30 Jam
+        {"warna": "keruh", "kental": False, "bau": False, "hari": 16, "jam": 0} # Input 16 Hari
+    ],
+    "waktu_berhenti_total": "Ashar"
+}
+
+print(mesin_utama_aplikasi(**data_input))
