@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ArrowLeft, ArrowRight, Calculator, Plus, Trash2, CheckCircle2, RotateCcw, Droplets } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertCircle, Calculator, Plus, Trash2, CheckCircle2, RotateCcw, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -49,7 +49,7 @@ const step3Schema = z.object({
 });
 
 const step4Schema = z.object({
-  waktuBerhentiTotal: z.enum(["subuh", "dzuhur", "ashar", "maghrib", "isya", ""], { required_error: "Pilih waktu berhenti" }),
+  waktuBerhentiTotal: z.enum(["subuh", "dzuhur", "ashar", "maghrib", "isya", "tidak_tahu", ""], { required_error: "Pilih waktu berhenti" }),
 });
 
 export default function Kalkulator() {
@@ -113,21 +113,48 @@ export default function Kalkulator() {
   };
 
   const onStep4Submit = (data: z.infer<typeof step4Schema>) => {
-    const finalData = { ...formData, ...data } as InputUser;
-    setFormData(finalData);
-    const result = jalankanMesinFiqh(finalData);
-    setHasil(result);
-    setStep(5);
+    try {
+      const waktu = (data.waktuBerhentiTotal === "tidak_tahu" ? "" : data.waktuBerhentiTotal) as InputUser["waktuBerhentiTotal"];
+      const rawFases = (formData.daftarFaseDarah ?? []).map(f => ({
+        ...f,
+        hari: parseFloat(String(f.hari ?? 0)) || 0,
+        jam: parseInt(String(f.jam ?? 0), 10) || 0,
+      }));
+      const finalData: InputUser = {
+        usiaTahun: formData.usiaTahun ?? 9,
+        kondisiAwal: formData.kondisiAwal ?? "haidl",
+        statusPengalaman: formData.statusPengalaman ?? "mubtadiah",
+        ingatKebiasaan: formData.ingatKebiasaan ?? "lupa_semua",
+        kebiasaanHaidHari: parseFloat(String(formData.kebiasaanHaidHari ?? 0)) || 0,
+        daftarFaseDarah: rawFases,
+        waktuBerhentiTotal: waktu,
+      };
+      setFormData(finalData);
+      const result = jalankanMesinFiqh(finalData);
+      setHasil(result);
+      setStep(5);
+    } catch (_err) {
+      setHasil({
+        kesimpulan: "Terjadi Kesalahan",
+        kategori: "",
+        hukumHaidl: "",
+        hukumIstihadloh: "Mohon lengkapi data Anda dan pastikan semua kolom terisi dengan benar.",
+        qodloSholat: "",
+        panduanBersuci: "",
+        tipeHasil: "error",
+      });
+      setStep(5);
+    }
   };
 
   const handleReset = () => {
     setStep(1);
     setFormData({});
     setHasil(null);
-    form1.reset();
-    form2.reset();
-    form3.reset();
-    form4.reset();
+    form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
+    form2.reset({ daftarFaseDarah: [{ warna: "merah", kental: false, bau: false, hari: 1, jam: 0 }] });
+    form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
+    form4.reset({ waktuBerhentiTotal: "" });
   };
 
   return (
@@ -141,7 +168,7 @@ export default function Kalkulator() {
           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <div 
               className="h-full bg-primary transition-all duration-500 ease-out" 
-              style={{ width: `\${(step / 4) * 100}%` }}
+              style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
         </div>
@@ -326,7 +353,7 @@ export default function Kalkulator() {
                           size="icon"
                           className="absolute top-2 right-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                           onClick={() => remove(index)}
-                          data-testid={`btn-remove-fase-\${index}`}
+                          data-testid={`btn-remove-fase-${index}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -335,13 +362,13 @@ export default function Kalkulator() {
                       <div className="grid sm:grid-cols-2 gap-6 pt-2">
                         <FormField
                           control={form2.control}
-                          name={`daftarFaseDarah.\${index}.warna`}
+                          name={`daftarFaseDarah.${index}.warna`}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Warna Darah</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
-                                  <SelectTrigger data-testid={`select-warna-\${index}`}>
+                                  <SelectTrigger data-testid={`select-warna-${index}`}>
                                     <SelectValue placeholder="Pilih warna" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -390,7 +417,7 @@ export default function Kalkulator() {
                         <div className="sm:col-span-2 grid grid-cols-2 gap-4 border-t pt-4">
                           <FormField
                             control={form2.control}
-                            name={`daftarFaseDarah.\${index}.kental`}
+                            name={`daftarFaseDarah.${index}.kental`}
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                 <div className="space-y-0.5">
@@ -398,9 +425,9 @@ export default function Kalkulator() {
                                 </div>
                                 <FormControl>
                                   <Switch
-                                    checked={field.value}
+                                    checked={field.value ?? false}
                                     onCheckedChange={field.onChange}
-                                    data-testid={`switch-kental-\${index}`}
+                                    data-testid={`switch-kental-${index}`}
                                   />
                                 </FormControl>
                               </FormItem>
@@ -409,7 +436,7 @@ export default function Kalkulator() {
 
                           <FormField
                             control={form2.control}
-                            name={`daftarFaseDarah.\${index}.bau`}
+                            name={`daftarFaseDarah.${index}.bau`}
                             render={({ field }) => (
                               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                 <div className="space-y-0.5">
@@ -417,9 +444,9 @@ export default function Kalkulator() {
                                 </div>
                                 <FormControl>
                                   <Switch
-                                    checked={field.value}
+                                    checked={field.value ?? false}
                                     onCheckedChange={field.onChange}
-                                    data-testid={`switch-bau-\${index}`}
+                                    data-testid={`switch-bau-${index}`}
                                   />
                                 </FormControl>
                               </FormItem>
