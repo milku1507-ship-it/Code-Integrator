@@ -31,6 +31,11 @@ export interface InputUser {
   waktuMulaiDarah: WaktuBerhenti;
   sudahSholatSebelumDarah: boolean;
   waktuBerhentiTotal: WaktuBerhenti;
+  /**
+   * true  = ini PERTAMA KALI istihadloh terjadi (harus menunggu 15 hari → ada hutang ibadah).
+   * false = bulan kedua/seterusnya (sudah tahu adat → langsung mandi, tidak ada hutang penantian).
+   */
+  isBulanPertamaIstihadloh: boolean;
 }
 
 export interface SiklusInfo {
@@ -193,18 +198,26 @@ function tentukanKategoriMushtadloh(
 /**
  * Menghitung hutang ibadah masa penantian bagi wanita mustahadloh.
  *
- * Kaidah: Seorang wanita baru tahu dirinya mustahadloh setelah hari ke-15.
- * Selama 15 hari pertama ia menunggu dan tidak sholat/puasa karena menyangka itu haid.
- * Hari-hari dalam masa penantian yang ternyata istihadloh wajib diqodlo.
+ * Kaidah: Seorang wanita baru tahu dirinya mustahadloh setelah hari ke-15 (bulan pertama).
+ * Pada bulan kedua dan seterusnya, ia sudah tahu adat/batas darahnya, sehingga
+ * langsung mandi begitu masa haidnya habis — tidak ada masa penantian, tidak ada hutang.
  */
 function kalkHutangIbadah(
   haidJamSebenarnya: number | null,
   kategori: string,
+  isBulanPertama: boolean,
 ): string {
-  if (haidJamSebenarnya === null) {
-    return `Anda termasuk ${kategori}. Karena durasi haid yang sebenarnya tidak dapat dipastikan, besaran hutang ibadah masa penantian tidak dapat dihitung secara otomatis. Harap berkonsultasi dengan ustadzah atau kyai setempat untuk menentukan jumlah sholat/puasa yang wajib diqodlo'.`;
+  // ── Bulan kedua dan seterusnya: tidak ada masa penantian 15 hari ──
+  if (!isBulanPertama) {
+    return `Karena Anda sudah mengetahui adat/batas darah dari bulan-bulan sebelumnya, tidak diperlukan masa penantian 15 hari. Anda langsung mandi wajib begitu masa haid Anda berakhir. Tidak ada hutang sholat/puasa masa penantian.`;
   }
 
+  // ── Bulan pertama: durasi haid tidak dapat dipastikan ──
+  if (haidJamSebenarnya === null) {
+    return `Ini adalah bulan pertama istihadloh Anda. Anda termasuk ${kategori}. Karena durasi haid yang sebenarnya tidak dapat dipastikan, besaran hutang ibadah masa penantian tidak dapat dihitung secara otomatis. Harap berkonsultasi dengan ustadzah atau kyai setempat untuk menentukan jumlah sholat/puasa yang wajib diqodlo'.`;
+  }
+
+  // ── Bulan pertama: hitung hutang ──
   const penantianJam = 360; // 15 hari
   const istihadlohDalamPenantianJam = penantianJam - haidJamSebenarnya;
 
@@ -221,7 +234,7 @@ function kalkHutangIbadah(
     ? `${haidHari} hari`
     : `${haidHari.toFixed(1)} hari`;
 
-  return `Karena Anda harus menunggu 15 hari untuk mengetahui status istihadloh, maka hari-hari istihadloh yang terlanjur ditinggalkan tanpa ibadah wajib diqodlo'. Dari 15 hari masa penantian, yang dihukumi haid sesungguhnya hanya ${haidTeks}. Sisa ${hutangTeks} (hari ${Math.ceil(haidJamSebenarnya / 24) + 1} s/d hari ke-15) adalah istihadloh yang Anda tinggalkan. Anda memiliki hutang sholat (dan puasa jika bertepatan Ramadhan) selama ${hutangTeks} yang wajib diqodlo'.`;
+  return `Ini adalah bulan pertama istihadloh Anda. Karena harus menunggu 15 hari untuk memastikan status, hari-hari yang ternyata istihadloh namun terlanjur ditinggalkan wajib diqodlo'. Dari 15 hari masa penantian, yang dihukumi haid sesungguhnya hanya ${haidTeks}. Sisa ${hutangTeks} (hari ke-${Math.ceil(haidJamSebenarnya / 24) + 1} s/d hari ke-15) adalah masa istihadloh yang ibadahnya Anda tinggalkan. Anda memiliki hutang sholat (dan puasa jika bertepatan Ramadhan) selama ${hutangTeks} yang wajib diqodlo'.`;
 }
 
 function analyzeSingleSiklus(
@@ -358,6 +371,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     waktuMulaiDarah,
     sudahSholatSebelumDarah,
     waktuBerhentiTotal,
+    isBulanPertamaIstihadloh,
   } = input;
 
   const totalJamSemua = daftarFase.reduce((sum, f) => sum + jamKeFaseItem(f), 0);
@@ -470,7 +484,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       ? s.hukumDetail.replace(`${s.kategoriStr}: `, "")
       : lines.slice(1).join(": ");
 
-    const hutang = kalkHutangIbadah(s.haidJamSebenarnya ?? null, kategoriStr);
+    const hutang = kalkHutangIbadah(s.haidJamSebenarnya ?? null, kategoriStr, isBulanPertamaIstihadloh);
 
     return {
       kesimpulan: `Darah Istihadloh (total ${formatDurasi(s.totalJamSiklus)} — melebihi batas maksimal haid 15 hari)`,
@@ -500,9 +514,14 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       hutangMulti = kalkHutangIbadah(
         sIt.haidJamSebenarnya ?? null,
         sIt.kategoriStr ?? "",
+        isBulanPertamaIstihadloh,
       );
     } else if (istihadlohSiklus.length > 1) {
-      hutangMulti = `Terdapat ${istihadlohSiklus.length} siklus istihadloh. Setiap siklus memiliki hutang ibadah masa penantian masing-masing. Silakan konsultasikan dengan ustadzah atau kyai untuk perhitungan rinci.`;
+      if (!isBulanPertamaIstihadloh) {
+        hutangMulti = `Karena Anda sudah mengetahui adat/batas darah dari bulan-bulan sebelumnya, tidak diperlukan masa penantian 15 hari pada siklus manapun. Anda langsung mandi wajib setiap masa haid berakhir. Tidak ada hutang sholat/puasa masa penantian.`;
+      } else {
+        hutangMulti = `Terdapat ${istihadlohSiklus.length} siklus istihadloh dan ini adalah bulan pertama Anda mengalaminya. Setiap siklus memiliki hutang ibadah masa penantian masing-masing. Silakan konsultasikan dengan ustadzah atau kyai untuk perhitungan rinci per siklus.`;
+      }
     }
   }
 

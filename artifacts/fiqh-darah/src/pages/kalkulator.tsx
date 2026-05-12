@@ -138,6 +138,7 @@ const step3Schema = z
 const WAKTU_ENUM = ["subuh", "dzuhur", "ashar", "maghrib", "isya", "tidak_tahu", ""] as const;
 
 const step4Schema = z.object({
+  isBulanPertamaIstihadloh: z.boolean().default(true),
   waktuMulaiDarah: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu mulai darah" }),
   sudahSholatSebelumDarah: z.boolean().default(false),
   waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
@@ -185,6 +186,7 @@ export default function Kalkulator() {
   const form4 = useForm<z.infer<typeof step4Schema>>({
     resolver: zodResolver(step4Schema),
     defaultValues: {
+      isBulanPertamaIstihadloh: formData.isBulanPertamaIstihadloh ?? true,
       waktuMulaiDarah: formData.waktuMulaiDarah || "",
       sudahSholatSebelumDarah: formData.sudahSholatSebelumDarah ?? false,
       waktuBerhentiTotal: formData.waktuBerhentiTotal || "",
@@ -235,6 +237,7 @@ export default function Kalkulator() {
         ingatKebiasaan: formData.ingatKebiasaan ?? "lupa_semua",
         kebiasaanHaidHari: parseFloat(String(formData.kebiasaanHaidHari ?? 0)) || 0,
         daftarFase: formData.daftarFase ?? [],
+        isBulanPertamaIstihadloh: data.isBulanPertamaIstihadloh ?? true,
         waktuMulaiDarah: toWaktu(data.waktuMulaiDarah),
         sudahSholatSebelumDarah: data.sudahSholatSebelumDarah ?? false,
         waktuBerhentiTotal: toWaktu(data.waktuBerhentiTotal),
@@ -271,7 +274,7 @@ export default function Kalkulator() {
       ],
     });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
-    form4.reset({ waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
+    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
   };
 
   const appendDarah = () => {
@@ -893,6 +896,75 @@ export default function Kalkulator() {
                 className="space-y-8"
                 data-testid="form-step-4"
               >
+                {/* ── Bagian 0: Status Bulan Istihadloh ── */}
+                <FormField
+                  control={form4.control}
+                  name="isBulanPertamaIstihadloh"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold">
+                        Apakah ini pertama kali darah Anda keluar lebih dari 15 hari?
+                      </FormLabel>
+                      <FormDescription className="mb-3">
+                        Jika di bulan-bulan sebelumnya pernah terjadi hal serupa dan Anda sudah mengetahui jadwal adat atau batas darah kuat Anda, pilih "Sudah Pernah".
+                      </FormDescription>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange(true)}
+                          className={`rounded-2xl border-2 p-4 text-left transition-all focus:outline-none ${
+                            field.value
+                              ? "border-primary bg-primary/10 shadow-sm"
+                              : "border-muted bg-muted/30 hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="text-sm font-semibold mb-1">
+                            Pertama Kali
+                          </div>
+                          <div className="text-xs text-muted-foreground leading-snug">
+                            Ini adalah kali pertama darah saya keluar lebih dari 15 hari — saya belum tahu kapan seharusnya berhenti.
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => field.onChange(false)}
+                          className={`rounded-2xl border-2 p-4 text-left transition-all focus:outline-none ${
+                            !field.value
+                              ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 shadow-sm"
+                              : "border-muted bg-muted/30 hover:border-emerald-400"
+                          }`}
+                        >
+                          <div className="text-sm font-semibold mb-1">
+                            Sudah Pernah
+                          </div>
+                          <div className="text-xs text-muted-foreground leading-snug">
+                            Bulan sebelumnya sudah pernah terjadi — saya sudah tahu jadwal adat atau batas darah kuat saya.
+                          </div>
+                        </button>
+                      </div>
+
+                      {!field.value && (
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 text-xs text-emerald-800 dark:text-emerald-300">
+                          <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span>
+                            Karena Anda sudah mengetahui adat/batas darah, Anda <strong>langsung mandi wajib</strong> saat masa haid berakhir — tanpa perlu menunggu 15 hari. <strong>Tidak ada hutang sholat masa penantian.</strong>
+                          </span>
+                        </div>
+                      )}
+                      {field.value && (
+                        <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-3 text-xs text-orange-800 dark:text-orange-300">
+                          <TriangleAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span>
+                            Karena ini pertama kali, Anda harus menunggu 15 hari dulu untuk memastikan status. Hari-hari istihadloh yang terlanjur ditinggalkan tanpa ibadah akan dihitung sebagai <strong>hutang qodlo</strong>.
+                          </span>
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+
+                <hr className="border-muted" />
+
                 {/* ── Bagian 1: Datangnya Haid ── */}
                 <div className="rounded-2xl border bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-5 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
