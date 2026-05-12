@@ -15,7 +15,6 @@ import {
   Droplets,
   Wind,
   Info,
-  BookOpen,
   TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -1261,10 +1260,6 @@ export default function Kalkulator() {
                     <p className="text-foreground leading-relaxed">
                       {hasil.hutangIbadah}
                     </p>
-                    <div className="mt-3 flex items-start gap-2 text-xs text-orange-700/80 dark:text-orange-400/80">
-                      <BookOpen className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                      <span>Berdasarkan kaidah Kitab Uyunul Masa-il Linnisa': wanita mustahadloh baru mengetahui statusnya setelah hari ke-15, sehingga ibadah yang ditinggalkan selama masa istihadloh dalam periode penantian wajib diqodlo'.</span>
-                    </div>
                   </div>
                 )}
 

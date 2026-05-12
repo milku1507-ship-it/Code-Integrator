@@ -1,10 +1,10 @@
 import { Link } from "wouter";
-import { ArrowLeft, BookOpen, Droplets, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, Droplets, Clock, AlertCircle, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Panduan() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-2xl mx-auto px-4 py-10 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Link href="/" data-testid="link-back-home">
         <Button variant="ghost" size="sm" className="gap-2 mb-8 -ml-3 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" />
@@ -12,81 +12,97 @@ export default function Panduan() {
         </Button>
       </Link>
 
-      <div className="space-y-4 mb-12">
-        <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-xl text-primary mb-2">
-          <BookOpen className="w-6 h-6" />
-        </div>
+      <div className="space-y-2 mb-10">
         <h1 className="text-3xl sm:text-4xl font-serif text-foreground" data-testid="guide-title">
-          Panduan Memahami Fiqh Darah
+          Panduan Fiqh Darah
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-muted-foreground">
           Ringkasan istilah dan konsep dasar dalam menentukan hukum darah wanita.
         </p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-5">
         <section className="bg-card border rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-medium flex items-center gap-2 mb-4 text-primary">
-            <Droplets className="w-5 h-5" />
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3 text-primary">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Droplets className="w-4 h-4" />
+            </div>
             Haidl (Menstruasi)
           </h2>
-          <p className="text-muted-foreground leading-relaxed mb-4">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
             Darah yang keluar dari rahim wanita dalam keadaan sehat, bukan karena melahirkan atau sakit.
           </p>
-          <ul className="list-disc list-inside space-y-2 text-sm text-foreground/80 ml-4">
-            <li><strong>Batas Minimal:</strong> 1 hari 1 malam (24 jam)</li>
-            <li><strong>Batas Maksimal:</strong> 15 hari 15 malam</li>
-            <li><strong>Masa Suci Minimal:</strong> 15 hari 15 malam (antara dua masa haidl)</li>
-          </ul>
-        </section>
-
-        <section className="bg-card border rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-medium flex items-center gap-2 mb-4 text-teal-600 dark:text-teal-400">
-            <Clock className="w-5 h-5" />
-            Nifas
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            Darah yang keluar setelah kosongnya rahim dari kehamilan (melahirkan).
-          </p>
-          <ul className="list-disc list-inside space-y-2 text-sm text-foreground/80 ml-4">
-            <li><strong>Batas Minimal:</strong> Sekejap (setetes darah)</li>
-            <li><strong>Kebiasaan Normal:</strong> 40 hari</li>
-            <li><strong>Batas Maksimal:</strong> 60 hari</li>
-          </ul>
-        </section>
-
-        <section className="bg-card border rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-medium flex items-center gap-2 mb-4 text-amber-600 dark:text-amber-400">
-            <AlertCircle className="w-5 h-5" />
-            Istihadloh
-          </h2>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            Darah penyakit yang keluar di luar waktu haidl dan nifas, atau darah yang melebihi batas maksimal haidl (15 hari) dan nifas (60 hari).
-          </p>
-          <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg text-sm text-amber-900 dark:text-amber-200 mt-4">
-            Wanita yang mengalami istihadloh <strong>tetap wajib melaksanakan sholat dan puasa</strong>, namun ada tata cara bersuci khusus yang harus dilakukan setiap kali akan sholat fardlu.
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Minimal", val: "24 jam" },
+              { label: "Maksimal", val: "15 hari" },
+              { label: "Suci Minimal", val: "15 hari" },
+            ].map((item) => (
+              <div key={item.label} className="text-center p-3 rounded-xl bg-primary/5 border border-primary/10">
+                <div className="text-sm font-bold text-primary">{item.val}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="bg-muted/50 rounded-2xl p-6">
-          <h2 className="text-lg font-medium mb-4">Istilah Penting Lainnya</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="bg-background rounded-xl p-4 border shadow-sm">
-              <h3 className="font-medium text-foreground mb-1">Mubtadi'ah</h3>
-              <p className="text-sm text-muted-foreground">Wanita yang baru pertama kali mengalami haid.</p>
+        <section className="bg-card border rounded-2xl p-6 shadow-sm">
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3 text-violet-600 dark:text-violet-400">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-4 h-4" />
             </div>
-            <div className="bg-background rounded-xl p-4 border shadow-sm">
-              <h3 className="font-medium text-foreground mb-1">Mu'tadah</h3>
-              <p className="text-sm text-muted-foreground">Wanita yang sudah pernah mengalami haid dan suci sebelumnya (memiliki kebiasaan).</p>
+            Nifas
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+            Darah yang keluar setelah kosongnya rahim dari kehamilan (melahirkan).
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Minimal", val: "Sekejap" },
+              { label: "Kebiasaan", val: "40 hari" },
+              { label: "Maksimal", val: "60 hari" },
+            ].map((item) => (
+              <div key={item.label} className="text-center p-3 rounded-xl bg-violet-500/5 border border-violet-200 dark:border-violet-800">
+                <div className="text-sm font-bold text-violet-600 dark:text-violet-400">{item.val}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-card border rounded-2xl p-6 shadow-sm">
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3 text-amber-600 dark:text-amber-400">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-4 h-4" />
             </div>
-            <div className="bg-background rounded-xl p-4 border shadow-sm">
-              <h3 className="font-medium text-foreground mb-1">Tamyiz (Mumayyizah)</h3>
-              <p className="text-sm text-muted-foreground">Kemampuan membedakan sifat darah (kuat/lemah) dari warna, kekentalan, dan bau.</p>
-            </div>
-            <div className="bg-background rounded-xl p-4 border shadow-sm">
-              <h3 className="font-medium text-foreground mb-1">Ghoiru Mumayyizah</h3>
-              <p className="text-sm text-muted-foreground">Tidak bisa membedakan sifat darah, atau darah memiliki sifat yang sama terus-menerus.</p>
-            </div>
+            Istihadloh
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+            Darah penyakit yang keluar di luar waktu haidl dan nifas, atau melebihi batas maksimal.
+          </p>
+          <div className="flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>Wanita istihadloh <strong>tetap wajib sholat dan puasa</strong> dengan tata cara bersuci khusus setiap akan sholat fardlu.</span>
+          </div>
+        </section>
+
+        <section className="bg-muted/40 rounded-2xl p-6">
+          <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-primary" />
+            Istilah Penting
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { title: "Mubtadi'ah", desc: "Wanita yang baru pertama kali mengalami haid." },
+              { title: "Mu'tadah", desc: "Wanita yang sudah pernah haid dan suci sebelumnya (memiliki kebiasaan)." },
+              { title: "Mumayyizah (Tamyiz)", desc: "Dapat membedakan sifat darah kuat/lemah dari warna, kekentalan, dan bau." },
+              { title: "Ghoiru Mumayyizah", desc: "Tidak bisa membedakan sifat darah, atau darah bersifat sama terus-menerus." },
+            ].map((item) => (
+              <div key={item.title} className="bg-background rounded-xl p-4 border shadow-sm">
+                <h3 className="font-semibold text-sm text-primary mb-1">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
       </div>
