@@ -15,6 +15,8 @@ import {
   Droplets,
   Wind,
   Info,
+  BookOpen,
+  TriangleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,11 +135,12 @@ const step3Schema = z
     },
   );
 
+const WAKTU_ENUM = ["subuh", "dzuhur", "ashar", "maghrib", "isya", "tidak_tahu", ""] as const;
+
 const step4Schema = z.object({
-  waktuBerhentiTotal: z.enum(
-    ["subuh", "dzuhur", "ashar", "maghrib", "isya", "tidak_tahu", ""],
-    { required_error: "Pilih waktu berhenti" },
-  ),
+  waktuMulaiDarah: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu mulai darah" }),
+  sudahSholatSebelumDarah: z.boolean().default(false),
+  waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
 });
 
 type Step2FormData = z.infer<typeof step2Schema>;
@@ -182,6 +185,8 @@ export default function Kalkulator() {
   const form4 = useForm<z.infer<typeof step4Schema>>({
     resolver: zodResolver(step4Schema),
     defaultValues: {
+      waktuMulaiDarah: formData.waktuMulaiDarah || "",
+      sudahSholatSebelumDarah: formData.sudahSholatSebelumDarah ?? false,
       waktuBerhentiTotal: formData.waktuBerhentiTotal || "",
     },
   });
@@ -220,11 +225,8 @@ export default function Kalkulator() {
 
   const onStep4Submit = (data: z.infer<typeof step4Schema>) => {
     try {
-      const waktu = (
-        data.waktuBerhentiTotal === "tidak_tahu"
-          ? ""
-          : data.waktuBerhentiTotal
-      ) as InputUser["waktuBerhentiTotal"];
+      const toWaktu = (v: string): InputUser["waktuBerhentiTotal"] =>
+        (v === "tidak_tahu" ? "" : v) as InputUser["waktuBerhentiTotal"];
 
       const finalData: InputUser = {
         usiaTahun: formData.usiaTahun ?? 9,
@@ -233,7 +235,9 @@ export default function Kalkulator() {
         ingatKebiasaan: formData.ingatKebiasaan ?? "lupa_semua",
         kebiasaanHaidHari: parseFloat(String(formData.kebiasaanHaidHari ?? 0)) || 0,
         daftarFase: formData.daftarFase ?? [],
-        waktuBerhentiTotal: waktu,
+        waktuMulaiDarah: toWaktu(data.waktuMulaiDarah),
+        sudahSholatSebelumDarah: data.sudahSholatSebelumDarah ?? false,
+        waktuBerhentiTotal: toWaktu(data.waktuBerhentiTotal),
       };
       setFormData(finalData);
       const result = jalankanMesinFiqh(finalData);
@@ -246,7 +250,9 @@ export default function Kalkulator() {
         hukumHaidl: "",
         hukumIstihadloh:
           "Mohon lengkapi data Anda dan pastikan semua kolom terisi dengan benar.",
+        qodloSholatMulai: "",
         qodloSholat: "",
+        hutangIbadah: "",
         panduanBersuci: "",
         tipeHasil: "error",
       });
@@ -265,7 +271,7 @@ export default function Kalkulator() {
       ],
     });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
-    form4.reset({ waktuBerhentiTotal: "" });
+    form4.reset({ waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
   };
 
   const appendDarah = () => {
@@ -874,10 +880,10 @@ export default function Kalkulator() {
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
             <CardTitle className="text-2xl font-serif">
-              Waktu Darah Berhenti
+              Waktu Sholat & Qodlo
             </CardTitle>
             <CardDescription>
-              Untuk menentukan kewajiban qodlo (mengganti) sholat.
+              Untuk menghitung kewajiban qodlo sholat akibat datang dan berhentinya haid.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -887,43 +893,104 @@ export default function Kalkulator() {
                 className="space-y-8"
                 data-testid="form-step-4"
               >
-                <FormField
-                  control={form4.control}
-                  name="waktuBerhentiTotal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Saat darah dipastikan berhenti total (bersih), pada
-                        waktu sholat apa?
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
+                {/* ── Bagian 1: Datangnya Haid ── */}
+                <div className="rounded-2xl border bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-5 space-y-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Droplets className="w-4 h-4 text-rose-600" />
+                    <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
+                      Saat Darah Mulai Keluar
+                    </span>
+                  </div>
+
+                  <FormField
+                    control={form4.control}
+                    name="waktuMulaiDarah"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Darah pertama keluar pada waktu sholat apa?</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-waktu-mulai">
+                              <SelectValue placeholder="Pilih waktu" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="subuh">Subuh</SelectItem>
+                            <SelectItem value="dzuhur">Dzuhur</SelectItem>
+                            <SelectItem value="ashar">Ashar</SelectItem>
+                            <SelectItem value="maghrib">Maghrib</SelectItem>
+                            <SelectItem value="isya">Isya'</SelectItem>
+                            <SelectItem value="tidak_tahu">Tidak tahu / Tidak pasti</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form4.control}
+                    name="sudahSholatSebelumDarah"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border bg-background p-4 shadow-sm">
+                        <div className="space-y-0.5 pr-4">
+                          <FormLabel className="text-base">Sudah sholat sebelum darah keluar?</FormLabel>
+                          <FormDescription>
+                            Jika sudah sholat terlebih dahulu sebelum darah keluar, tidak ada kewajiban qodlo untuk waktu itu.
+                          </FormDescription>
+                        </div>
                         <FormControl>
-                          <SelectTrigger data-testid="select-waktu-berhenti">
-                            <SelectValue placeholder="Pilih waktu" />
-                          </SelectTrigger>
+                          <Switch
+                            checked={field.value ?? false}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-sudah-sholat"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="subuh">Subuh</SelectItem>
-                          <SelectItem value="dzuhur">Dzuhur</SelectItem>
-                          <SelectItem value="ashar">Ashar</SelectItem>
-                          <SelectItem value="maghrib">Maghrib</SelectItem>
-                          <SelectItem value="isya">Isya'</SelectItem>
-                          <SelectItem value="tidak_tahu">
-                            Tidak tahu / Tidak pasti
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Pilih waktu dimana Anda melihat kapas/pembalut sudah
-                        bersih tanpa noda darah.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* ── Bagian 2: Berhentinya Haid ── */}
+                <div className="rounded-2xl border bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 p-5 space-y-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wind className="w-4 h-4 text-emerald-600" />
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
+                      Saat Darah Berhenti Total
+                    </span>
+                  </div>
+
+                  <FormField
+                    control={form4.control}
+                    name="waktuBerhentiTotal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Darah dipastikan berhenti total (bersih) pada waktu sholat apa?
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-waktu-berhenti">
+                              <SelectValue placeholder="Pilih waktu" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="subuh">Subuh</SelectItem>
+                            <SelectItem value="dzuhur">Dzuhur</SelectItem>
+                            <SelectItem value="ashar">Ashar</SelectItem>
+                            <SelectItem value="maghrib">Maghrib</SelectItem>
+                            <SelectItem value="isya">Isya'</SelectItem>
+                            <SelectItem value="tidak_tahu">Tidak tahu / Tidak pasti</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Pilih waktu saat kapas/pembalut sudah bersih tanpa noda. Jika berhenti di Ashar atau Isya', sholat sebelumnya (Dzuhur/Maghrib) ikut wajib diqodlo.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="flex justify-between pt-4 border-t">
                   <Button
@@ -1089,15 +1156,43 @@ export default function Kalkulator() {
                   </div>
                 )}
 
+                {hasil.qodloSholatMulai && (
+                  <div className="p-6 sm:p-8 bg-rose-50/50 dark:bg-rose-950/20">
+                    <h3 className="text-lg font-medium mb-2 text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                      <Droplets className="w-5 h-5" />
+                      Qodlo Sholat — Sebab Datangnya Haid
+                    </h3>
+                    <p className="text-foreground leading-relaxed">
+                      {hasil.qodloSholatMulai}
+                    </p>
+                  </div>
+                )}
+
                 {hasil.qodloSholat && (
                   <div className="p-6 sm:p-8 bg-primary/5">
                     <h3 className="text-lg font-medium mb-2 text-primary flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5" />
-                      Qodlo Sholat
+                      Qodlo Sholat — Sebab Berhentinya Haid
                     </h3>
                     <p className="font-medium text-foreground">
                       {hasil.qodloSholat}
                     </p>
+                  </div>
+                )}
+
+                {hasil.hutangIbadah && (
+                  <div className="p-6 sm:p-8 bg-orange-50/60 dark:bg-orange-950/20 border-l-4 border-orange-400">
+                    <h3 className="text-lg font-medium mb-3 text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                      <TriangleAlert className="w-5 h-5" />
+                      Hutang Ibadah Masa Penantian
+                    </h3>
+                    <p className="text-foreground leading-relaxed">
+                      {hasil.hutangIbadah}
+                    </p>
+                    <div className="mt-3 flex items-start gap-2 text-xs text-orange-700/80 dark:text-orange-400/80">
+                      <BookOpen className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      <span>Berdasarkan kaidah Kitab Uyunul Masa-il Linnisa': wanita mustahadloh baru mengetahui statusnya setelah hari ke-15, sehingga ibadah yang ditinggalkan selama masa istihadloh dalam periode penantian wajib diqodlo'.</span>
+                    </div>
                   </div>
                 )}
 

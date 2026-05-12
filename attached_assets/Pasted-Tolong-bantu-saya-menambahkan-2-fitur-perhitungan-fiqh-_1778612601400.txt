@@ -1,0 +1,16 @@
+Tolong bantu saya menambahkan 2 fitur perhitungan fiqh yang sangat penting ke dalam Mesin Utama Aplikasi Fiqh Darah (Python) saya, berdasarkan kaidah kitab Uyunul Masa-il Linnisa'.
+Saat ini aplikasi belum bisa menghitung hutang (qodlo) sholat akibat waktu datangnya haid, dan belum bisa menghitung akumulasi hutang ibadah masa penantian 15 hari bagi wanita mustahadloh. Mohon tambahkan logika berikut:
+1. Update Modul: Kalkulator Qodlo Sholat (Sebab Datang & Berhentinya Haid)
+Input Baru yang Dibutuhkan: Tambahkan variabel input waktu_darah_mulai_keluar (Subuh/Dzuhur/Ashar/Maghrib/Isya) dan parameter sudah_sholat_sebelum_darah_keluar (True/False).
+Logika Datangnya Haid: Jika darah keluar di sebuah waktu sholat, dan sudah lewat waktu yang cukup untuk wudlu+sholat tapi user belum sholat (sudah_sholat_sebelum_darah_keluar = False), maka sholat tersebut wajib diqodlo nanti setelah suci
+.
+Logika Berhentinya Haid (Jama'): Jika darah berhenti di waktu yang bisa di-jama' (Ashar atau Isya'), maka sholat sebelumnya juga wajib diqodlo (Berhenti Ashar = Qodlo Dzuhur & Ashar. Berhenti Isya' = Qodlo Maghrib & Isya')
+. Sholat selain itu, cukup qodlo sholat di waktu berhentinya saja.
+Buat fungsi ini mengembalikan teks hasil yang mendetail.
+2. Fitur Baru: Kalkulator Hutang Ibadah Masa Penantian (Mustahadloh)
+Kaidah Fiqh: Wanita yang darahnya terus keluar melebihi 15 hari baru akan tahu bahwa dirinya Mustahadloh di hari ke-16. Selama 15 hari pertama, dia pasti menunggu dan tidak sholat/puasa karena mengira itu haid
+.
+Logika Perhitungan: Buat script yang berjalan khusus jika total darah > 15 hari. Sistem harus menghitung selisih antara masa penantian (15 hari) dikurangi durasi yang dihukumi sebagai Haid.
+Contoh Kasus: Jika user adalah Mubtadi'ah Ghoiru Mumayyizah, haidnya hanya dihukumi 1 hari 1 malam. Berarti 14 hari sisanya (dari hari ke-2 sampai ke-15) yang ia tinggalkan untuk menunggu, ternyata adalah darah Istihadloh
+.
+Output yang Diharapkan: Tambahkan string peringatan otomatis ke hasil akhir seperti: "Karena Anda harus menunggu 15 hari untuk mengetahui status istihadloh, maka hari-hari istihadloh yang terlanjur Anda tinggalkan tanpa ibadah wajib diqodlo'. Anda memiliki hutang sholat/puasa selama [X] hari." (Dimana X adalah 15 - jumlah hari haid sebenarn
