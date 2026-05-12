@@ -1,0 +1,199 @@
+Berikut adalah **Kode Final dan Terpadu (All-in-One Engine)** yang menyatukan seluruh logika dari awal hingga akhir, termasuk kalkulator qodlo' sholat, hierarki warna darah, deteksi Nifas, Haid normal, dan 7 kategori Mustahadloh secara spesifik. 
+
+Kode ini juga telah menyesuaikan kaidah khusus (seperti contoh kasus 10 hari merah dan 10 hari keruh, di mana syarat darah lemah 15 hari tidak berlaku jika darah langsung berhenti tanpa diikuti darah kuat lagi).
+
+```python
+# ====================================================================
+# MESIN LOGIKA FIQH - UYUNUL MASA-IL LINNISA (FINAL INTEGRATION)
+# ====================================================================
+
+def panduan_bersuci_mustahadloh():
+    """Modul panduan tata cara bersuci bagi wanita Istihadloh"""
+    return (
+        "\n[TATA CARA BERSUCI MUSTAHADLOH]\n"
+        "1. Bersihkan farji dari najis darah yang keluar.\n"
+        "2. Sumbat farji dengan kapas/pembalut (kecuali sedang puasa atau terasa sakit).\n"
+        "3. Wudlu harus dengan 'muwalah' (terus-menerus/tidak boleh putus sampai anggota tubuh kering).\n"
+        "4. Niat wudlu: 'Niat berwudlu agar diperbolehkan melaksanakan sholat' (bukan menghilangkan hadats).\n"
+        "5. Segera laksanakan sholat fardlu.\n"
+        "*PENTING: Satu rangkaian bersuci ini HANYA berlaku untuk 1 kali sholat fardlu.\n"
+    )
+
+def kalkulator_qodlo_sholat(waktu_berhenti):
+    """Modul untuk menghitung hutang/qodlo sholat saat darah berhenti"""
+    if not waktu_berhenti:
+        return ""
+        
+    waktu = waktu_berhenti.lower()
+    if waktu == 'ashar':
+        return "\n[QODLO SHOLAT]: Anda wajib mengqodlo sholat DZUHUR dan ASHAR (karena bisa di-jama')."
+    elif waktu == 'isya':
+        return "\n[QODLO SHOLAT]: Anda wajib mengqodlo sholat MAGHRIB dan ISYA' (karena bisa di-jama')."
+    else:
+        return f"\n[QODLO SHOLAT]: Anda wajib mengqodlo sholat {waktu.upper()}."
+
+def skor_warna_sifat(warna, kental, bau):
+    """Modul untuk menilai tingkatan kekuatan darah (otomatis deteksi Tamyiz)"""
+    # Hierarki warna dari kitab: Hitam(5), Merah(4), Merah Kekuningan(3), Kuning(2), Keruh(1)
+    hierarki = {"hitam": 5, "merah": 4, "merah kekuningan": 3, "kuning": 2, "keruh": 1}
+    skor = hierarki.get(warna.lower(), 0)
+    
+    if kental: skor += 1
+    if bau: skor += 1
+    return skor
+
+def tentukan_kategori_mustahadloh(status_pengalaman, is_tamyiz, ingat_kebiasaan, kebiasaan_hari, darah_kuat_hari, darah_lemah_hari):
+    """Modul khusus pemetaan 7 Golongan Wanita Mustahadloh"""
+    hasil = ""
+    
+    # KELOMPOK MUBTADI'AH (PEMULA)
+    if status_pengalaman == "mubtadiah":
+        if is_tamyiz:
+            hasil += "Kategori: (1) MUBTADI'AH MUMAYYIZAH.\n"
+            hasil += f"Hukum: {darah_kuat_hari} hari darah kuat adalah HAIDL, dan {darah_lemah_hari} hari darah lemah adalah ISTIHADLOH."
+        else:
+            hasil += "Kategori: (2) MUBTADI'AH GHOIRU MUMAYYIZAH.\n"
+            hasil += "Hukum: 1 Hari 1 Malam (24 jam) pertama dihukumi HAIDL, dan sisanya dihukumi ISTIHADLOH."
+
+    # KELOMPOK MU'TADAH (SUDAH PERNAH HAID)
+    elif status_pengalaman == "mutadah":
+        if is_tamyiz:
+            hasil += "Kategori: (3) MU'TADAH MUMAYYIZAH.\n"
+            hasil += f"Hukum: {darah_kuat_hari} hari darah kuat adalah HAIDL, dan {darah_lemah_hari} hari darah lemah adalah ISTIHADLOH."
+        else:
+            if ingat_kebiasaan == "ingat_semua":
+                hasil += "Kategori: (4) MU'TADAH GHOIRU MUMAYYIZAH (Dzakiroh Li'adatiha Qodron wa Waqtan).\n"
+                hasil += f"Hukum: Dikembalikan ke Adat lama. {kebiasaan_hari} hari pertama = HAIDL, sisanya = ISTIHADLOH."
+            elif ingat_kebiasaan == "lupa_semua":
+                hasil += "Kategori: (5) MU'TADAH MUTAHAYYIROH / NASIYAH.\n"
+                hasil += "Hukum: Keadaan membingungkan. Anda wajib Ihtiyat (berhati-hati), wajib mandi setiap akan sholat fardlu, dan haram membaca Al-Qur'an di luar sholat."
+            elif ingat_kebiasaan == "ingat_durasi":
+                hasil += "Kategori: (6) MU'TADAH GHOIRU MUMAYYIZAH (Ingat Durasi, Lupa Waktu).\n"
+                hasil += f"Hukum: Haidl Anda sejumlah {kebiasaan_hari} hari, namun karena lupa tanggal mulainya, hari yang diyakini harus diteliti."
+            elif ingat_kebiasaan == "ingat_waktu":
+                hasil += "Kategori: (7) MU'TADAH GHOIRU MUMAYYIZAH (Ingat Waktu, Lupa Durasi).\n"
+                hasil += "Hukum: Waktu yang diyakini biasa mulai haidl adalah HAIDL, yang diyakini suci adalah ISTIHADLOH."
+
+    return hasil
+
+def mesin_utama_aplikasi(
+    usia_tahun, 
+    kondisi_awal, 
+    daftar_fase_darah, 
+    status_pengalaman, 
+    ingat_kebiasaan="lupa_semua", 
+    kebiasaan_haid_hari=0,
+    waktu_berhenti_total=""
+):
+    """
+    Fungsi Induk (Main Engine) yang akan dipanggil oleh antarmuka aplikasi.
+    Memproses seluruh data input dari User.
+    """
+    print("\n=====================================================")
+    print("  HASIL ANALISIS APLIKASI CERDAS FIQH DARAH")
+    print("=====================================================\n")
+
+    # 1. Pengecekan Usia Minimal
+    if usia_tahun < 9 and kondisi_awal != "nifas":
+        return "KESIMPULAN FINAL:\nDarah Istihadloh (Darah Penyakit).\nAlasan: Usia pengguna belum mencapai batas minimal 9 tahun Qomariyah."
+
+    # Hitung Total Durasi
+    total_hari = sum(fase['hari'] for fase in daftar_fase_darah)
+
+    # 2. Deteksi Nifas (Melahirkan)
+    if kondisi_awal == "nifas":
+        if total_hari <= 60:
+            return f"KESIMPULAN FINAL:\nSemua darah ({total_hari} Hari) adalah NIFAS.\nAlasan: Belum melebihi batas maksimal nifas 60 hari."
+        else:
+            return "KESIMPULAN FINAL:\nISTIHADLOH NIFAS (> 60 Hari).\nAlasan: Darah melampaui 60 hari. Hukum dikembalikan pada adat nifas sebelumnya atau setetes darah pertama."
+
+    # 3. Deteksi Haidl Normal (< 15 Hari)
+    if total_hari < 1:
+        return "KESIMPULAN FINAL:\nDarah Istihadloh.\nAlasan: Durasi kurang dari batas minimal haid (24 jam)."
+    
+    elif 1 <= total_hari <= 15:
+        hasil = f"KESIMPULAN FINAL:\nSEMUA DARAH ({total_hari} Hari) ADALAH HAIDL.\nAlasan: Durasi memenuhi syarat (minimal 1 hari, maksimal 15 hari)."
+        hasil += kalkulator_qodlo_sholat(waktu_berhenti_total)
+        return hasil
+
+    # 4. Deteksi Istihadloh (> 15 Hari) & Algoritma Tamyiz
+    hasil_istihadloh = "KESIMPULAN FINAL:\nDARAH ISTIHADLOH (Melebihi batas maksimal haid 15 Hari).\n\n"
+    
+    is_tamyiz = False
+    darah_kuat_hari = 0
+    darah_lemah_hari = 0
+
+    if len(daftar_fase_darah) >= 2:
+        # Analisis 2 fase darah pertama
+        fase1 = daftar_fase_darah
+        fase2 = daftar_fase_darah
+        
+        skor1 = skor_warna_sifat(fase1['warna'], fase1['kental'], fase1['bau'])
+        skor2 = skor_warna_sifat(fase2['warna'], fase2['kental'], fase2['bau'])
+        
+        if skor1 > skor2:
+            darah_kuat_hari = fase1['hari']
+            darah_lemah_hari = fase2['hari']
+            
+            # Pengecekan Syarat Tamyiz
+            if 1 <= darah_kuat_hari <= 15:
+                # Cek jika ada darah kuat lagi di fase ke-3
+                ada_fase_3_kuat = False
+                if len(daftar_fase_darah) > 2:
+                    skor3 = skor_warna_sifat(daftar_fase_darah['warna'], daftar_fase_darah['kental'], daftar_fase_darah['bau'])
+                    if skor3 >= skor1: ada_fase_3_kuat = True
+                
+                # Syarat lemah >= 15 hari HANYA berlaku jika diselingi darah kuat lagi
+                if ada_fase_3_kuat and darah_lemah_hari < 15:
+                    is_tamyiz = False
+                else:
+                    is_tamyiz = True
+
+    # Jika darah cuma 1 warna
+    else:
+        darah_lemah_hari = total_hari
+
+    # Menyatukan string hasil dari modul Kategori Mustahadloh
+    hasil_istihadloh += tentukan_kategori_mustahadloh(
+        status_pengalaman, is_tamyiz, ingat_kebiasaan, kebiasaan_haid_hari, darah_kuat_hari, darah_lemah_hari
+    )
+    
+    # Menambahkan Tata Cara Bersuci
+    hasil_istihadloh += "\n" + panduan_bersuci_mustahadloh()
+    
+    # Menambahkan Qodlo sholat dari darah yang dihukumi haid
+    hasil_istihadloh += kalkulator_qodlo_sholat(waktu_berhenti_total)
+    
+    return hasil_istihadloh
+
+# ====================================================================
+# SIMULASI PENGGUNAAN DI DALAM APLIKASI
+# ====================================================================
+
+# Skenario Kasus: 
+# Wanita pemula (mubtadiah) keluar darah total 20 hari.
+# 10 hari pertama Merah (Kuat), 10 hari berikutnya Keruh (Lemah), berhenti di waktu Maghrib.
+
+data_input_user = {
+    "usia_tahun": 20,
+    "kondisi_awal": "haidl",
+    "status_pengalaman": "mubtadiah",
+    "ingat_kebiasaan": "lupa_semua",
+    "kebiasaan_haid_hari": 0,
+    "waktu_berhenti_total": "Maghrib",
+    "daftar_fase_darah": [
+        {"warna": "merah", "kental": False, "bau": False, "hari": 10},
+        {"warna": "keruh", "kental": False, "bau": False, "hari": 10}
+    ]
+}
+
+# Eksekusi Mesin Utama dengan unpacking data (Mewakili aksi saat user klik tombol "Cek Hukum")
+output_layar_aplikasi = mesin_utama_aplikasi(**data_input_user)
+
+print(output_layar_aplikasi)
+```
+
+### Cara Kerja Integrasi untuk Programmer:
+1.  **Dinamis dan Bersih:** Programmer hanya perlu menghubungkan *form input* pengguna di aplikasi seluler/web ke variabel `data_input_user`. Saat pengguna menekan tombol "Cek Hasil", sistem otomatis memanggil fungsi `mesin_utama_aplikasi(**data_input_user)`.
+2.  **Pemecahan Modul (`def`):** Kode disusun menjadi modul-modul kecil (kalkulator qodlo, skor warna, penentu 7 golongan) agar mudah dilacak jika di masa depan Anda ingin memperbarui atau mengembangkan aplikasinya (misal: menambahkan pilihan input warna lain).
+3.  **Algoritma Cerdas Tamyiz (Kasus 10 Hari):** Berdasarkan diskusi dan referensi, jika pengguna menginput darah merah 10 hari dan keruh 10 hari, algoritma skor sudah cukup pintar untuk menetapkan bahwa merah lebih kuat dari keruh. Karena darah langsung berhenti di hari ke-20 tanpa ada fase ke-3 (darah kembali kuat), sistem otomatis meloloskan *is_tamyiz = True* dan memasukkannya ke "Kategori 1: Mubtadi'ah Mumayyizah" secara instan.
