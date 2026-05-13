@@ -683,7 +683,7 @@ function analyzeSingleSiklus(
     darahJamSiklus: darahJam,
     bersihDalamJam: bersihJam,
     bersihDalamHaidJam,
-    kesimpulan: `Istihadloh — total ${formatDurasi(totalJam)} melebihi batas 15 hari${bersihNote}`,
+    kesimpulan: `Istihadloh — total ${formatDurasi(totalJam)} melebihi batas 15 hari`,
     hukumDetail: `${kategori}: ${hukum}`,
     tipe: "istihadloh",
     haidJamSebenarnya,
