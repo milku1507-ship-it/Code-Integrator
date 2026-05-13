@@ -1,0 +1,55 @@
+Tolong tambahkan :
+
+Arsitektur Kalender (Sistem Dinamis)
+Jangan membuat kalender manual. Gunakan library (seperti FullCalendar, React DayPicker, atau Flutter Table Calendar) yang terhubung dengan ISO 8601.
+Tahun Aktif: Sistem harus mengambil new Date().getFullYear() sehingga saat tahun berganti (misal ke 2027), kalender otomatis menyesuaikan kabisat dan jumlah hari.
+Sinkronisasi 12 Bulan: Data darah disimpan dalam database global yang tidak terikat bulan, sehingga jika darah nifas mulai 20 Desember dan berakhir 15 Februari tahun depan, sistem tetap menghitungnya sebagai satu rangkaian (tidak terputus oleh pergantian tahun).
+2. Logika Input "Range-Fill" (Smart Marking)
+Agar user-friendly seperti yang kamu inginkan (input titik A ke titik B), gunakan logika Anchor Point:
+Langkah 1: User memilih warna darah (misal: Merah).
+Langkah 2: Klik tanggal awal (State: startDate).
+Langkah 3: Klik tanggal akhir (State: endDate).
+Langkah 4: Sistem menjalankan fungsi fillRange(start, end, color).
+Jika di antara tanggal tersebut sudah ada data, sistem akan melakukan overwrite (menimpa) dengan warna terbaru.
+
+3. Prompt untuk Pengembang (Technical Specifications)
+Berikan prompt ini kepada developer atau AI pembuat kode:
+"Buatlah komponen kalender 12 bulan yang sinkron dengan sistem tahun saat ini. Implementasikan fitur 'Range-Selection Flow':
+Data Model: Gunakan array of objects berformat [ {date: 'YYYY-MM-DD', type: 'strong_blood/weak_blood/stop'} ].
+Auto-Fill Logic: Jika user memilih status 'Merah' di Tgl 2, lalu Tgl 7, sistem harus mengisi semua tanggal di antaranya (2,3,4,5,6,7) dengan status 'Merah'. Jika input berikutnya adalah 'Keruh' di Tgl 15, sistem secara otomatis mengisi dari Tgl 8 hingga 15 dengan 'Keruh'.
+Fiqh Boundary:
+Jika status melahirkan aktif, tandai area 60 hari ke depan sebagai 'Nifas Zone'.
+Jika input darah melewati 60 hari dari tgl melahirkan, ubah visualisasi warna menjadi 'Arsir/Grey' (tanda Istihadloh).
+Jika ada status 'Berhenti' >= 15 hari, pecah rangkaian (reset) dan anggap input berikutnya sebagai 'Haid Baru'.
+Display: Kalender harus menampilkan indikator visual yang jelas (Dot atau Full Background Color) pada setiap sel tanggal."
+
+4. Skema Logika 7 Kategori (Mustahadloh Nifas Terputus)
+Untuk menangani kasus yang sangat detail, sistem harus memiliki "Decision Tree" (Pohon Keputusan):
+Kondisi
+Trigger Sistem
+Output Aplikasi
+Darah > 60 Hari
+Cek Perbedaan Warna
+Jika ada Kuat & Lemah -> Gunakan Tamyiz
+Darah > 60 Hari & Warna Sama
+Munculkan Pop-up
+Tanyakan: "Berapa lama nifas anak sebelumnya?" -> Gunakan Adat
+Darah > 60 Hari & Lupa Adat
+Default System
+Set Nifas = 1 Detik, sisanya Istihadloh (Mutahayyiroh)
+Ekspor ke Spreadsheet
+5. Keunggulan Fitur "Berhenti" (Suci di Tengah Nifas)
+Aplikasi kamu akan sangat canggih jika memiliki fitur "Hukum Bayangan":
+Jika user input "Berhenti" pada hari ke-20 sampai ke-30 nifas:
+Sistem mewarnai tanggal tersebut dengan warna Hijau Muda (Suci).
+Sistem memunculkan teks: "Status: Suci (Wajib Ibadah). Namun tetap dalam pantauan 60 hari nifas."
+Jika hari ke-31 user input "Darah" lagi, sistem secara otomatis mengubah status tanggal 20-30 tadi di laporan akhir menjadi "Nifas (Hukum Sahbi)".
+Visualisasi UI yang Disarankan:
+Header: Dropdown pilih Bulan (Jan-Des) & Tahun (Otomatis).
+Legend:
+🔴 Merah (Darah Kuat)
+🟡 Kuning/Coklat (Darah Lemah)
+⚪ Putih (Suci/Berhenti)
+⚠️ Garis-garis (Istihadloh/Wajib Sholat)
+Dengan begini, aplikasi kamu tidak hanya sekadar kalender, tapi menjadi "Asisten Fiqh Digital" yang akurat secara syariat dan presisi secara teknologi.
+

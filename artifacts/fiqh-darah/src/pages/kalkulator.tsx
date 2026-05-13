@@ -14,7 +14,8 @@ import {
   Wind,
   Info,
   TriangleAlert,
-  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,19 +105,47 @@ const step4Schema = z.object({
 });
 
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
+type InputMode = StatusHariInput | "hapus";
 
-function kalenderKePhase(harian: Record<number, StatusHariInput>): FaseItem[] {
-  const keys = Object.keys(harian).map(Number).sort((a, b) => a - b);
+// ─── Date utilities ─────────────────────────────────────────────────────────
+function dateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function parseKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function addDaysToDate(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+function diffDaysCalc(a: Date, b: Date): number {
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+const MONTHS_ID_SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+const MONTHS_ID_FULL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const WEEKDAYS_ID = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+function formatDateId(key: string): string {
+  const d = parseKey(key);
+  return `${d.getDate()} ${MONTHS_ID_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function kalenderKePhase(harian: Record<string, StatusHariInput>): FaseItem[] {
+  const keys = Object.keys(harian).sort();
   if (keys.length === 0) return [];
 
-  const firstDay = keys[0];
-  const lastDay = keys[keys.length - 1];
+  const firstKey = keys[0];
+  const lastKey = keys[keys.length - 1];
   const phases: FaseItem[] = [];
   let currentStatus: StatusHariInput | null = null;
   let currentCount = 0;
 
-  for (let day = firstDay; day <= lastDay; day++) {
-    const status: StatusHariInput = harian[day] ?? "bersih";
+  let d = parseKey(firstKey);
+  while (dateKey(d) <= lastKey) {
+    const k = dateKey(d);
+    const status: StatusHariInput = harian[k] ?? "bersih";
     if (status === currentStatus) {
       currentCount++;
     } else {
@@ -124,32 +153,19 @@ function kalenderKePhase(harian: Record<number, StatusHariInput>): FaseItem[] {
         if (currentStatus === "bersih") {
           phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
         } else {
-          phases.push({
-            tipe: "darah",
-            warna: currentStatus === "kuat" ? "hitam" : "kuning",
-            kental: false,
-            bau: false,
-            hari: currentCount,
-            jam: 0,
-          });
+          phases.push({ tipe: "darah", warna: currentStatus === "kuat" ? "hitam" : "kuning", kental: false, bau: false, hari: currentCount, jam: 0 });
         }
       }
       currentStatus = status;
       currentCount = 1;
     }
+    d = addDaysToDate(d, 1);
   }
   if (currentStatus !== null && currentCount > 0) {
     if (currentStatus === "bersih") {
       phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
     } else {
-      phases.push({
-        tipe: "darah",
-        warna: currentStatus === "kuat" ? "hitam" : "kuning",
-        kental: false,
-        bau: false,
-        hari: currentCount,
-        jam: 0,
-      });
+      phases.push({ tipe: "darah", warna: currentStatus === "kuat" ? "hitam" : "kuning", kental: false, bau: false, hari: currentCount, jam: 0 });
     }
   }
   return phases;
@@ -189,82 +205,287 @@ const STATUS_INPUT_CONFIG: Record<StatusHariInput, {
   },
 };
 
-function KalenderInputGrid({
+function KalenderInputTanggal({
   harian,
   onChange,
-  maxDays,
   kondisiAwal,
 }: {
-  harian: Record<number, StatusHariInput>;
-  onChange: (h: Record<number, StatusHariInput>) => void;
-  maxDays: number;
+  harian: Record<string, StatusHariInput>;
+  onChange: (h: Record<string, StatusHariInput>) => void;
   kondisiAwal?: "haidl" | "nifas";
 }) {
-  const cycle = (day: number) => {
-    const cur = harian[day];
-    const next: StatusHariInput | undefined =
-      !cur ? "kuat" : cur === "kuat" ? "lemah" : cur === "lemah" ? "bersih" : undefined;
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [mode, setMode] = useState<InputMode>("kuat");
+  const [anchor, setAnchor] = useState<string | null>(null);
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
+
+  const allDates = Object.keys(harian).sort();
+  const firstDate = allDates.length > 0 ? allDates[0] : null;
+  const lastDate = allDates.length > 0 ? allDates[allDates.length - 1] : null;
+  const totalDays = firstDate && lastDate ? diffDaysCalc(parseKey(firstDate), parseKey(lastDate)) + 1 : 0;
+  const totalDarah = Object.values(harian).filter((v) => v === "kuat" || v === "lemah").length;
+  const totalBersih = Object.values(harian).filter((v) => v === "bersih").length;
+
+  // 60-day nifas zone boundary
+  const nifasEndKey = firstDate && kondisiAwal === "nifas"
+    ? dateKey(addDaysToDate(parseKey(firstDate), 59))
+    : null;
+
+  // Range preview
+  const previewRange = anchor && hoverDate ? {
+    start: anchor < hoverDate ? anchor : hoverDate,
+    end: anchor < hoverDate ? hoverDate : anchor,
+  } : null;
+
+  const fillRange = (startKey: string, endKey: string, status: StatusHariInput) => {
     const updated = { ...harian };
-    if (next) updated[day] = next;
-    else delete updated[day];
-    onChange(updated);
+    let d = parseKey(startKey);
+    while (dateKey(d) <= endKey) {
+      updated[dateKey(d)] = status;
+      d = addDaysToDate(d, 1);
+    }
+    return updated;
   };
 
-  const keys = Object.keys(harian).map(Number);
-  const firstDay = keys.length > 0 ? Math.min(...keys) : null;
-  const lastDay = keys.length > 0 ? Math.max(...keys) : null;
-  const totalDays = firstDay !== null && lastDay !== null ? lastDay - firstDay + 1 : 0;
-  const totalDarah = keys.filter((k) => harian[k] === "kuat" || harian[k] === "lemah").length;
-  const totalBersih = lastDay !== null && firstDay !== null
-    ? keys.filter((k) => harian[k] === "bersih" && k >= firstDay && k <= lastDay).length
-    : 0;
+  const handleDayClick = (key: string) => {
+    if (mode === "hapus") {
+      const updated = { ...harian };
+      delete updated[key];
+      onChange(updated);
+      return;
+    }
+    if (!anchor) {
+      setAnchor(key);
+    } else if (anchor === key) {
+      // Same day → mark just that day
+      const updated = { ...harian };
+      updated[key] = mode;
+      onChange(updated);
+      setAnchor(null);
+      setHoverDate(null);
+    } else {
+      // Different day → fill range
+      const startKey = anchor < key ? anchor : key;
+      const endKey = anchor < key ? key : anchor;
+      onChange(fillRange(startKey, endKey, mode));
+      setAnchor(null);
+      setHoverDate(null);
+    }
+  };
+
+  // Build month grid
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDow = new Date(year, month, 1).getDay();
+  const days: (string | null)[] = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => dateKey(new Date(year, month, i + 1))),
+  ];
+
+  const goToFirstDate = () => {
+    if (firstDate) {
+      const d = parseKey(firstDate);
+      setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  };
+
+  const exceedsLimit = kondisiAwal === "nifas" ? totalDays > 60 : totalDays > 15;
+  const isCurrentMonthFirst = firstDate
+    ? parseKey(firstDate).getFullYear() === year && parseKey(firstDate).getMonth() === month
+    : false;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {(Object.entries(STATUS_INPUT_CONFIG) as [StatusHariInput, typeof STATUS_INPUT_CONFIG[StatusHariInput]][]).map(([s, cfg]) => (
-          <div key={s} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border-2", cfg.bg, cfg.border, cfg.text)}>
-            <span className={cn("w-2 h-2 rounded-full", cfg.dot)} />
+      {/* ── Status / Mode toolbar ── */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {(Object.entries(STATUS_INPUT_CONFIG) as [StatusHariInput, (typeof STATUS_INPUT_CONFIG)[StatusHariInput]][]).map(([s, cfg]) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => { setMode(s); }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border-2 transition-all select-none",
+              cfg.bg, cfg.border, cfg.text,
+              mode === s
+                ? "shadow-md scale-105 ring-2 ring-offset-1 ring-primary/50"
+                : "opacity-60 hover:opacity-90",
+            )}
+          >
+            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dot)} />
             {cfg.label}
-          </div>
+          </button>
         ))}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border-2 border-muted bg-muted/40 text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />
-          Kosong (tap 3× untuk reset)
+        <button
+          type="button"
+          onClick={() => { setMode("hapus"); setAnchor(null); setHoverDate(null); }}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border-2 transition-all select-none",
+            mode === "hapus"
+              ? "bg-destructive/10 border-destructive text-destructive shadow-md scale-105"
+              : "bg-muted/40 border-muted text-muted-foreground opacity-70 hover:opacity-100",
+          )}
+        >
+          <span className="text-sm leading-none">✕</span>
+          Hapus
+        </button>
+      </div>
+
+      {/* ── Anchor indicator ── */}
+      {anchor && (
+        <div className="flex items-center gap-2 rounded-xl bg-primary/8 border border-primary/20 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+          <span className="text-base select-none flex-shrink-0">📍</span>
+          <div className="flex-1 min-w-0">
+            <span className="font-semibold">Titik awal: {formatDateId(anchor)}</span>
+            <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">— klik tanggal lain untuk mengisi range</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setAnchor(null); setHoverDate(null); }}
+            className="flex-shrink-0 text-xs text-muted-foreground hover:text-destructive font-medium"
+          >
+            Batal
+          </button>
+        </div>
+      )}
+
+      {/* ── Calendar ── */}
+      <div className="rounded-2xl border overflow-hidden shadow-sm">
+        {/* Month navigation header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-muted/20 border-b">
+          <button
+            type="button"
+            onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="text-center">
+            <span className="font-semibold text-sm">{MONTHS_ID_FULL[month]} {year}</span>
+            {firstDate && !isCurrentMonthFirst && (
+              <button
+                type="button"
+                onClick={goToFirstDate}
+                className="block text-xs text-primary/80 hover:underline mt-0.5 mx-auto"
+              >
+                ↩ ke awal pencatatan
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Nifas zone info bar */}
+        {kondisiAwal === "nifas" && nifasEndKey && (
+          <div className="px-4 py-2 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900 flex items-center gap-2 text-xs text-teal-700 dark:text-teal-400">
+            <span className="inline-block w-3 h-3 rounded-sm border-2 border-teal-400 bg-teal-100 flex-shrink-0" />
+            <span>Zona Nifas maks. s.d. <strong>{formatDateId(nifasEndKey)}</strong> — hari setelahnya berpotensi Istihadloh (arsir abu)</span>
+          </div>
+        )}
+
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 bg-muted/10 border-b border-border/30">
+          {WEEKDAYS_ID.map((d) => (
+            <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-2">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div className="grid grid-cols-7 gap-px bg-border/30">
+          {days.map((key, idx) => {
+            if (!key) {
+              return <div key={`pad-${idx}`} className="bg-background min-h-[40px]" />;
+            }
+            const status = harian[key];
+            const cfg = status ? STATUS_INPUT_CONFIG[status] : null;
+            const isAnchor = anchor === key;
+            const inPreview = previewRange && key >= previewRange.start && key <= previewRange.end;
+            const dayNum = parseInt(key.split("-")[2]);
+
+            // Fiqh zone logic
+            const isInNifasZone = nifasEndKey && firstDate && key >= firstDate && key <= nifasEndKey;
+            const isAfterNifasZone = nifasEndKey && key > nifasEndKey;
+            const dayFromStart = firstDate ? diffDaysCalc(parseKey(firstDate), parseKey(key)) + 1 : 0;
+
+            // Detect potential 15-day clean separator for haid
+            const isToday = key === dateKey(new Date());
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleDayClick(key)}
+                onMouseEnter={() => anchor && setHoverDate(key)}
+                onMouseLeave={() => setHoverDate(null)}
+                className={cn(
+                  "relative bg-background min-h-[40px] flex flex-col items-center justify-center py-1 transition-all select-none",
+                  status
+                    ? cn(cfg!.bg, cfg!.text, "font-semibold")
+                    : mode === "hapus"
+                      ? "hover:bg-destructive/10 hover:text-destructive"
+                      : anchor
+                        ? "hover:bg-primary/8"
+                        : "hover:bg-muted/50",
+                  inPreview && !status && "bg-primary/8",
+                  inPreview && status && "ring-1 ring-inset ring-primary",
+                  isAnchor && "ring-2 ring-inset ring-primary z-10",
+                  !status && isAfterNifasZone && kondisiAwal === "nifas" && "bg-muted/40 text-muted-foreground/40",
+                  isToday && !status && !isAfterNifasZone && "bg-primary/4",
+                )}
+              >
+                {/* Today indicator */}
+                {isToday && (
+                  <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/50" />
+                )}
+                <span className={cn(
+                  "text-[11px] leading-none font-medium",
+                  status ? cfg!.text : isAfterNifasZone ? "text-muted-foreground/40" : "text-muted-foreground",
+                )}>
+                  {dayNum}
+                </span>
+                {status && (
+                  <span className="text-sm leading-none mt-0.5">{STATUS_INPUT_CONFIG[status].singkat}</span>
+                )}
+                {!status && isAfterNifasZone && kondisiAwal === "nifas" && (
+                  <span className="text-[8px] text-muted-foreground/40 leading-none mt-0.5">≥61</span>
+                )}
+                {/* Nifas zone subtle overlay */}
+                {isInNifasZone && !isAnchor && !status && (
+                  <div className="absolute inset-0 border border-teal-300/30 dark:border-teal-600/20 pointer-events-none" />
+                )}
+                {/* Day counter from start */}
+                {firstDate && dayFromStart > 0 && (
+                  <span className={cn(
+                    "absolute bottom-0.5 right-0.5 text-[7px] leading-none",
+                    isAfterNifasZone ? "text-amber-500/60" : "text-muted-foreground/25",
+                  )}>
+                    {dayFromStart}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1" data-testid="kalender-input-grid">
-        {Array.from({ length: maxDays }, (_, i) => i + 1).map((day) => {
-          const s = harian[day];
-          const cfg = s ? STATUS_INPUT_CONFIG[s] : null;
-          const isInRange = firstDay !== null && lastDay !== null && day >= firstDay && day <= lastDay;
-
-          return (
-            <button
-              key={day}
-              type="button"
-              onClick={() => cycle(day)}
-              data-testid={`hari-input-${day}`}
-              className={cn(
-                "relative flex flex-col items-center justify-center rounded-lg aspect-square border-2 text-center transition-all select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1",
-                s ? cn(cfg!.bg, cfg!.border, cfg!.text, "shadow-sm") : isInRange
-                  ? "bg-muted/30 border-dashed border-muted-foreground/30 text-muted-foreground/50"
-                  : "bg-background border-muted/40 text-muted-foreground/40 hover:border-muted-foreground/60",
-              )}
-            >
-              <span className="text-[9px] font-medium leading-none mb-0.5 opacity-70">{day}</span>
-              <span className="text-sm leading-none">{s ? STATUS_INPUT_CONFIG[s].singkat : "·"}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {firstDay !== null && lastDay !== null ? (
-        <div className="flex flex-wrap gap-3 text-sm">
+      {/* ── Stats summary ── */}
+      {firstDate && lastDate ? (
+        <div className="flex flex-wrap gap-2 text-sm">
           <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5">
-            <span className="font-medium">Total rentang:</span>
+            <span className="font-medium">Rentang:</span>
             <span className="font-bold">{totalDays} hari</span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">({formatDateId(firstDate)} – {formatDateId(lastDate)})</span>
           </div>
           <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5">
             <span className="font-medium text-rose-700 dark:text-rose-400">Darah:</span>
@@ -274,24 +495,22 @@ function KalenderInputGrid({
             <span className="font-medium text-emerald-700 dark:text-emerald-400">Bersih:</span>
             <span className="font-bold text-emerald-700 dark:text-emerald-400">{totalBersih} hari</span>
           </div>
-          {kondisiAwal === "nifas" ? (
-            totalDays > 60 && (
-              <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
-                <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 60 hari — akan dianalisis sebagai Istihadloh Nifas</span>
-              </div>
-            )
-          ) : (
-            totalDays > 15 && (
-              <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
-                <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 15 hari — akan dianalisis sebagai Mustahadloh</span>
-              </div>
-            )
+          {exceedsLimit && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
+              <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                {kondisiAwal === "nifas"
+                  ? "Melebihi 60 hari — akan dianalisis sebagai Istihadloh Nifas"
+                  : "Melebihi 15 hari — akan dianalisis sebagai Mustahadloh"}
+              </span>
+            </div>
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground italic">Ketuk kotak hari untuk mulai mencatat. Ketuk berulang untuk ganti status.</p>
+        <div className="rounded-xl bg-muted/30 border border-dashed p-4 text-center text-sm text-muted-foreground space-y-1">
+          <p className="font-medium">Pilih status di atas, lalu klik tanggal awal.</p>
+          <p className="text-xs opacity-70">Klik tanggal berbeda untuk mengisi seluruh range sekaligus. Klik tanggal yang sama dua kali untuk menandai satu hari.</p>
+        </div>
       )}
     </div>
   );
@@ -725,8 +944,7 @@ export default function Kalkulator() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<InputUser>>({});
   const [hasil, setHasil] = useState<HasilAnalisis | null>(null);
-  const [harianInput, setHarianInput] = useState<Record<number, StatusHariInput>>({});
-  const [kalMaxDays, setKalMaxDays] = useState<30 | 60>(30);
+  const [harianInput, setHarianInput] = useState<Record<string, StatusHariInput>>({});
   const [step2Error, setStep2Error] = useState<string | null>(null);
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
@@ -760,15 +978,12 @@ export default function Kalkulator() {
 
   const onStep1Submit = (data: z.infer<typeof step1Schema>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-    if (data.kondisiAwal === "nifas") setKalMaxDays(60);
-    else setKalMaxDays(30);
     setStep(2);
   };
 
   const onStep2Submit = () => {
     setStep2Error(null);
-    const keys = Object.keys(harianInput).map(Number);
-    const hasDarah = keys.some((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah");
+    const hasDarah = Object.values(harianInput).some((v) => v === "kuat" || v === "lemah");
     if (!hasDarah) {
       setStep2Error("Tandai minimal 1 hari darah (Kuat atau Lemah) pada kalender.");
       return;
@@ -830,7 +1045,6 @@ export default function Kalkulator() {
     setFormData({});
     setHasil(null);
     setHarianInput({});
-    setKalMaxDays(30);
     setStep2Error(null);
     form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
@@ -1051,27 +1265,15 @@ export default function Kalkulator() {
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-2xl select-none">❤️</span>
                   <CardTitle className="text-2xl font-bold">Kalender Harianmu</CardTitle>
                 </div>
                 <CardDescription className="mt-1">
-                  Ketuk setiap kotak untuk menandai statusnya. Ketuk berulang untuk ganti, ketuk 3× untuk hapus.
+                  Pilih status, klik tanggal awal, lalu klik tanggal akhir untuk mengisi rentang. Navigasi antar bulan dengan tombol panah.
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-shrink-0 gap-1.5"
-                onClick={() => setKalMaxDays(kalMaxDays === 30 ? 60 : 30)}
-              >
-                {kalMaxDays === 30 ? "30" : "60"} hari
-                <RefreshCw className="w-3.5 h-3.5" />
-              </Button>
-            </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="flex items-start gap-2 rounded-2xl bg-primary/6 border border-primary/15 p-4 text-sm text-foreground/80">
@@ -1087,10 +1289,9 @@ export default function Kalkulator() {
               )}
             </div>
 
-            <KalenderInputGrid
+            <KalenderInputTanggal
               harian={harianInput}
               onChange={setHarianInput}
-              maxDays={kalMaxDays}
               kondisiAwal={formData.kondisiAwal}
             />
 
