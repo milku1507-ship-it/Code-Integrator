@@ -735,15 +735,22 @@ function tentukanKategoriNifasIstihadloh(
   ingatKebiasaan: IngatKebiasaan,
   kebiasaanNifasHari: number,
   kuatJam: number,
+  totalNifasJam: number = 0,
 ): KategoriNifasResult {
   const kuatLabel = formatDurasi(kuatJam);
+  // For mumayyizah: nifas = strong blood + gaps following strong blood (Kaidah Sahbi)
+  const nifasMumayyizahJam = totalNifasJam > kuatJam ? totalNifasJam : kuatJam;
+  const nifasMumayyizahLabel = formatDurasi(nifasMumayyizahJam);
+  const jedaLabel = nifasMumayyizahJam > kuatJam
+    ? ` (${kuatLabel} darah kuat + ${formatDurasi(nifasMumayyizahJam - kuatJam)} jeda bersih yang mengiringinya — Kaidah Sahbi Mumayyizah)`
+    : "";
 
   if (statusPengalaman === "mubtadiah") {
     if (isTamyiz) {
       return {
         kategori: "Mubtadi'ah Mumayyizah Finnifas (Golongan 1)",
-        hukum: `${kuatLabel} darah kuat adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
-        nifasJamSebenarnya: kuatJam,
+        hukum: `${nifasMumayyizahLabel}${jedaLabel} adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
+        nifasJamSebenarnya: nifasMumayyizahJam,
         isLahzhotan: false,
       };
     } else {
@@ -758,8 +765,8 @@ function tentukanKategoriNifasIstihadloh(
     if (isTamyiz) {
       return {
         kategori: "Mu'tadah Mumayyizah Finnifas (Golongan 3)",
-        hukum: `Hukum mengikuti Tamyiz (bukan adat lama). ${kuatLabel} darah kuat adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
-        nifasJamSebenarnya: kuatJam,
+        hukum: `Hukum mengikuti Tamyiz (bukan adat lama). ${nifasMumayyizahLabel}${jedaLabel} adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
+        nifasJamSebenarnya: nifasMumayyizahJam,
         isLahzhotan: false,
       };
     } else {
@@ -867,21 +874,9 @@ function buatLiniMasaHarianNifas(
   let hariKe = hariMulai;
   let cumJam = 0;
 
-  const bersihAntaraKuat: boolean[] = new Array(items.length).fill(false);
-  if (isTamyiz && tipeAnalisis === "nifas_istihadloh") {
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].tipe !== "bersih") continue;
-      let prevKuat = false;
-      for (let j = i - 1; j >= 0; j--) {
-        if (items[j].tipe === "darah") { prevKuat = skorWarnaSifat(items[j] as FaseDarahItem) >= kuatSkor; break; }
-      }
-      let nextKuat = false;
-      for (let j = i + 1; j < items.length; j++) {
-        if (items[j].tipe === "darah") { nextKuat = skorWarnaSifat(items[j] as FaseDarahItem) >= kuatSkor; break; }
-      }
-      bersihAntaraKuat[i] = prevKuat && nextKuat;
-    }
-  }
+  // For nifas mumayyizah (Golongan 1 & 3): nifasJamSebenarnya is the boundary
+  // (strong blood + gaps accompanying strong blood). Everything before the boundary = nifas,
+  // everything at or after = istihadloh. This implements Kaidah Sahbi + Taqthi' for nifas.
 
   for (let faseIdx = 0; faseIdx < items.length; faseIdx++) {
     const fase = items[faseIdx];
@@ -911,13 +906,17 @@ function buatLiniMasaHarianNifas(
           keterangan = `Darah ${faseDarah.warna} — Nifas`;
         } else if (tipeAnalisis === "nifas_istihadloh") {
           if (isTamyiz) {
-            // Golongan 1 & 3: darah kuat = Nifas, darah lemah = Istihadloh
-            if (skorFase >= kuatSkor) {
+            // Golongan 1 & 3 (Mumayyizah Terputus-putus):
+            // Gunakan batas posisi (nifasJamSebenarnya = darah kuat + jeda yang mengiringinya).
+            // Semua fase SEBELUM batas = Nifas; semua fase PADA/SETELAH batas = Istihadloh.
+            // Ini mengimplementasikan Kaidah Sahbi: masa bersih yang mengiringi darah kuat
+            // dihukumi Nifas meskipun darah berikutnya adalah darah lemah.
+            if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
               hukum = "nifas";
               keterangan = `Darah kuat (${faseDarah.warna}) — Nifas`;
             } else {
               hukum = "istihadloh";
-              keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
+              keterangan = `Darah (${faseDarah.warna}) — Istihadloh (di luar batas nifas Mumayyizah)`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
             // Golongan 7: nifas hanya sekejap (24 jam pertama), setelahnya Ihtiyath
@@ -956,14 +955,17 @@ function buatLiniMasaHarianNifas(
           keterangan = `Jeda bersih dalam rangkaian nifas (An-naqo' fi khilalin nifas). Masa bersih ini dihukumi NIFAS karena darah keluar kembali sebelum 15 hari suci penuh. Sholat wajib dikerjakan secara dzahir saat darah tidak terlihat, namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama nifas. Puasa hari ini TIDAK SAH dan WAJIB DIQODLO.`;
         } else if (tipeAnalisis === "nifas_istihadloh") {
           if (isTamyiz) {
-            // Golongan 1 & 3: bersih diapit darah kuat–kuat → Nifas
-            if (bersihAntaraKuat[faseIdx]) {
+            // Golongan 1 & 3 (Mumayyizah Terputus-putus — Kaidah Sahbi):
+            // Jeda bersih yang berada SEBELUM batas nifas mumayyizah = Nifas.
+            // Ini mencakup jeda di antara dua darah kuat (Kuat–Bersih–Kuat) DAN
+            // jeda yang mengikuti darah kuat terakhir sebelum darah lemah muncul (Kuat–Bersih–Lemah).
+            if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
               hukum = "nifas";
               wajibQodloPuasa = true;
-              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah Nifas, dihukumi NIFAS. Sholat wajib dikerjakan secara dzahir, namun TIDAK SAH — TIDAK PERLU DIQODLO. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada dalam rentang nifas Mumayyizah (Kaidah Sahbi — masa bersih yang mengiringi darah kuat dihukumi Nifas). Sholat wajib dikerjakan secara dzahir, namun TIDAK SAH — TIDAK PERLU DIQODLO. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
             } else {
               hukum = "istihadloh";
-              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat. Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada di luar batas nifas Mumayyizah. Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH.`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
             // Golongan 7: seluruh masa bersih = Ihtiyath
@@ -1152,39 +1154,47 @@ function analyzeSiklusNifas(
   let isTamyiz = false;
   let kuatJam = 0;
   let kuatSkor = 0;
+  let totalNifasMumayyizahJam = 0;
 
-  if (darahFases.length >= 2) {
-    const skor1 = skorWarnaSifat(darahFases[0]);
-    const skor2 = skorWarnaSifat(darahFases[1]);
-    const jam1 = jamKeFaseItem(darahFases[0]);
-    if (skor1 > skor2 && jam1 >= 24 && jam1 <= NIFAS_MAX_JAM) {
-      kuatJam = jam1;
-      kuatSkor = skor1;
-      const adaFase3Kuat = darahFases.length > 2 && skorWarnaSifat(darahFases[2]) >= skor1;
-      isTamyiz = !adaFase3Kuat;
+  if (darahFases.length >= 1) {
+    kuatSkor = skorWarnaSifat(darahFases[0]);
+    // Tamyiz = ada darah dengan skor LEBIH RENDAH dari darah pertama
+    const adaDarahLemah = darahFases.some(f => skorWarnaSifat(f) < kuatSkor);
+    if (adaDarahLemah) {
+      // Total darah kuat = semua fase darah dengan skor >= kuatSkor
+      kuatJam = darahFases
+        .filter(f => skorWarnaSifat(f) >= kuatSkor)
+        .reduce((s, f) => s + jamKeFaseItem(f), 0);
+      if (kuatJam >= 24 && kuatJam <= NIFAS_MAX_JAM) {
+        isTamyiz = true;
+        // Hitung batas nifas mumayyizah: jumlah semua fase SEBELUM darah lemah pertama.
+        // Ini mencakup darah kuat + jeda bersih yang mengiringinya (Kaidah Sahbi).
+        for (const fase of nifasItems) {
+          if (fase.tipe === "darah" && skorWarnaSifat(fase as FaseDarahItem) < kuatSkor) break;
+          totalNifasMumayyizahJam += jamKeFaseItem(fase);
+        }
+      }
     }
   }
 
   const { kategori, hukum, nifasJamSebenarnya, isLahzhotan, aturanIbadah } =
-    tentukanKategoriNifasIstihadloh(statusPengalaman, isTamyiz, ingatKebiasaan, kebiasaanNifasHari, kuatJam);
+    tentukanKategoriNifasIstihadloh(statusPengalaman, isTamyiz, ingatKebiasaan, kebiasaanNifasHari, kuatJam, totalNifasMumayyizahJam);
 
-  // Hitung bersihDalamNifasJam
+  // Hitung bersihDalamNifasJam (jeda bersih yang dihukumi Nifas)
   let bersihDalamNifasJam = 0;
-  if (isTamyiz) {
-    const kuatRef = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
-    for (let i = 0; i < nifasItems.length; i++) {
-      if (nifasItems[i].tipe !== "bersih") continue;
-      let prevKuat = false;
-      for (let j = i - 1; j >= 0; j--) {
-        if (nifasItems[j].tipe === "darah") { prevKuat = skorWarnaSifat(nifasItems[j] as FaseDarahItem) >= kuatRef; break; }
+  if (isTamyiz && nifasJamSebenarnya !== null) {
+    // Mumayyizah: bersih yang berada dalam batas nifas (posisi < nifasJamSebenarnya)
+    let cumJ = 0;
+    for (const fase of nifasItems) {
+      const jam = jamKeFaseItem(fase);
+      if (fase.tipe === "bersih") {
+        const overlapStart = Math.min(cumJ, nifasJamSebenarnya);
+        const overlapEnd = Math.min(cumJ + jam, nifasJamSebenarnya);
+        bersihDalamNifasJam += Math.max(0, overlapEnd - overlapStart);
       }
-      let nextKuat = false;
-      for (let j = i + 1; j < nifasItems.length; j++) {
-        if (nifasItems[j].tipe === "darah") { nextKuat = skorWarnaSifat(nifasItems[j] as FaseDarahItem) >= kuatRef; break; }
-      }
-      if (prevKuat && nextKuat) bersihDalamNifasJam += jamKeFaseItem(nifasItems[i]);
+      cumJ += jam;
     }
-  } else if (ingatKebiasaan !== "lupa_semua" && nifasJamSebenarnya) {
+  } else if (!isTamyiz && ingatKebiasaan !== "lupa_semua" && nifasJamSebenarnya) {
     let cumJ = 0;
     for (const fase of nifasItems) {
       const jam = jamKeFaseItem(fase);
