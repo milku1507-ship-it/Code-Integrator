@@ -333,6 +333,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
   const selected = selectedHari !== null ? entri.find((e) => e.hari === selectedHari) : null;
   const qodloDays = entri.filter((e) => e.wajibQodloPuasa);
   const jumlahQodlo = qodloDays.length;
+  const bersihSuciDays = entri.filter((e) => e.tipe === "bersih" && e.hukum !== "haid");
 
   return (
     <div className="p-6 sm:p-8 border-t space-y-6">
@@ -348,15 +349,30 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
 
       {/* Legenda */}
       <div className="flex flex-wrap gap-2">
-        {(Object.entries(HUKUM_CONFIG) as [HukumHari, typeof HUKUM_CONFIG[HukumHari]][]).map(([h, cfg]) => (
-          <div key={h} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border", cfg.bgClass, cfg.textClass, cfg.borderClass)}>
-            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dotClass)} />
-            {cfg.label}
-          </div>
-        ))}
+        {/* Darah haid */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-rose-500" />
+          D — Darah Haid
+        </div>
+        {/* Darah istihadloh */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-500" />
+          D — Darah Istihadloh
+        </div>
+        {/* Darah ihtiyath */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-violet-500" />
+          D — Ihtiyath
+        </div>
+        {/* Bersih dihukumi Haid */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-400 dark:border-green-600">
           <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-600" />
-          Bersih = Haid (Wajib Qodlo)
+          Q — Bersih = Haid (Puasa Qodlo)
+        </div>
+        {/* Bersih dihukumi Istihadloh/Suci */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-400 dark:border-sky-600">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-sky-500" />
+          S — Bersih = Suci/Istihadloh (Ibadah SAH)
         </div>
       </div>
 
@@ -365,6 +381,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
         {entri.map((e) => {
           const cfg = HUKUM_CONFIG[e.hukum];
           const isBersihHaid = e.tipe === "bersih" && e.hukum === "haid";
+          const isBersihSuci = e.tipe === "bersih" && e.hukum !== "haid";
           const isSelected = selectedHari === e.hari;
 
           return (
@@ -376,7 +393,9 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 "relative flex flex-col items-center justify-center rounded-xl border-2 aspect-square text-center cursor-pointer transition-all shadow-sm select-none",
                 isBersihHaid
                   ? "bg-green-100 dark:bg-green-900/50 border-green-500 dark:border-green-500 text-green-900 dark:text-green-100"
-                  : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
+                  : isBersihSuci
+                    ? "bg-sky-100 dark:bg-sky-900/50 border-sky-400 dark:border-sky-500 text-sky-900 dark:text-sky-100"
+                    : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
                 isSelected && "ring-2 ring-offset-1 ring-primary scale-110 z-10",
                 e.jamDiHari < 24 && "opacity-75",
               )}
@@ -387,7 +406,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 {e.hari}
               </span>
               <span className="text-xs font-bold leading-none">
-                {isBersihHaid ? "Q" : e.tipe === "bersih" ? "S" : e.tipe === "darah" ? "D" : "?"}
+                {isBersihHaid ? "Q" : isBersihSuci ? "S" : e.tipe === "darah" ? "D" : "?"}
               </span>
               {e.wajibQodloPuasa && (
                 <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" />
@@ -408,7 +427,9 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           "rounded-xl border-2 p-4 transition-all",
           selected.tipe === "bersih" && selected.hukum === "haid"
             ? "bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600"
-            : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
+            : selected.tipe === "bersih"
+              ? "bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600"
+              : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
         )}>
           <div className="flex items-center gap-2 mb-2">
             {selected.tipe === "bersih" ? (
@@ -424,16 +445,41 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
               "ml-auto text-xs font-semibold px-2 py-0.5 rounded-full",
               selected.tipe === "bersih" && selected.hukum === "haid"
                 ? "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
-                : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].textClass),
+                : selected.tipe === "bersih"
+                  ? "bg-sky-200 dark:bg-sky-800 text-sky-900 dark:text-sky-100"
+                  : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].textClass),
             )}>
               {selected.tipe === "bersih" && selected.hukum === "haid"
-                ? "Bersih → Haid"
-                : `${selected.tipe === "bersih" ? "Bersih" : "Darah"} — ${HUKUM_CONFIG[selected.hukum].label}`}
+                ? "Bersih → Haid (Q)"
+                : selected.tipe === "bersih"
+                  ? "Bersih → Suci/Istihadloh (S)"
+                  : `Darah — ${HUKUM_CONFIG[selected.hukum].label}`}
             </span>
           </div>
           <p className="text-sm leading-relaxed">{selected.keterangan}</p>
           {selected.warnaAsli && (
             <p className="text-xs mt-1 opacity-70">Warna darah: {selected.warnaAsli}</p>
+          )}
+          {/* Status ibadah ringkas */}
+          {selected.tipe === "bersih" && (
+            <div className={cn(
+              "mt-3 rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-2",
+              selected.hukum === "haid"
+                ? "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300"
+                : "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300",
+            )}>
+              {selected.hukum === "haid" ? (
+                <>
+                  <span className="inline-block w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
+                  Ibadah: Sholat wajib dikerjakan namun <strong className="ml-1">TIDAK SAH</strong> — tidak qodlo &nbsp;|&nbsp; Puasa <strong>TIDAK SAH — wajib qodlo</strong>
+                </>
+              ) : (
+                <>
+                  <span className="inline-block w-2 h-2 rounded-full bg-sky-500 flex-shrink-0" />
+                  Ibadah: Sholat <strong>SAH</strong> &nbsp;|&nbsp; Puasa <strong>SAH</strong> — tidak ada kewajiban qodlo
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -497,6 +543,65 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-t border-green-200 dark:border-green-800">
             <p className="text-xs text-green-700 dark:text-green-400">
               <strong>Catatan:</strong> Sholat yang Anda kerjakan di hari-hari tersebut wajib dilakukan (karena tampak suci secara dzahir) namun <strong>TIDAK SAH</strong> secara hukum — tidak perlu diqodlo. Yang wajib diqodlo adalah <strong>puasanya</strong> (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ HARI BERSIH DIHUKUMI SUCI ═══════════════ */}
+      {bersihSuciDays.length > 0 && (
+        <div className="rounded-2xl border-2 border-sky-400 dark:border-sky-600 overflow-hidden">
+          {/* Header badge */}
+          <div className="flex items-center gap-4 bg-sky-500 dark:bg-sky-700 px-5 py-4">
+            <div className="text-center flex-shrink-0">
+              <p className="text-3xl font-extrabold text-white leading-none">{bersihSuciDays.length}</p>
+              <p className="text-xs font-semibold text-sky-100 mt-0.5">hari</p>
+            </div>
+            <div>
+              <p className="text-base font-bold text-white">Hari Bersih Dihukumi Suci / Istihadloh</p>
+              <p className="text-xs text-sky-100 mt-0.5 leading-snug">
+                Ibadah SAH — tidak ada kewajiban qodlo
+              </p>
+            </div>
+          </div>
+
+          {/* Penjelasan konteks */}
+          <div className="bg-sky-50 dark:bg-sky-950/40 px-5 py-3 border-b border-sky-200 dark:border-sky-800">
+            <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
+              {kategoriStr
+                ? <>Berdasarkan profil <strong>{kategoriStr}</strong>, hari-hari berikut Anda catat &lsquo;Bersih&rsquo; dan secara hukum fiqh dihukumi <strong>Suci / Istihadloh</strong>.</>
+                : "Hari-hari berikut Anda catat 'Bersih' dan secara hukum fiqh dihukumi Suci / Istihadloh."}{" "}
+              Di hari-hari tersebut: <strong>sholat SAH</strong> dan <strong>puasa SAH</strong>. Tidak ada kewajiban qodlo.
+            </p>
+          </div>
+
+          {/* Daftar hari */}
+          <div className="divide-y divide-sky-100 dark:divide-sky-900/50 bg-white dark:bg-sky-950/20">
+            {bersihSuciDays.map((e) => (
+              <div key={e.hari} className="flex gap-4 px-5 py-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-sky-500 dark:bg-sky-700 flex items-center justify-center shadow-sm">
+                  <span className="text-sm font-extrabold text-white leading-none">{e.hari}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-sky-900 dark:text-sky-100 mb-0.5">
+                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi {e.hukum === "ihtiyath" ? "Ihtiyath" : "Suci/Istihadloh"}
+                  </p>
+                  <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
+                    {e.keterangan}
+                  </p>
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 dark:text-sky-400">
+                    <span className="inline-block w-2 h-2 rounded-full bg-sky-500 dark:bg-sky-400" />
+                    Sholat SAH — Puasa SAH — tidak perlu qodlo
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="bg-sky-50 dark:bg-sky-950/40 px-5 py-3 border-t border-sky-200 dark:border-sky-800">
+            <p className="text-xs text-sky-700 dark:text-sky-400">
+              <strong>Catatan:</strong> Pada hari-hari ini Anda dihukumi <strong>Suci</strong>. Sholat dan puasa yang Anda kerjakan <strong>SAH</strong> secara hukum. Jika Anda Mustahadloh, gunakan tata cara bersuci Mustahadloh (wudhu tiap waktu sholat).
             </p>
           </div>
         </div>
