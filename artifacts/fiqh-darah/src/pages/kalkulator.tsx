@@ -566,13 +566,28 @@ const HUKUM_CONFIG: Record<HukumHari, {
   },
 };
 
-function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategoriStr?: string }) {
+function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[]; kategoriStr?: string; startDate?: string }) {
   const [selectedHari, setSelectedHari] = useState<number | null>(null);
   const selected = selectedHari !== null ? entri.find((e) => e.hari === selectedHari) : null;
   const qodloDays = entri.filter((e) => e.wajibQodloPuasa);
   const jumlahQodlo = qodloDays.length;
   const bersihSuciDays = entri.filter((e) => e.tipe === "bersih" && e.hukum !== "haid" && e.hukum !== "nifas" && e.hukum !== "ihtiyath");
   const ihtiyathDays = entri.filter((e) => e.hukum === "ihtiyath");
+
+  // Compute actual calendar date for a given engine day number (1-indexed)
+  const entryDateKey = (hari: number): string | null =>
+    startDate ? dateKey(addDaysToDate(parseKey(startDate), hari - 1)) : null;
+  const entryDateLabel = (hari: number): string | null => {
+    const k = entryDateKey(hari);
+    return k ? formatDateId(k) : null;
+  };
+  // Short DD/MM label for grid cells
+  const entryDateShort = (hari: number): string | null => {
+    const k = entryDateKey(hari);
+    if (!k) return null;
+    const d = parseKey(k);
+    return `${d.getDate()}/${d.getMonth() + 1}`;
+  };
 
   return (
     <div className="p-6 sm:p-8 border-t space-y-6">
@@ -629,6 +644,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           const isNifas = e.hukum === "nifas";
           const isBersihSuci = e.tipe === "bersih" && !isIhtiyath && e.hukum !== "haid" && e.hukum !== "nifas";
           const isSelected = selectedHari === e.hari;
+          const shortDate = entryDateShort(e.hari);
 
           return (
             <button
@@ -647,15 +663,22 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 isSelected && "ring-2 ring-offset-1 ring-primary scale-110 z-10",
                 e.jamDiHari < 24 && "opacity-75",
               )}
-              title={e.keterangan}
+              title={`${entryDateLabel(e.hari) ?? `Hari ke-${e.hari}`} — ${e.keterangan}`}
               data-testid={`hari-${e.hari}`}
             >
-              <span className="text-[10px] font-semibold leading-none opacity-60 mb-0.5">
-                {e.hari}
+              {/* Date or day number at top */}
+              <span className="text-[9px] font-semibold leading-none opacity-70 mb-0.5">
+                {shortDate ?? e.hari}
               </span>
               <span className="text-sm leading-none select-none">
                 {isIhtiyath ? "💜" : isBersihHaid ? "💚" : isNifas ? "💙" : isBersihSuci ? "✨" : e.hukum === "haid" ? "❤️" : "🌸"}
               </span>
+              {/* Day-number-from-start in corner when date is shown */}
+              {shortDate && (
+                <span className="absolute bottom-0.5 right-0.5 text-[7px] leading-none opacity-35">
+                  {e.hari}
+                </span>
+              )}
               {e.wajibQodloPuasa && (
                 <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" />
               )}
@@ -696,7 +719,9 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 <Droplets className={cn("w-4 h-4", selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-rose-600")} />
               )}
               <span className="font-bold text-sm">
-                Hari ke-{selected.hari}
+                {entryDateLabel(selected.hari)
+                  ? <>{entryDateLabel(selected.hari)} <span className="font-normal text-xs opacity-60">(Hari ke-{selected.hari})</span></>
+                  : <>Hari ke-{selected.hari}</>}
                 {selected.jamDiHari < 24 && <span className="font-normal text-xs ml-1 opacity-70">({selected.jamDiHari} jam)</span>}
               </span>
               <span className={cn(
@@ -806,7 +831,10 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-green-900 dark:text-green-100 mb-0.5">
-                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi {e.hukum === "nifas" ? "NIFAS" : "HAID"}
+                    {entryDateLabel(e.hari)
+                      ? <>{entryDateLabel(e.hari)} <span className="font-normal opacity-70">(Hari ke-{e.hari}{e.jamDiHari < 24 ? `, ${e.jamDiHari} jam` : ""})</span></>
+                      : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
+                    }{" "}— Bersih dihukumi {e.hukum === "nifas" ? "NIFAS" : "HAID"}
                   </p>
                   <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
                     {e.keterangan}
@@ -865,7 +893,10 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-sky-900 dark:text-sky-100 mb-0.5">
-                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi {e.hukum === "ihtiyath" ? "Ihtiyath" : "Suci/Istihadloh"}
+                    {entryDateLabel(e.hari)
+                      ? <>{entryDateLabel(e.hari)} <span className="font-normal opacity-70">(Hari ke-{e.hari}{e.jamDiHari < 24 ? `, ${e.jamDiHari} jam` : ""})</span></>
+                      : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
+                    }{" "}— Bersih dihukumi {e.hukum === "ihtiyath" ? "Ihtiyath" : "Suci/Istihadloh"}
                   </p>
                   <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
                     {e.keterangan}
@@ -916,7 +947,10 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-violet-900 dark:text-violet-100 mb-0.5">
-                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — {e.tipe === "bersih" ? "Bersih" : "Darah"} Ihtiyath
+                    {entryDateLabel(e.hari)
+                      ? <>{entryDateLabel(e.hari)} <span className="font-normal opacity-70">(Hari ke-{e.hari}{e.jamDiHari < 24 ? `, ${e.jamDiHari} jam` : ""})</span></>
+                      : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
+                    }{" "}— {e.tipe === "bersih" ? "Bersih" : "Darah"} Ihtiyath
                   </p>
                   <p className="text-xs text-violet-800 dark:text-violet-300 leading-relaxed">
                     {e.keterangan}
@@ -1937,7 +1971,11 @@ export default function Kalkulator() {
                 )}
 
                 {hasil.liniMasaHarian && hasil.liniMasaHarian.length > 0 && (
-                  <KalenderHarian entri={hasil.liniMasaHarian} kategoriStr={hasil.kategori || undefined} />
+                  <KalenderHarian
+                    entri={hasil.liniMasaHarian}
+                    kategoriStr={hasil.kategori || undefined}
+                    startDate={Object.keys(harianInput).sort()[0]}
+                  />
                 )}
 
                 {hasil.qodloSholatMulai && (
