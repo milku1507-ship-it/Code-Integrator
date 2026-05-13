@@ -612,31 +612,88 @@ function analyzeSingleSiklus(
   let lemahJam = 0;
   let kuatSkor = 0;
 
+  /**
+   * Kaidah Catatan (Mubtadi'ah/Mu'tadah Mumayyizah — pola Kuat-Lemah-Kuat, lemah < 15 hari):
+   * Apabila darah lemah antara dua kuat < 15 hari (syarat-3 mumayyizah tidak terpenuhi):
+   *   - kuat1 + lemah ≤ 15 hari → kuat1 DAN lemah = haidl; kuat2 = istihadloh
+   *   - kuat1 + lemah > 15 hari → hanya kuat1 = haidl; lemah + kuat2 = istihadloh
+   */
+  let haidJamCatatan: number | null = null;
+  let jam1Kuat = 0;
+
   if (darahFases.length >= 2) {
     const fase1 = darahFases[0];
-    const fase2 = darahFases[1];
     const skor1 = skorWarnaSifat(fase1);
-    const skor2 = skorWarnaSifat(fase2);
     const jam1 = jamKeFaseItem(fase1);
+    const skor2 = skorWarnaSifat(darahFases[1]);
 
     if (skor1 > skor2 && jam1 >= 24 && jam1 <= 360) {
-      kuatJam = jam1;
-      lemahJam = totalJam - kuatJam;
       kuatSkor = skor1;
+      jam1Kuat = jam1;
 
-      let adaFase3Kuat = false;
-      if (darahFases.length > 2) {
-        const skor3 = skorWarnaSifat(darahFases[2]);
-        if (skor3 >= skor1) adaFase3Kuat = true;
+      // Cari darah kuat kedua (fase darah dengan skor >= skor1 setelah fase pertama)
+      let kuatKeduaFaseIdx = -1;
+      for (let k = 1; k < darahFases.length; k++) {
+        if (skorWarnaSifat(darahFases[k]) >= skor1) {
+          kuatKeduaFaseIdx = k;
+          break;
+        }
       }
 
-      isTamyiz = !(adaFase3Kuat && lemahJam < 360);
+      if (kuatKeduaFaseIdx === -1) {
+        // Tidak ada darah kuat kedua → mumayyizah dengan syarat 1 & 2 saja
+        isTamyiz = true;
+        kuatJam = jam1;
+      } else {
+        // Ada darah kuat kedua → hitung lemah di antara kuat-1 dan kuat-2
+        // (semua fase di antara fase darah pertama dan fase darah kuat kedua)
+        let lemahAntaraJam = 0;
+        let firstKuatPassed = false;
+        for (const item of items) {
+          if (!firstKuatPassed) {
+            if (item.tipe === "darah" && skorWarnaSifat(item as FaseDarahItem) >= skor1
+                && jamKeFaseItem(item) === jam1) {
+              firstKuatPassed = true;
+            }
+            continue;
+          }
+          // Setelah kuat pertama: kumpulkan semua fase sampai bertemu kuat kedua
+          if (item.tipe === "darah" && skorWarnaSifat(item as FaseDarahItem) >= skor1) {
+            break; // Sudah sampai kuat kedua
+          }
+          lemahAntaraJam += jamKeFaseItem(item);
+        }
+
+        if (lemahAntaraJam >= 360) {
+          // Syarat-3 terpenuhi: darah lemah ≥ 15 hari → tamyiz penuh, kedua kuat = haidl
+          isTamyiz = true;
+          // kuatJam = total semua fase darah dengan skor kuat
+          kuatJam = darahFases
+            .filter(f => skorWarnaSifat(f) >= skor1)
+            .reduce((s, f) => s + jamKeFaseItem(f), 0);
+        } else {
+          // Syarat-3 tidak terpenuhi → terapkan Kaidah Catatan
+          const kuat1PlusLemah = jam1 + lemahAntaraJam;
+          if (kuat1PlusLemah <= 360) {
+            // kuat1 + lemah ≤ 15 hari → kuat1 + lemah = haidl; kuat2 = istihadloh
+            haidJamCatatan = kuat1PlusLemah;
+          } else {
+            // kuat1 + lemah > 15 hari → hanya kuat1 = haidl; lemah + kuat2 = istihadloh
+            haidJamCatatan = jam1;
+          }
+          // isTamyiz tetap false; kuatJam tidak diset (akan diabaikan)
+        }
+      }
+
+      lemahJam = isTamyiz ? (totalJam - kuatJam) : totalJam;
+    } else {
+      lemahJam = totalJam;
     }
   } else {
     lemahJam = totalJam;
   }
 
-  const { kategori, hukum, haidJamSebenarnya, aturanIbadah } = tentukanKategoriMushtadloh(
+  let { kategori, hukum, haidJamSebenarnya, aturanIbadah } = tentukanKategoriMushtadloh(
     statusPengalaman,
     isTamyiz,
     ingatKebiasaan,
@@ -645,7 +702,24 @@ function analyzeSingleSiklus(
     lemahJam,
   );
 
+  // Terapkan override Kaidah Catatan (pola kuat-lemah-kuat, lemah < 15 hari)
+  if (haidJamCatatan !== null) {
+    haidJamSebenarnya = haidJamCatatan;
+    const includesLemah = haidJamCatatan > jam1Kuat;
+    kategori = statusPengalaman === "mubtadiah"
+      ? "Mubtadi'ah Mumayyizah — Kaidah Kuat-Lemah-Kuat"
+      : "Mu'tadah Mumayyizah — Kaidah Kuat-Lemah-Kuat";
+    hukum = includesLemah
+      ? `${formatDurasi(haidJamCatatan)} pertama (darah kuat pertama + darah lemah setelahnya, total ≤ 15 hari) dihukumi HAIDL. Darah kuat kedua dan selebihnya dihukumi ISTIHADLOH.`
+      : `${formatDurasi(jam1Kuat)} darah kuat pertama dihukumi HAIDL. Darah lemah dan darah kuat kedua setelahnya dihukumi ISTIHADLOH (darah kuat pertama + darah lemah melebihi 15 hari sehingga darah lemah tidak ikut haidl).`;
+  }
+
   let bersihDalamHaidJam = 0;
+
+  // Untuk kasus Catatan, routing lini masa dipaksa seperti "ingat_semua"
+  // agar hari di luar jendela haidl dihukumi istihadloh (bukan ihtiyath).
+  const ingatKebiasaanEfektif: IngatKebiasaan =
+    haidJamCatatan !== null ? "ingat_semua" : ingatKebiasaan;
 
   if (isTamyiz) {
     // Bersih dihitung sebagai "dalam haid" hanya jika diapit dua darah kuat
@@ -671,7 +745,7 @@ function analyzeSingleSiklus(
         bersihDalamHaidJam += jamKeFaseItem(items[i]);
       }
     }
-  } else if (ingatKebiasaan !== "lupa_semua") {
+  } else if (ingatKebiasaanEfektif !== "lupa_semua") {
     if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
       let cumJam = 0;
       for (const fase of items) {
@@ -690,7 +764,7 @@ function analyzeSingleSiklus(
     items,
     "istihadloh",
     isTamyiz,
-    ingatKebiasaan,
+    ingatKebiasaanEfektif,
     haidJamSebenarnya ?? null,
     kuatSkor,
     1,
