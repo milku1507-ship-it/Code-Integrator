@@ -379,6 +379,7 @@ function buatLiniMasaHarian(
   haidJamSebenarnya: number | null,
   kuatSkor: number,
   hariMulai = 1,
+  kategoriStr = "",
 ): EntriHarian[] {
   const entri: EntriHarian[] = [];
   let hariKe = hariMulai;
@@ -448,34 +449,35 @@ function buatLiniMasaHarian(
         }
       } else {
         // tipe === "bersih"
+        const profilTeks = kategoriStr ? `Berdasarkan profil ${kategoriStr}` : "Berdasarkan analisis hukum";
         if (tipeAnalisis === "haidl_normal") {
           hukum = "haid";
           wajibQodloPuasa = true;
-          keterangan = `Bersih — Hukum Haid (Jam'u). Wajib Qodlo Puasa.`;
+          keterangan = `Jeda bersih dalam rentang haid (Hukum Jam'u). Karena masa bersih ini kurang dari 15 hari dan berada di antara fase darah, secara hukum dihitung tetap HAID. Anda wajib melakukan sholat di hari ini — sholat tersebut dihukumi sah dan tidak perlu diqodlo. Namun puasa (jika bulan Ramadhan) yang Anda lakukan di hari ini tidak sah karena hukumnya masih haid. Puasa wajib DIQODLO.`;
         } else if (tipeAnalisis === "istihadloh") {
           if (isTamyiz) {
             if (lastBloodIsKuat) {
               hukum = "haid";
               wajibQodloPuasa = true;
-              keterangan = `Bersih di antara darah kuat — Hukum Haid. Wajib Qodlo Puasa.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada setelah Darah Kuat, masih dalam rentang haid tamyiz. Hari ini tetap dihukumi HAID meski Anda tidak melihat darah. Anda wajib melakukan sholat — sholat tersebut sah dan tidak perlu diqodlo. Namun puasa di hari ini tidak sah dan wajib DIQODLO.`;
             } else {
               hukum = "suci";
-              keterangan = `Bersih di antara darah lemah — Istihadloh/Suci. Ibadah Sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada setelah Darah Lemah. Hari ini dihukumi Suci / Istihadloh. Anda wajib sholat dan semua ibadah Anda sah.`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
             hukum = "ihtiyath";
-            keterangan = `Bersih — Masa Ihtiyath (wajib sholat, status haid diragukan).`;
+            keterangan = `${profilTeks}: Karena Anda lupa adat haid (Mutahayyirah Mutlaqoh), hari bersih ini dihukumi masa Ihtiyath — status haid diragukan. Anda wajib sholat sebagai tindakan kehati-hatian. Puasa dilakukan, namun tetap wajib diqodlo sebagai ihtiyath.`;
           } else if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
             hukum = "haid";
             wajibQodloPuasa = true;
-            keterangan = `Bersih dalam masa adat — Hukum Haid. Wajib Qodlo Puasa.`;
+            keterangan = `${profilTeks}: Jeda bersih ini masih berada dalam rentang masa adat haid Anda. Secara hukum tetap dihukumi HAID. Anda wajib melakukan sholat — sholat sah dan tidak perlu diqodlo. Namun puasa di hari ini tidak sah dan wajib DIQODLO.`;
           } else {
             if (ingatKebiasaan === "ingat_semua") {
               hukum = "suci";
-              keterangan = `Bersih — Suci/Istihadloh. Ibadah Sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada di luar masa adat haid Anda. Hari ini dihukumi Suci / Istihadloh. Semua ibadah Anda sah.`;
             } else {
               hukum = "ihtiyath";
-              keterangan = `Bersih — Masa Ihtiyath (wajib sholat, mandi tiap waktu).`;
+              keterangan = `${profilTeks}: Hari bersih ini berada setelah kemungkinan masa haid (masa yang diingat). Dihukumi Ihtiyath. Anda wajib sholat dan mandi tiap waktu sholat.`;
             }
           }
         } else {
@@ -627,6 +629,8 @@ function analyzeSingleSiklus(
     ingatKebiasaan,
     haidJamSebenarnya ?? null,
     kuatSkor,
+    1,
+    kategori,
   );
 
   return {

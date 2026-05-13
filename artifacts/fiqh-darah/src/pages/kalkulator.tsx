@@ -328,37 +328,40 @@ const HUKUM_CONFIG: Record<HukumHari, {
   },
 };
 
-function KalenderHarian({ entri }: { entri: EntriHarian[] }) {
+function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategoriStr?: string }) {
   const [selectedHari, setSelectedHari] = useState<number | null>(null);
   const selected = selectedHari !== null ? entri.find((e) => e.hari === selectedHari) : null;
-  const jumlahQodlo = entri.filter((e) => e.wajibQodloPuasa).length;
+  const qodloDays = entri.filter((e) => e.wajibQodloPuasa);
+  const jumlahQodlo = qodloDays.length;
 
   return (
-    <div className="p-6 sm:p-8 border-t">
-      <h3 className="text-lg font-medium mb-1 text-foreground flex items-center gap-2">
-        <Info className="w-5 h-5 text-blue-500" />
-        Kalender Harian — Rincian Status per Hari
-      </h3>
-      <p className="text-sm text-muted-foreground mb-5">
-        Ketuk hari mana saja untuk melihat keterangan detailnya.
-      </p>
+    <div className="p-6 sm:p-8 border-t space-y-6">
+      <div>
+        <h3 className="text-lg font-medium mb-1 text-foreground flex items-center gap-2">
+          <Info className="w-5 h-5 text-blue-500" />
+          Kalender Harian — Status per Hari
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Ketuk kotak hari untuk melihat keterangan hukum lengkapnya.
+        </p>
+      </div>
 
       {/* Legenda */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {(Object.entries(HUKUM_CONFIG) as [HukumHari, typeof HUKUM_CONFIG[HukumHari]][]).map(([hukum, cfg]) => (
-          <div key={hukum} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border", cfg.bgClass, cfg.textClass, cfg.borderClass)}>
+      <div className="flex flex-wrap gap-2">
+        {(Object.entries(HUKUM_CONFIG) as [HukumHari, typeof HUKUM_CONFIG[HukumHari]][]).map(([h, cfg]) => (
+          <div key={h} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border", cfg.bgClass, cfg.textClass, cfg.borderClass)}>
             <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dotClass)} />
             {cfg.label}
           </div>
         ))}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-500" />
-          Bersih = Haid (Qodlo Puasa)
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-400 dark:border-green-600">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-600" />
+          Bersih = Haid (Wajib Qodlo)
         </div>
       </div>
 
       {/* Grid hari */}
-      <div className="grid grid-cols-7 gap-1.5 mb-5">
+      <div className="grid grid-cols-7 gap-1.5">
         {entri.map((e) => {
           const cfg = HUKUM_CONFIG[e.hukum];
           const isBersihHaid = e.tipe === "bersih" && e.hukum === "haid";
@@ -372,10 +375,10 @@ function KalenderHarian({ entri }: { entri: EntriHarian[] }) {
               className={cn(
                 "relative flex flex-col items-center justify-center rounded-xl border-2 aspect-square text-center cursor-pointer transition-all shadow-sm select-none",
                 isBersihHaid
-                  ? "bg-green-100 dark:bg-green-900/40 border-green-400 dark:border-green-600 text-green-900 dark:text-green-100"
+                  ? "bg-green-100 dark:bg-green-900/50 border-green-500 dark:border-green-500 text-green-900 dark:text-green-100"
                   : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
-                isSelected && "ring-2 ring-offset-1 ring-primary scale-105",
-                e.jamDiHari < 24 && "opacity-70",
+                isSelected && "ring-2 ring-offset-1 ring-primary scale-110 z-10",
+                e.jamDiHari < 24 && "opacity-75",
               )}
               title={e.keterangan}
               data-testid={`hari-${e.hari}`}
@@ -402,7 +405,7 @@ function KalenderHarian({ entri }: { entri: EntriHarian[] }) {
       {/* Detail hari yang dipilih */}
       {selected && (
         <div className={cn(
-          "rounded-xl border-2 p-4 mb-4 transition-all",
+          "rounded-xl border-2 p-4 transition-all",
           selected.tipe === "bersih" && selected.hukum === "haid"
             ? "bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600"
             : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
@@ -435,19 +438,64 @@ function KalenderHarian({ entri }: { entri: EntriHarian[] }) {
         </div>
       )}
 
-      {/* Ringkasan qodlo */}
+      {/* ═══════════════ KUMPULAN QODLO PUASA ═══════════════ */}
       {jumlahQodlo > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-4 py-3">
-          <div className="text-center flex-shrink-0">
-            <p className="text-2xl font-extrabold text-green-700 dark:text-green-300 leading-none">{jumlahQodlo}</p>
-            <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-0.5">hari</p>
+        <div className="rounded-2xl border-2 border-green-400 dark:border-green-600 overflow-hidden">
+          {/* Header badge */}
+          <div className="flex items-center gap-4 bg-green-600 dark:bg-green-700 px-5 py-4">
+            <div className="text-center flex-shrink-0">
+              <p className="text-3xl font-extrabold text-white leading-none">{jumlahQodlo}</p>
+              <p className="text-xs font-semibold text-green-100 mt-0.5">hari</p>
+            </div>
+            <div>
+              <p className="text-base font-bold text-white">Kumpulan Qodlo Puasa</p>
+              <p className="text-xs text-green-100 mt-0.5 leading-snug">
+                Hari-hari bersih yang secara hukum dihukumi Haid — puasa wajib diqodlo
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-bold text-green-800 dark:text-green-200">
-              Total Hari Bersih yang Wajib Qodlo Puasa
+
+          {/* Penjelasan konteks */}
+          <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-b border-green-200 dark:border-green-800">
+            <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
+              {kategoriStr
+                ? `Berdasarkan profil <strong>${kategoriStr}</strong>, hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi HAID.`
+                : "Hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi HAID."}{" "}
+              Di hari-hari tersebut: <em>sholat wajib dilakukan</em> (dan sah, tidak perlu diqodlo), namun{" "}
+              <strong>puasa tidak sah dan wajib diqodlo</strong>.
             </p>
-            <p className="text-xs text-green-700/80 dark:text-green-400/80 mt-0.5 leading-snug">
-              Hari-hari bersih yang ditandai hijau (Q) berada dalam masa haid secara hukum — puasa di hari-hari tersebut wajib diqodlo.
+          </div>
+
+          {/* Daftar hari */}
+          <div className="divide-y divide-green-100 dark:divide-green-900/50 bg-white dark:bg-green-950/20">
+            {qodloDays.map((e) => (
+              <div
+                key={e.hari}
+                className="flex gap-4 px-5 py-4"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center shadow-sm">
+                  <span className="text-sm font-extrabold text-white leading-none">{e.hari}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-green-900 dark:text-green-100 mb-0.5">
+                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi HAID
+                  </p>
+                  <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
+                    {e.keterangan}
+                  </p>
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-green-700 dark:text-green-400">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-600 dark:bg-green-400" />
+                    Puasa hari ini wajib diqodlo
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer ringkasan */}
+          <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-t border-green-200 dark:border-green-800">
+            <p className="text-xs text-green-700 dark:text-green-400">
+              <strong>Catatan:</strong> Sholat yang Anda lakukan di hari-hari tersebut adalah wajib dan sah. Yang perlu diqodlo hanya puasanya (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
             </p>
           </div>
         </div>
@@ -1402,7 +1450,7 @@ export default function Kalkulator() {
                 )}
 
                 {hasil.liniMasaHarian && hasil.liniMasaHarian.length > 0 && (
-                  <KalenderHarian entri={hasil.liniMasaHarian} />
+                  <KalenderHarian entri={hasil.liniMasaHarian} kategoriStr={hasil.kategori || undefined} />
                 )}
 
                 {hasil.qodloSholatMulai && (

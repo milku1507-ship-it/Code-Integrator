@@ -1,0 +1,42 @@
+
+PROMPT FINAL: IMPLEMENTASI LOGIKA 7 MUSTAHADLOH & OUTPUT VISUAL HIJAU
+Peran: Anda adalah pengembang backend dan ahli logika Fiqh.
+Tugas: Mengintegrasikan logika analisis 7 kategori Mustahadloh ke dalam fiqhEngine.ts dan menampilkan hasilnya pada komponen UI berwarna hijau sesuai referensi Screenshot_2026-05-13-14-21-04-95_2.jpg.
+1. Core Logic: Analisis Harian Mustahadloh (> 15 Hari)
+"Gunakan array data dari input kalender. Jika total durasi (darah pertama hingga terakhir) > 15 hari, jalankan fungsi analisis per kotak tanggal berdasarkan profil berikut:"
+Kategori Mustahadloh
+Logika Penentu Masa Haid
+Status Jeda Bersih (Masa Berhenti)
+1. Mubtadi’ah Mumayyizah
+Rentang Darah Kuat (Hitam/Merah).
+Jeda di antara darah kuat = Haid. Jeda lainnya = Istihadloh.
+2. Mubtadi’ah Ghoiru Mumayyizah
+Hari ke-1 saja (24 jam pertama).
+Jeda di hari ke-1 = Haid. Sisanya = Istihadloh.
+3. Mu’tadah Mumayyizah
+Rentang Darah Kuat (Tamyiz).
+Sama dengan Mubtadi’ah Mumayyizah.
+4. Mu’tadah Ghoiru Mumayyizah
+Sesuai Durasi Adat Bulan Lalu.
+Jeda $\le$ hari adat = Haid. Jeda > hari adat = Istihadloh.
+5. Mutahayyirah Mutlaqoh
+Seluruhnya Ragu (Ihtiyath).
+Jeda dianggap masa Ihtiyath (Wajib sholat secara dzahir, status tetap diragukan).
+6. Mutahayyirah Zakiroh (Qodron)
+Durasi yang diingat (misal: 7 hari).
+Jeda pada rentang durasi tersebut = Haid.
+7. Mutahayyirah Zakiroh (Waqtan)
+Waktu awal yang diingat.
+Jeda pada waktu yang diyakini awal haid = Haid.
+2. Output Akhir: Komponen Visual Hijau
+"Posisikan hasil analisis 'Jeda Bersih' ke dalam elemen visual yang menonjol di Tab Akhir dengan ketentuan:"
+Mapping Warna Kalender: Kotak tanggal 'Bersih' yang secara hukum dihukumi Haid wajib berubah menjadi warna HIJAU (#2e7d32).
+Blok Keterangan Hijau: Buat komponen informasi khusus dengan latar belakang atau border hijau untuk merinci hukum masa bersih tersebut.
+Narasi Edukasi:
+Tampilkan teks: "Berdasarkan profil [Kategori], hari ke-x yang Anda input 'Bersih' tetap dihukumi HAID."
+Sertakan alasan: "Pada saat darah berhenti kemarin, Anda wajib sholat. Namun karena darah keluar lagi dan masih dalam jatah haid, sholat tersebut menjadi tidak sah (tidak perlu qodlo) dan puasa Anda WAJIB DI-QODLO."
+3. Instruksi Teknis untuk Replit
+Iterasi Array: Pastikan engine melakukan looping pada setiap index hari di kalender untuk menentukan status wajibQodloPuasa.
+Kumpulan Qodlo: Masukkan setiap temuan "Jeda Bersih = Haid" ke dalam array kumpulan_qodlo agar tercetak di bagian paling bawah layar.
+Kasus < 15 Hari: Tetap berlakukan logika sederhana; jika total $\le$ 15 hari, semua jeda bersih otomatis masuk ke indikator Hijau (Haid).
+
