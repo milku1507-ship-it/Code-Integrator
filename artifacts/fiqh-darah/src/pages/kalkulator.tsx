@@ -459,10 +459,11 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-b border-green-200 dark:border-green-800">
             <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
               {kategoriStr
-                ? `Berdasarkan profil <strong>${kategoriStr}</strong>, hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi HAID.`
+                ? <>Berdasarkan profil <strong>{kategoriStr}</strong>, hari-hari berikut Anda catat &lsquo;Bersih&rsquo; namun secara hukum fiqh tetap dihukumi HAID.</>
                 : "Hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi HAID."}{" "}
-              Di hari-hari tersebut: <em>sholat wajib dilakukan</em> (dan sah, tidak perlu diqodlo), namun{" "}
-              <strong>puasa tidak sah dan wajib diqodlo</strong>.
+              Di hari-hari tersebut: sholat wajib dikerjakan (karena tampak suci secara dzahir) namun{" "}
+              <strong>TIDAK SAH</strong> — tidak perlu diqodlo.{" "}
+              <strong>Puasa TIDAK SAH dan wajib diqodlo.</strong>
             </p>
           </div>
 
@@ -495,7 +496,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           {/* Footer ringkasan */}
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-t border-green-200 dark:border-green-800">
             <p className="text-xs text-green-700 dark:text-green-400">
-              <strong>Catatan:</strong> Sholat yang Anda lakukan di hari-hari tersebut adalah wajib dan sah. Yang perlu diqodlo hanya puasanya (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
+              <strong>Catatan:</strong> Sholat yang Anda kerjakan di hari-hari tersebut wajib dilakukan (karena tampak suci secara dzahir) namun <strong>TIDAK SAH</strong> secara hukum — tidak perlu diqodlo. Yang wajib diqodlo adalah <strong>puasanya</strong> (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
             </p>
           </div>
         </div>
@@ -1319,14 +1320,20 @@ export default function Kalkulator() {
                       </div>
                     </div>
 
-                    {/* Penjelasan kewajiban dzahir */}
+                    {/* Penjelasan kewajiban dzahir — berbeda untuk Hukum Jam'u vs Istihadloh */}
                     <div className="rounded-xl bg-emerald-100/70 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 p-4 mb-5 text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed space-y-2">
                       <p>
                         Pada saat darah berhenti sementara, Anda <strong>wajib mandi besar dan melaksanakan sholat serta puasa</strong> — karena secara dzahir (tampak) Anda dihukumi <strong>suci</strong> pada hari-hari tersebut. Tindakan Anda <strong>benar secara syariat</strong> saat itu.
                       </p>
-                      <p>
-                        Namun karena darah keluar kembali dan total keseluruhan (darah + masa berhenti) tidak melebihi <strong>15 hari</strong>, masa berhenti tersebut secara hukum Fiqh <strong>ditarik kembali menjadi Haid</strong>. Konsekuensi ibadah di masa itu pun berubah:
-                      </p>
+                      {hasil.peringatanJedaSuci.tipeKasus === "haidl_normal" ? (
+                        <p>
+                          Namun karena darah keluar kembali dan total keseluruhan (darah + masa berhenti) tidak melebihi <strong>15 hari</strong>, masa berhenti tersebut secara hukum Fiqh <strong>ditarik kembali menjadi Haid</strong> (Hukum Jam&apos;u). Konsekuensi ibadah di masa itu pun berubah:
+                        </p>
+                      ) : (
+                        <p>
+                          Namun karena masa berhenti ini jatuh <strong>di dalam jendela adat haid Anda</strong>, secara hukum Fiqh masa bersih tersebut <strong>dihukumi Haid</strong>. Konsekuensi ibadah di masa itu pun berubah:
+                        </p>
+                      )}
                     </div>
 
                     {/* Konsekuensi Sholat */}

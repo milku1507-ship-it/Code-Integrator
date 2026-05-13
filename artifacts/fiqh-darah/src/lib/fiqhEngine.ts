@@ -63,6 +63,8 @@ export interface PeringatanJedaSuci {
   qodloPuasaHari?: number;
   statusPuasa: string;
   statusSholat: string;
+  /** "haidl_normal" = Hukum Jam'u (total ≤ 15 hari); "istihadloh" = jeda dalam masa adat */
+  tipeKasus: "haidl_normal" | "istihadloh";
 }
 
 /**
@@ -170,8 +172,9 @@ function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
   return {
     totalJedaJam,
     qodloPuasaHari,
+    tipeKasus: "haidl_normal",
     statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(totalJedaJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. Sebab masa berhenti itu secara dzahir mewajibkan puasa — namun hakikatnya masih dalam rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh), sehingga puasanya gugur.`,
-    statusSholat: `Sholat yang Anda kerjakan pada masa berhenti sementara tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena Anda tidak tahu darah akan keluar kembali (mengira sudah suci). Anda juga TIDAK WAJIB MENGQODLO sholat-sholat tersebut, karena kewajiban sholat memang gugur selama masa haid.`,
+    statusSholat: `Sholat yang Anda kerjakan pada masa berhenti sementara tersebut TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena Anda tidak tahu darah akan keluar kembali (mengira sudah suci). Anda juga TIDAK WAJIB MENGQODLO sholat-sholat tersebut, karena kewajiban sholat memang gugur selama masa haid.`,
   };
 }
 
@@ -191,8 +194,9 @@ function buatPeringatanJedaSuciIstihadloh(
   return {
     totalJedaJam: bersihDalamHaidJam,
     qodloPuasaHari,
+    tipeKasus: "istihadloh",
     statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(bersihDalamHaidJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. ${alasan}`,
-    statusSholat: `Sholat yang Anda kerjakan di masa berhenti sementara yang jatuh dalam periode haid tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena secara dzahir Anda wajib sholat saat darah tidak terlihat. Sholat tersebut TIDAK PERLU DIQODLO, karena kewajiban sholat gugur selama masa haid.`,
+    statusSholat: `Sholat yang Anda kerjakan di masa berhenti sementara yang jatuh dalam periode haid tersebut TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena secara dzahir Anda wajib sholat saat darah tidak terlihat. Sholat tersebut TIDAK PERLU DIQODLO, karena kewajiban sholat gugur selama masa haid.`,
   };
 }
 
@@ -478,18 +482,18 @@ function buatLiniMasaHarian(
           // Jam'u hanya berlaku pada siklus ≤ 15 hari
           hukum = "haid";
           wajibQodloPuasa = true;
-          keterangan = `Jeda bersih dalam rentang haid (Hukum Jam'u — total siklus ≤ 15 hari). Masa bersih ini berada di antara dua fase darah dalam satu siklus yang sah. Anda wajib sholat — sholat sah dan tidak perlu diqodlo. Puasa di hari ini wajib DIQODLO.`;
+          keterangan = `Jeda bersih dalam rentang haid (Hukum Jam'u — total siklus ≤ 15 hari). Masa bersih ini berada di antara dua fase darah dalam satu siklus yang sah. Hari ini dihukumi HAID: sholat wajib dikerjakan (karena tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa hari ini TIDAK SAH dan wajib DIQODLO.`;
         } else if (tipeAnalisis === "istihadloh") {
           if (isTamyiz) {
             // Kunci: bersih = Haid HANYA jika diapit dua darah kuat (kuat–bersih–kuat)
             if (bersihAntaraKuat[faseIdx]) {
               hukum = "haid";
               wajibQodloPuasa = true;
-              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah, dihukumi HAID. Anda wajib sholat — sholat sah, tidak perlu diqodlo. Puasa di hari ini tidak sah dan wajib DIQODLO.`;
+              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah, dihukumi HAID. Hari ini HAID: sholat wajib dikerjakan (tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan wajib DIQODLO.`;
             } else {
               // Bersih setelah kuat–sebelum–lemah, atau sesudah lemah = Istihadloh
               hukum = "istihadloh";
-              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat — tidak memenuhi syarat "di antara darah kuat". Hari ini dihukumi Istihadloh. Anda wajib sholat dan semua ibadah Anda sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat — tidak memenuhi syarat "di antara darah kuat". Hari ini dihukumi Istihadloh (Suci). Sholat SAH. Puasa SAH. Semua ibadah sah.`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
             hukum = "ihtiyath";
@@ -497,11 +501,11 @@ function buatLiniMasaHarian(
           } else if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
             hukum = "haid";
             wajibQodloPuasa = true;
-            keterangan = `${profilTeks}: Jeda bersih ini masih dalam rentang masa adat haid Anda (hari ke-${Math.floor(jamMulaiSeg / 24) + 1} dari ${Math.round(haidJamSebenarnya / 24)} hari adat). Dihukumi HAID. Sholat wajib dan sah, tidak perlu diqodlo. Puasa wajib DIQODLO.`;
+            keterangan = `${profilTeks}: Jeda bersih ini masih dalam rentang masa adat haid Anda (hari ke-${Math.floor(jamMulaiSeg / 24) + 1} dari ${Math.round(haidJamSebenarnya / 24)} hari adat). Dihukumi HAID. Sholat wajib dikerjakan (tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan wajib DIQODLO.`;
           } else {
             if (ingatKebiasaan === "ingat_semua") {
               hukum = "istihadloh";
-              keterangan = `${profilTeks}: Jeda bersih ini berada di luar masa adat haid Anda. Hari ini dihukumi Istihadloh. Semua ibadah Anda sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada di luar masa adat haid Anda. Hari ini dihukumi Istihadloh (Suci). Sholat SAH. Puasa SAH. Semua ibadah sah.`;
             } else {
               hukum = "ihtiyath";
               keterangan = `${profilTeks}: Hari bersih ini berada setelah rentang haid yang masih diingat. Dihukumi Ihtiyath. Anda wajib sholat dan mandi tiap waktu sholat.`;
@@ -865,11 +869,19 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
 
     const hutang = kalkHutangIbadah(s.haidJamSebenarnya ?? null, kategoriStr, isBulanPertamaIstihadloh);
 
+    // Template narasi akhir untuk Mustahadloh dengan adat yang jelas (Golongan 4)
+    const totalHari = Math.round(s.totalJamSiklus / 24);
+    const adatHari = s.haidJamSebenarnya ? Math.round(s.haidJamSebenarnya / 24) : null;
+    let hukumIstihadlohFinal = hukumStr || s.hukumDetail;
+    if (adatHari && kategoriStr.includes("Golongan 4")) {
+      hukumIstihadlohFinal = `Karena total rangkaian darah Anda adalah ${totalHari} hari, Anda berstatus Mustahadloh. Berdasarkan adat Anda (${adatHari} hari), maka hari ke-1 sampai hari ke-${adatHari} adalah masa Haid Anda. Selebihnya adalah masa Suci/Istihadloh.`;
+    }
+
     return {
       kesimpulan: `Darah Istihadloh (total ${formatDurasi(s.totalJamSiklus)} — melebihi batas maksimal haid 15 hari)`,
       kategori: kategoriStr,
       hukumHaidl: "",
-      hukumIstihadloh: hukumStr || s.hukumDetail,
+      hukumIstihadloh: hukumIstihadlohFinal,
       qodloSholatMulai: qodloMulai,
       qodloSholat: qodloBerhenti,
       hutangIbadah: hutang,

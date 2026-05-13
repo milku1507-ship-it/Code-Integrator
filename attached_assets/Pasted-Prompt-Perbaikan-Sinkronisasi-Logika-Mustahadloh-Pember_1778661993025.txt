@@ -1,0 +1,26 @@
+Prompt Perbaikan: Sinkronisasi Logika Mustahadloh & Pembersihan Hukum Jam’u
+Tujuan: Memisahkan secara total jalur logika antara Haid Normal (<15 hari) dan Mustahadloh (>15 hari) serta memperbaiki narasi status ibadah agar tidak kontradiktif.
+1. Perbaikan Alur Logika (Branching Logic)
+"Lakukan pengecekan pada fiqhEngine.ts. Sistem harus memiliki percabangan logika yang tegas berdasarkan total_hari_rangkaian (sejak darah hari ke-1 hingga darah terakhir):"
+IF total <= 15 hari: Gunakan Hukum Jam’u (Semua darah dan jeda bersih adalah Haid).
+IF total > 15 hari: Matikan seluruh fungsi Hukum Jam’u. Gunakan Hukum 7 Kategori Mustahadloh. Jangan menampilkan narasi 'Darah tidak melebihi 15 hari' pada kasus ini.
+2. Koreksi Narasi Status Ibadah (Anti-Kontradiksi)
+"Perbaiki narasi pada komponen Kumpulan Qodlo Puasa (blok hijau) agar sesuai dengan kaidah Fiqh yang logis:"
+LOGIKA HAID: Jika hari dihukumi HAID, maka:
+Sholat: TIDAK SAH (tapi tidak berdosa).
+Puasa: TIDAK SAH dan WAJIB QODLO.
+LOGIKA SUCI: Jika hari dihukumi SUCI/ISTIHADLOH, maka:
+Sholat: SAH.
+Puasa: SAH (tidak perlu qodlo).
+Koreksi Spesifik: Jangan pernah menampilkan kalimat 'Sholat wajib dilakukan dan sah' untuk hari yang Anda beri label 'Haid' atau 'Wajib Qodlo Puasa'. Jika sah, maka itu bukan Haid.
+3. Detail Analisis per Hari (Kasus Mustahadloh Golongan 4)
+"Khusus untuk Mu’tadah Ghoiru Mumayyizah ) terapkan logika per hari pada kalender sebagai berikut:"
+Hari 1 s/d [Adat]: Status = HAID. Darah maupun Jeda Bersih di rentang ini harus ditandai sebagai Haid (Wajib Qodlo Puasa).
+Hari [Adat + 1] s/d Akhir: Status = ISTIHADLOH. Darah maupun Jeda Bersih di rentang ini harus ditandai sebagai Suci (Sholat & Puasa SAH).
+4. Sinkronisasi Visual (Kalkulator.tsx)
+"Pastikan indikator pada kalender harian sinkron dengan ringkasan di bawahnya:"
+Jika hari ke-5 adalah Bersih dan masuk jatah Haid, beri warna Hijau (Wajib Qodlo Puasa).
+Jika hari ke-8 adalah Bersih dan sudah lewat jatah adat (Masuk Istihadloh), beri warna Biru (Suci/Ibadah Sah), jangan masukkan ke dalam daftar qodlo puasa.
+5. Validasi Narasi Akhir
+"Pastikan teks pada Tab Hasil mengikuti template ini untuk kasus Mustahadloh:"
+"Karena total rangkaian darah Anda adalah {total} hari, Anda berstatus Mustahadloh. Berdasarkan adat Anda ({adat} hari), maka hari ke-1 sampai {adat} adalah masa Haid Anda. Selebihnya adalah masa Suci/Istihadloh."
