@@ -384,6 +384,7 @@ function buatLiniMasaHarian(
   kuatSkor: number,
   hariMulai = 1,
   kategoriStr = "",
+  statusPengalaman: StatusPengalaman = "mubtadiah",
 ): EntriHarian[] {
   const entri: EntriHarian[] = [];
   let hariKe = hariMulai;
@@ -441,6 +442,7 @@ function buatLiniMasaHarian(
           keterangan = `Darah ${faseDarah.warna} — Haid`;
         } else if (tipeAnalisis === "istihadloh") {
           if (isTamyiz) {
+            // Golongan 1 & 3 (Mumayyizah): darah kuat = Haid, darah lemah = Istihadloh
             if (skorFase >= kuatSkor) {
               hukum = "haid";
               keterangan = `Darah kuat (${faseDarah.warna}) — Haid`;
@@ -449,24 +451,29 @@ function buatLiniMasaHarian(
               keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
+            // Golongan 5 (Mutahayyiroh Mutlaqoh): haid hanya 24 jam pertama, setelahnya Ihtiyath
             if (jamMulaiSeg < 24) {
               hukum = "haid";
-              keterangan = `Darah — Haid (24 jam pertama)`;
+              keterangan = `Darah — Haid (24 jam pertama sebagai batas minimal mutlak)`;
             } else {
               hukum = "ihtiyath";
-              keterangan = `Darah — Masa Ihtiyath (status diragukan)`;
+              keterangan = `Darah — Masa Ihtiyath (lupa total adat, status diragukan)`;
             }
           } else {
+            // Golongan 2, 4, 6, 7: Haid = dalam jendela haidJamSebenarnya
             if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
               hukum = "haid";
-              keterangan = `Darah — Haid (dalam masa adat)`;
+              keterangan = `Darah — Haid (dalam masa adat/jatah haid hari ke-${Math.floor(jamMulaiSeg / 24) + 1})`;
             } else {
-              if (ingatKebiasaan === "ingat_semua") {
+              // Setelah jendela haid habis:
+              // Golongan 2 (mubtadiah, !tamyiz) & Golongan 4 (ingat_semua) → Istihadloh pasti
+              // Golongan 6 (ingat_durasi) & Golongan 7 (ingat_waktu) → Ihtiyath (masih diragukan)
+              if (ingatKebiasaan === "ingat_semua" || statusPengalaman === "mubtadiah") {
                 hukum = "istihadloh";
-                keterangan = `Darah — Istihadloh (setelah masa adat)`;
+                keterangan = `Darah — Istihadloh (setelah batas masa haid)`;
               } else {
                 hukum = "ihtiyath";
-                keterangan = `Darah — Masa Ihtiyath (setelah kemungkinan masa haid)`;
+                keterangan = `Darah — Masa Ihtiyath (setelah kemungkinan masa haid, waktu pasti tidak diketahui)`;
               }
             }
           }
@@ -479,36 +486,49 @@ function buatLiniMasaHarian(
         const profilTeks = kategoriStr ? `Berdasarkan profil ${kategoriStr}` : "Berdasarkan analisis hukum";
 
         if (tipeAnalisis === "haidl_normal") {
-          // Jam'u hanya berlaku pada siklus ≤ 15 hari
+          // LOGIKA 1: Haid Terputus-putus — Total rangkaian ≤ 15 hari (Hukum Jam'u/Talfiq)
+          // Seluruh jeda bersih ditarik dan dihukumi Haid
           hukum = "haid";
           wajibQodloPuasa = true;
-          keterangan = `Jeda bersih dalam rentang haid (Hukum Jam'u — total siklus ≤ 15 hari). Masa bersih ini berada di antara dua fase darah dalam satu siklus yang sah. Hari ini dihukumi HAID: sholat wajib dikerjakan (karena tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa hari ini TIDAK SAH dan wajib DIQODLO.`;
+          keterangan = `Jeda bersih dalam rangkaian haid (Hukum Jam'u — total siklus ≤ 15 hari). Masa bersih ini dihukumi HAID. Sholat wajib dikerjakan secara dzahir saat darah tidak terlihat, namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa hari ini TIDAK SAH dan WAJIB DIQODLO.`;
         } else if (tipeAnalisis === "istihadloh") {
+          // LOGIKA 2: Mustahadloh Terputus-putus — Total rangkaian > 15 hari
+          // Hukum jeda bersih dikembalikan ke masing-masing golongan
           if (isTamyiz) {
-            // Kunci: bersih = Haid HANYA jika diapit dua darah kuat (kuat–bersih–kuat)
+            // Golongan 1 (Mubtadi'ah Mumayyizah) & Golongan 3 (Mu'tadah Mumayyizah):
+            // Bersih diapit darah kuat–kuat → HAID
+            // Bersih diapit kuat–lemah, lemah–kuat, atau lemah–lemah → ISTIHADLOH
             if (bersihAntaraKuat[faseIdx]) {
               hukum = "haid";
               wajibQodloPuasa = true;
-              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah, dihukumi HAID. Hari ini HAID: sholat wajib dikerjakan (tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan wajib DIQODLO.`;
+              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah, masa bersih yang mengapit dua darah kuat dihukumi HAID. Sholat wajib dikerjakan secara dzahir (darah tidak terlihat), namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
             } else {
-              // Bersih setelah kuat–sebelum–lemah, atau sesudah lemah = Istihadloh
               hukum = "istihadloh";
-              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat — tidak memenuhi syarat "di antara darah kuat". Hari ini dihukumi Istihadloh (Suci). Sholat SAH. Puasa SAH. Semua ibadah sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat (berada di sela darah lemah atau setelah darah kuat berakhir). Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH. Semua ibadah sah.`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
+            // Golongan 5 (Mutahayyiroh Mutlaqoh / Nasiyah):
+            // Seluruh masa bersih dianggap masa keraguan → IHTIYATH penuh
             hukum = "ihtiyath";
-            keterangan = `${profilTeks}: Karena Anda lupa adat haid (Mutahayyirah Mutlaqoh), hari bersih ini dihukumi masa Ihtiyath — status haid diragukan. Anda wajib sholat dan puasa sebagai tindakan kehati-hatian. Status puasa perlu dikonfirmasi ulang ke ustadzah.`;
+            keterangan = `${profilTeks}: Anda lupa total adat haid (Mutahayyiroh Mutlaqoh). Seluruh masa bersih di sela-sela darah tetap dianggap masa keraguan — IHTIYATH. Wajib sholat dan puasa, namun wajib mandi besar setiap akan sholat fardlu. Haram berhubungan suami-istri.`;
           } else if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
+            // Bersih masih dalam jendela haid (sesuai adat/tamyiz/24 jam pertama):
+            // Golongan 2, 4, 6, 7 — bersih di dalam rentang jatah haid → HAID
+            const haidHariTotal = Math.round(haidJamSebenarnya / 24);
+            const hariIni = Math.floor(jamMulaiSeg / 24) + 1;
             hukum = "haid";
             wajibQodloPuasa = true;
-            keterangan = `${profilTeks}: Jeda bersih ini masih dalam rentang masa adat haid Anda (hari ke-${Math.floor(jamMulaiSeg / 24) + 1} dari ${Math.round(haidJamSebenarnya / 24)} hari adat). Dihukumi HAID. Sholat wajib dikerjakan (tampak suci secara dzahir) namun TIDAK SAH — tidak perlu diqodlo karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan wajib DIQODLO.`;
+            keterangan = `${profilTeks}: Jeda bersih ini masih dalam rentang jatah haid Anda (hari ke-${hariIni} dari ${haidHariTotal} hari). Dihukumi HAID. Sholat wajib dikerjakan secara dzahir (darah tidak terlihat), namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
           } else {
-            if (ingatKebiasaan === "ingat_semua") {
+            // Bersih di luar jendela haid:
+            // Golongan 2 (mubtadiah, !tamyiz) & Golongan 4 (ingat_semua) → ISTIHADLOH (pasti suci)
+            // Golongan 6 (ingat_durasi) & Golongan 7 (ingat_waktu) → IHTIYATH (waktu pasti tidak diketahui)
+            if (ingatKebiasaan === "ingat_semua" || statusPengalaman === "mubtadiah") {
               hukum = "istihadloh";
-              keterangan = `${profilTeks}: Jeda bersih ini berada di luar masa adat haid Anda. Hari ini dihukumi Istihadloh (Suci). Sholat SAH. Puasa SAH. Semua ibadah sah.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada di luar batas masa haid. Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH. Semua ibadah sah.`;
             } else {
               hukum = "ihtiyath";
-              keterangan = `${profilTeks}: Hari bersih ini berada setelah rentang haid yang masih diingat. Dihukumi Ihtiyath. Anda wajib sholat dan mandi tiap waktu sholat.`;
+              keterangan = `${profilTeks}: Jeda bersih ini berada setelah kemungkinan akhir masa haid (waktu pasti tidak diketahui). Dihukumi Ihtiyath — masa keraguan. Wajib sholat dan puasa, wajib mandi besar setiap akan sholat fardlu. Haram berhubungan suami-istri.`;
             }
           }
         } else {
@@ -569,7 +589,7 @@ function analyzeSingleSiklus(
       kesimpulan: `Istihadloh — darah hanya ${formatDurasi(darahJam)} (kurang dari minimal 24 jam)`,
       hukumDetail: `Total darah ${formatDurasi(darahJam)} — kurang dari syarat minimal 24 jam (1 hari 1 malam).`,
       tipe: "error",
-      liniMasaSiklus: buatLiniMasaHarian(items, "error", false, ingatKebiasaan, null, 0),
+      liniMasaSiklus: buatLiniMasaHarian(items, "error", false, ingatKebiasaan, null, 0, 1, "", statusPengalaman),
     };
   }
 
@@ -583,7 +603,7 @@ function analyzeSingleSiklus(
       kesimpulan: `HAIDL NORMAL — total ${formatDurasi(totalJam)}${bersihNote}`,
       hukumDetail: `Durasi ${formatDurasi(totalJam)} memenuhi syarat haidl (minimal 24 jam, maksimal 15 hari).${bersihNote}`,
       tipe: "haidl_normal",
-      liniMasaSiklus: buatLiniMasaHarian(items, "haidl_normal", false, ingatKebiasaan, null, 0),
+      liniMasaSiklus: buatLiniMasaHarian(items, "haidl_normal", false, ingatKebiasaan, null, 0, 1, "", statusPengalaman),
     };
   }
 
@@ -675,6 +695,7 @@ function analyzeSingleSiklus(
     kuatSkor,
     1,
     kategori,
+    statusPengalaman,
   );
 
   return {
