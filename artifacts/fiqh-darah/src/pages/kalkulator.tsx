@@ -143,6 +143,7 @@ const step4Schema = z.object({
   waktuMulaiDarah: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu mulai darah" }),
   sudahSholatSebelumDarah: z.boolean().default(false),
   waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
+  berpuasaSaatDarahBerhenti: z.boolean().default(false),
 });
 
 type Step2FormData = z.infer<typeof step2Schema>;
@@ -191,6 +192,7 @@ export default function Kalkulator() {
       waktuMulaiDarah: formData.waktuMulaiDarah || "",
       sudahSholatSebelumDarah: formData.sudahSholatSebelumDarah ?? false,
       waktuBerhentiTotal: formData.waktuBerhentiTotal || "",
+      berpuasaSaatDarahBerhenti: formData.berpuasaSaatDarahBerhenti ?? false,
     },
   });
 
@@ -242,6 +244,7 @@ export default function Kalkulator() {
         waktuMulaiDarah: toWaktu(data.waktuMulaiDarah),
         sudahSholatSebelumDarah: data.sudahSholatSebelumDarah ?? false,
         waktuBerhentiTotal: toWaktu(data.waktuBerhentiTotal),
+        berpuasaSaatDarahBerhenti: data.berpuasaSaatDarahBerhenti ?? false,
       };
       setFormData(finalData);
       const result = jalankanMesinFiqh(finalData);
@@ -275,7 +278,7 @@ export default function Kalkulator() {
       ],
     });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
-    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
+    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "", berpuasaSaatDarahBerhenti: false });
   };
 
   const appendDarah = () => {
@@ -964,6 +967,33 @@ export default function Kalkulator() {
                   )}
                 />
 
+                {formData.daftarFase?.some((f) => f.tipe === "bersih") && (
+                  <>
+                    <hr className="border-muted" />
+                    <FormField
+                      control={form4.control}
+                      name="berpuasaSaatDarahBerhenti"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50/60 dark:bg-yellow-950/20 p-4 shadow-sm">
+                          <div className="space-y-0.5 pr-4">
+                            <FormLabel className="text-base">Apakah Anda berpuasa saat darah berhenti sementara?</FormLabel>
+                            <FormDescription>
+                              Aktifkan jika Anda mengerjakan puasa (wajib atau sunnah) selama masa darah berhenti di tengah rangkaian haid. Jika ya, puasa tersebut tidak sah dan wajib diqodlo.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value ?? false}
+                              onCheckedChange={field.onChange}
+                              data-testid="switch-berpuasa-jeda"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
                 <hr className="border-muted" />
 
                 {/* ── Bagian 1: Datangnya Haid ── */}
@@ -1164,6 +1194,22 @@ export default function Kalkulator() {
                     <p className="text-sm text-yellow-900/70 dark:text-yellow-200/70 mb-4 leading-relaxed">
                       Terdeteksi masa berhenti sementara (<strong>{formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}</strong>) di antara fase-fase darah Anda. Karena total rangkaian tidak melebihi 15 hari, seluruh masa berhenti tersebut tetap dihitung sebagai haid. Perhatikan status ibadah Anda selama masa berhenti itu:
                     </p>
+
+                    {hasil.peringatanJedaSuci.qodloPuasaHari !== undefined && (
+                      <div className="mb-4 flex items-center gap-3 rounded-xl bg-rose-100 dark:bg-rose-950/50 border-2 border-rose-400 dark:border-rose-600 p-4">
+                        <TriangleAlert className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
+                        <div>
+                          <p className="text-sm font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wide">Wajib Qodlo Puasa</p>
+                          <p className="text-2xl font-bold text-rose-700 dark:text-rose-300 mt-0.5">
+                            {hasil.peringatanJedaSuci.qodloPuasaHari} hari
+                          </p>
+                          <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">
+                            Puasa yang dikerjakan saat darah berhenti sementara tidak sah — wajib diganti.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-3">
                       <div className="flex items-start gap-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3">
                         <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
