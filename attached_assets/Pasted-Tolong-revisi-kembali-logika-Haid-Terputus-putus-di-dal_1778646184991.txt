@@ -1,0 +1,32 @@
+Tolong revisi kembali logika Haid Terputus-putus di dalam fungsi mesin_utama_aplikasi. Sesuai kaidah Fikih, wanita yang darahnya berhenti di tengah-tengah wajib melaksanakan sholat dan puasa karena dia tidak tahu darah akan keluar lagi esok hari. Jadi, kita tidak perlu menanyakan/meminta input checkbox apakah dia puasa atau sholat saat darah berhenti.
+Lakukan perombakan berikut:
+1. Hapus Parameter Input UI: Hapus checkbox, opsi, atau variabel berpuasa_saat_darah_berhenti dan sholat_saat_darah_berhenti dari frontend dan dari parameter pemanggilan fungsi.
+2. Ubah Logika Automasi Qodlo di Blok Haid Normal: Ganti bagian deteksi jeda suci di blok # 3. Deteksi Haidl Normal (< 15 Hari) menjadi kode berikut ini:
+    # 3. Deteksi Haidl Normal (< 15 Hari)
+    if total_hari < 1:
+        return "KESIMPULAN FINAL:\nDarah Istihadloh.\nAlasan: Durasi kurang dari batas minimal haid (24 jam)."
+    
+    elif 1 <= total_hari <= 15:
+        hasil = f"KESIMPULAN FINAL:\nSEMUA DARAH DAN MASA BERHENTINYA ({total_hari} Hari) ADALAH HAIDL.\nAlasan: Total durasi sejak darah pertama keluar hingga darah terakhir berhenti tidak melebihi batas maksimal 15 hari.\n"
+        
+        # --- LOGIKA OTOMATIS HAID TERPUTUS-PUTUS ---
+        ada_jeda_suci = False
+        hari_suci = 0
+        
+        # Looping untuk mencari apakah ada fase darah berhenti / bersih dari input user
+        for fase in daftar_fase_darah:
+            if fase.get('warna') == 'bersih' or fase.get('warna') == 'suci' or fase.get('jenis') == 'suci_sementara':
+                ada_jeda_suci = True
+                hari_suci += fase.get('hari', 0)
+        
+        if ada_jeda_suci:
+            # Pesan edukasi langsung di bagian penjelasan (tidak berdosa dan sholat tidak sah)
+            hasil += "\n[PENJELASAN HAID TERPUTUS]: Karena total masa darah (termasuk masa berhentinya) masih di bawah 15 hari, maka masa berhenti (bersih) di tengah-tengah tersebut tetap dihukumi HAID. Oleh karena itu, sholat yang telah Anda kerjakan di masa berhenti tersebut hukumnya TIDAK SAH. Namun, Anda TIDAK BERDOSA mengerjakannya (karena secara dzahir Anda wajib sholat saat tidak melihat darah) dan sholat tersebut tidak perlu diqodlo.\n"
+            
+            # OTOMATIS dimasukkan ke kumpulan_qodlo tanpa syarat
+            kumpulan_qodlo.append(f"- [PUASA] Mengqodlo puasa sebanyak {hari_suci} hari (Hal ini karena puasa yang diwajibkan saat darah Anda berhenti sementara tersebut ternyata tidak sah, sebab hakikatnya masa berhenti itu masih dalam rangkaian masa haid).")
+
+        # Cek qodlo waktu sholat saat darah benar-benar berhenti (Jama' dll)
+        teks_qodlo_waktu = kalkulator_qodlo_sholat(waktu_berhenti_total)
+        if teks_qodlo_waktu:
+            kumpulan_qodlo.append(teks_qodlo_waktu)

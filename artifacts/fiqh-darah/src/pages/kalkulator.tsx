@@ -143,7 +143,6 @@ const step4Schema = z.object({
   waktuMulaiDarah: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu mulai darah" }),
   sudahSholatSebelumDarah: z.boolean().default(false),
   waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
-  berpuasaSaatDarahBerhenti: z.boolean().default(false),
 });
 
 type Step2FormData = z.infer<typeof step2Schema>;
@@ -192,7 +191,6 @@ export default function Kalkulator() {
       waktuMulaiDarah: formData.waktuMulaiDarah || "",
       sudahSholatSebelumDarah: formData.sudahSholatSebelumDarah ?? false,
       waktuBerhentiTotal: formData.waktuBerhentiTotal || "",
-      berpuasaSaatDarahBerhenti: formData.berpuasaSaatDarahBerhenti ?? false,
     },
   });
 
@@ -244,7 +242,6 @@ export default function Kalkulator() {
         waktuMulaiDarah: toWaktu(data.waktuMulaiDarah),
         sudahSholatSebelumDarah: data.sudahSholatSebelumDarah ?? false,
         waktuBerhentiTotal: toWaktu(data.waktuBerhentiTotal),
-        berpuasaSaatDarahBerhenti: data.berpuasaSaatDarahBerhenti ?? false,
       };
       setFormData(finalData);
       const result = jalankanMesinFiqh(finalData);
@@ -278,7 +275,7 @@ export default function Kalkulator() {
       ],
     });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
-    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "", berpuasaSaatDarahBerhenti: false });
+    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
   };
 
   const appendDarah = () => {
@@ -966,33 +963,6 @@ export default function Kalkulator() {
                     </FormItem>
                   )}
                 />
-
-                {formData.daftarFase?.some((f) => f.tipe === "bersih") && (
-                  <>
-                    <hr className="border-muted" />
-                    <FormField
-                      control={form4.control}
-                      name="berpuasaSaatDarahBerhenti"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50/60 dark:bg-yellow-950/20 p-4 shadow-sm">
-                          <div className="space-y-0.5 pr-4">
-                            <FormLabel className="text-base">Apakah Anda berpuasa saat darah berhenti sementara?</FormLabel>
-                            <FormDescription>
-                              Aktifkan jika Anda mengerjakan puasa (wajib atau sunnah) selama masa darah berhenti di tengah rangkaian haid. Jika ya, puasa tersebut tidak sah dan wajib diqodlo.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value ?? false}
-                              onCheckedChange={field.onChange}
-                              data-testid="switch-berpuasa-jeda"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
 
                 <hr className="border-muted" />
 

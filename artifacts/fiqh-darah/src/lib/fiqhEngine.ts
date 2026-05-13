@@ -36,11 +36,6 @@ export interface InputUser {
    * false = bulan kedua/seterusnya (sudah tahu adat → langsung mandi, tidak ada hutang penantian).
    */
   isBulanPertamaIstihadloh: boolean;
-  /**
-   * true  = user berpuasa saat darah berhenti sementara (jeda suci di tengah rangkaian haid).
-   * Jika true dan ada jeda suci, puasa tersebut tidak sah dan wajib diqodlo.
-   */
-  berpuasaSaatDarahBerhenti: boolean;
 }
 
 export interface SiklusInfo {
@@ -140,19 +135,15 @@ function kalkQodloSholatBerhenti(waktu: WaktuBerhenti): string {
   return map[waktu] ?? "";
 }
 
-function buatPeringatanJedaSuci(totalJedaJam: number, berpuasa: boolean): PeringatanJedaSuci {
-  const qodloPuasaHari = berpuasa && totalJedaJam > 0
-    ? Math.ceil(totalJedaJam / 24)
-    : undefined;
-
-  const statusPuasa = berpuasa
-    ? `Anda berpuasa selama masa berhenti sementara (${formatDurasi(totalJedaJam)}). Puasa tersebut TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari — sebab masa berhenti tersebut hakikatnya masih merupakan rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh).`
-    : `Jika Anda berpuasa selama masa berhenti sementara (${formatDurasi(totalJedaJam)}), puasa tersebut TIDAK SAH dan WAJIB DIQODLO — sebab masa berhenti tersebut hakikatnya masih merupakan rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh).`;
+function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
+  // Secara otomatis: saat darah berhenti sementara, wanita WAJIB sholat dan puasa
+  // (tidak tahu darah akan keluar lagi), sehingga ibadahnya tidak sah dan wajib diqodlo.
+  const qodloPuasaHari = totalJedaJam > 0 ? Math.ceil(totalJedaJam / 24) : undefined;
 
   return {
     totalJedaJam,
     qodloPuasaHari,
-    statusPuasa,
+    statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(totalJedaJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. Sebab masa berhenti itu secara dzahir mewajibkan puasa — namun hakikatnya masih dalam rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh), sehingga puasanya gugur.`,
     statusSholat: `Sholat yang Anda kerjakan pada masa berhenti sementara tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena Anda tidak tahu darah akan keluar kembali (mengira sudah suci). Anda juga TIDAK WAJIB MENGQODLO sholat-sholat tersebut, karena kewajiban sholat memang gugur selama masa haid.`,
   };
 }
@@ -465,7 +456,6 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     sudahSholatSebelumDarah,
     waktuBerhentiTotal,
     isBulanPertamaIstihadloh,
-    berpuasaSaatDarahBerhenti,
   } = input;
 
   const totalJamSemua = daftarFase.reduce((sum, f) => sum + jamKeFaseItem(f), 0);
@@ -566,7 +556,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
         qodloSholat: qodloBerhenti,
         hutangIbadah: "",
         peringatanJedaSuci: s.bersihDalamJam > 0
-          ? buatPeringatanJedaSuci(s.bersihDalamJam, berpuasaSaatDarahBerhenti)
+          ? buatPeringatanJedaSuci(s.bersihDalamJam)
           : undefined,
         panduanBersuci: "",
         tipeHasil: "haidl_normal",
@@ -608,7 +598,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     .filter((s) => s.tipe === "haidl_normal")
     .reduce((sum, s) => sum + s.bersihDalamJam, 0);
   const peringatanJedaSuciMulti = totalJedaJamHaidl > 0
-    ? buatPeringatanJedaSuci(totalJedaJamHaidl, berpuasaSaatDarahBerhenti)
+    ? buatPeringatanJedaSuci(totalJedaJamHaidl)
     : undefined;
 
   // Hutang only computed per-istihadloh cycle when meaningful
