@@ -71,7 +71,7 @@ export interface PeringatanJedaSuci {
  * Satu entri per hari (atau segmen parsial) dalam lini masa harian.
  * Digunakan untuk menampilkan kalender per-hari di hasil akhir.
  */
-export type HukumHari = "haid" | "istihadloh" | "ihtiyath" | "suci";
+export type HukumHari = "haid" | "nifas" | "istihadloh" | "ihtiyath" | "suci";
 
 export interface EntriHarian {
   /** Nomor hari (1-indeks, dalam konteks siklus ini) */
@@ -714,6 +714,509 @@ function analyzeSingleSiklus(
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// NIFAS ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+
+const NIFAS_MAX_JAM = 1440; // 60 hari × 24 jam
+const BERSIH_PEMISAH_JAM = 360; // 15 hari × 24 jam
+
+interface KategoriNifasResult {
+  kategori: string;
+  hukum: string;
+  nifasJamSebenarnya: number | null;
+  isLahzhotan: boolean;
+  aturanIbadah?: AturanIbadah;
+}
+
+function tentukanKategoriNifasIstihadloh(
+  statusPengalaman: StatusPengalaman,
+  isTamyiz: boolean,
+  ingatKebiasaan: IngatKebiasaan,
+  kebiasaanNifasHari: number,
+  kuatJam: number,
+): KategoriNifasResult {
+  const kuatLabel = formatDurasi(kuatJam);
+
+  if (statusPengalaman === "mubtadiah") {
+    if (isTamyiz) {
+      return {
+        kategori: "Mubtadi'ah Mumayyizah Finnifas (Golongan 1)",
+        hukum: `${kuatLabel} darah kuat adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
+        nifasJamSebenarnya: kuatJam,
+        isLahzhotan: false,
+      };
+    } else {
+      return {
+        kategori: "Mubtadi'ah Ghoiru Mumayyizah Finnifas (Golongan 2)",
+        hukum: "Nifas hanya sekejap (lahzhotan) di awal melahirkan — satu darah tidak dapat dibedakan kuat/lemahnya. Selebihnya adalah ISTIHADLOH.",
+        nifasJamSebenarnya: 24,
+        isLahzhotan: true,
+      };
+    }
+  } else {
+    if (isTamyiz) {
+      return {
+        kategori: "Mu'tadah Mumayyizah Finnifas (Golongan 3)",
+        hukum: `Hukum mengikuti Tamyiz (bukan adat lama). ${kuatLabel} darah kuat adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
+        nifasJamSebenarnya: kuatJam,
+        isLahzhotan: false,
+      };
+    } else {
+      if (ingatKebiasaan === "ingat_semua") {
+        return {
+          kategori: "Mu'tadah Ghoiru Mumayyizah Finnifas (Golongan 4)",
+          hukum: `Dikembalikan ke adat nifas terakhir. ${kebiasaanNifasHari} hari pertama adalah NIFAS. Selebihnya adalah ISTIHADLOH.`,
+          nifasJamSebenarnya: kebiasaanNifasHari * 24,
+          isLahzhotan: false,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (Mu'tadah Ghoiru Mumayyizah Finnifas)",
+            wajib: [
+              `Selama ${kebiasaanNifasHari} hari pertama (masa adat nifas): berlaku hukum nifas — haram sholat, puasa, jima', membaca Al-Qur'an, menyentuh mushaf, dan berdiam di masjid.`,
+              `Setelah masa adat ${kebiasaanNifasHari} hari selesai: wajib mandi besar (mandi wajib) segera.`,
+              "Pada hari-hari istihadloh setelah masa adat: wajib sholat dan puasa, serta halal berhubungan suami-istri — gunakan tata cara bersuci mustahadloh.",
+            ],
+            haram: [
+              `Selama ${kebiasaanNifasHari} hari pertama: sholat, puasa, jima', membaca Al-Qur'an, menyentuh mushaf, dan berdiam di masjid.`,
+            ],
+          },
+        };
+      } else if (ingatKebiasaan === "ingat_durasi") {
+        return {
+          kategori: "Mutahayyiroh Zakiroh Qodron La Waqtan Finnifas (Golongan 5)",
+          hukum: `Ingat durasi nifas (${kebiasaanNifasHari} hari), namun lupa kapan tepatnya mulai. Nifas ditetapkan ${kebiasaanNifasHari} hari pada waktu yang paling diyakini.`,
+          nifasJamSebenarnya: kebiasaanNifasHari * 24,
+          isLahzhotan: false,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (Ingat Durasi, Lupa Waktu Mulai)",
+            wajib: [
+              "Pada hari-hari yang diragukan (mungkin nifas atau suci): wajib sholat dan puasa.",
+              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
+            ],
+            haram: [
+              "Bersetubuh (jima') pada hari-hari yang diragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
+              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
+              "Berdiam di masjid pada hari-hari yang diragukan.",
+            ],
+          },
+        };
+      } else if (ingatKebiasaan === "ingat_waktu") {
+        return {
+          kategori: "Mutahayyiroh Zakiroh Waqtan La Qodron Finnifas (Golongan 6)",
+          hukum: "Ingat kapan mulai nifas, namun lupa durasi. Nifas ditetapkan hanya sekejap (lahzhotan) di awal yang diyakini. Selebihnya adalah masa Ihtiyath.",
+          nifasJamSebenarnya: 24,
+          isLahzhotan: true,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (Ingat Waktu Mulai, Lupa Durasi)",
+            wajib: [
+              "Hari pertama (sekejap lahzhotan yang diyakini awal nifas): berlaku hukum nifas penuh.",
+              "Hari-hari setelahnya yang diragukan: wajib sholat dan puasa.",
+              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
+            ],
+            haram: [
+              "Bersetubuh (jima') pada hari-hari yang diragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
+              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
+              "Berdiam di masjid pada hari-hari yang diragukan.",
+            ],
+          },
+        };
+      } else {
+        return {
+          kategori: "Mutahayyiroh Mutlaqoh Finnifas (Golongan 7)",
+          hukum: "Lupa total kapan mulai dan berapa lama nifas. Nifas ditetapkan hanya sekejap (lahzhotan) di awal melahirkan. Seluruh sisanya adalah masa Ihtiyath.",
+          nifasJamSebenarnya: 24,
+          isLahzhotan: true,
+          aturanIbadah: {
+            judul: "Aturan Ibadah Ihtiyath Penuh (Mutahayyiroh Mutlaqoh Nifas)",
+            wajib: [
+              "Wajib sholat, puasa, dan ibadah wajib lainnya — dihukumi seperti orang suci dalam hal kewajiban.",
+              "Wajib mandi besar setiap akan sholat fardlu.",
+            ],
+            haram: [
+              "Bersetubuh (jima') — haram hingga status nifas jelas.",
+              "Membaca Al-Qur'an di luar sholat.",
+              "Menyentuh atau membawa mushaf.",
+              "Berdiam di masjid (i'tikaf).",
+            ],
+          },
+        };
+      }
+    }
+  }
+}
+
+/**
+ * Lini masa harian khusus Nifas.
+ * Berbeda dari haid: label "nifas" (bukan "haid"), batas max 60 hari,
+ * jeda bersih dalam nifas = an-naqo' fi khilalin nifas.
+ */
+function buatLiniMasaHarianNifas(
+  items: FaseItem[],
+  tipeAnalisis: "nifas_normal" | "nifas_istihadloh" | "nifas_error",
+  isTamyiz: boolean,
+  ingatKebiasaan: IngatKebiasaan,
+  nifasJamSebenarnya: number | null,
+  kuatSkor: number,
+  statusPengalaman: StatusPengalaman,
+  kategoriStr: string,
+  hariMulai = 1,
+): EntriHarian[] {
+  const entri: EntriHarian[] = [];
+  let hariKe = hariMulai;
+  let cumJam = 0;
+
+  const bersihAntaraKuat: boolean[] = new Array(items.length).fill(false);
+  if (isTamyiz && tipeAnalisis === "nifas_istihadloh") {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].tipe !== "bersih") continue;
+      let prevKuat = false;
+      for (let j = i - 1; j >= 0; j--) {
+        if (items[j].tipe === "darah") { prevKuat = skorWarnaSifat(items[j] as FaseDarahItem) >= kuatSkor; break; }
+      }
+      let nextKuat = false;
+      for (let j = i + 1; j < items.length; j++) {
+        if (items[j].tipe === "darah") { nextKuat = skorWarnaSifat(items[j] as FaseDarahItem) >= kuatSkor; break; }
+      }
+      bersihAntaraKuat[i] = prevKuat && nextKuat;
+    }
+  }
+
+  for (let faseIdx = 0; faseIdx < items.length; faseIdx++) {
+    const fase = items[faseIdx];
+    const totalJamFase = jamKeFaseItem(fase);
+    if (totalJamFase === 0) continue;
+
+    const hariPenuh = Math.floor(totalJamFase / 24);
+    const sisaJam = totalJamFase % 24;
+    const jumlahSegmen = hariPenuh + (sisaJam > 0 ? 1 : 0);
+
+    for (let seg = 0; seg < jumlahSegmen; seg++) {
+      const isPartialDay = seg === jumlahSegmen - 1 && sisaJam > 0;
+      const jamSeg = isPartialDay ? sisaJam : 24;
+      const jamMulaiSeg = cumJam + seg * 24;
+
+      let hukum: HukumHari;
+      let wajibQodloPuasa = false;
+      let keterangan: string;
+      const profilTeks = kategoriStr ? `Berdasarkan profil ${kategoriStr}` : "Berdasarkan analisis hukum";
+
+      if (fase.tipe === "darah") {
+        const faseDarah = fase as FaseDarahItem;
+        const skorFase = skorWarnaSifat(faseDarah);
+
+        if (tipeAnalisis === "nifas_normal") {
+          hukum = "nifas";
+          keterangan = `Darah ${faseDarah.warna} — Nifas`;
+        } else if (tipeAnalisis === "nifas_istihadloh") {
+          if (isTamyiz) {
+            // Golongan 1 & 3: darah kuat = Nifas, darah lemah = Istihadloh
+            if (skorFase >= kuatSkor) {
+              hukum = "nifas";
+              keterangan = `Darah kuat (${faseDarah.warna}) — Nifas`;
+            } else {
+              hukum = "istihadloh";
+              keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
+            }
+          } else if (ingatKebiasaan === "lupa_semua") {
+            // Golongan 7: nifas hanya sekejap (24 jam pertama), setelahnya Ihtiyath
+            if (jamMulaiSeg < 24) {
+              hukum = "nifas";
+              keterangan = `Darah — Nifas (sekejap/lahzhotan di awal melahirkan)`;
+            } else {
+              hukum = "ihtiyath";
+              keterangan = `Darah — Masa Ihtiyath (Mutahayyiroh Mutlaqoh Nifas)`;
+            }
+          } else {
+            // Golongan 2, 4, 5, 6: dalam jendela nifasJamSebenarnya = nifas
+            if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
+              hukum = "nifas";
+              keterangan = `Darah — Nifas (dalam masa nifas hari ke-${Math.floor(jamMulaiSeg / 24) + 1})`;
+            } else {
+              if (ingatKebiasaan === "ingat_semua" || statusPengalaman === "mubtadiah") {
+                hukum = "istihadloh";
+                keterangan = `Darah — Istihadloh (setelah batas masa nifas)`;
+              } else {
+                hukum = "ihtiyath";
+                keterangan = `Darah — Masa Ihtiyath (setelah kemungkinan akhir nifas, waktu pasti tidak diketahui)`;
+              }
+            }
+          }
+        } else {
+          hukum = "istihadloh";
+          keterangan = `Darah — Istihadloh`;
+        }
+      } else {
+        // tipe === "bersih"
+        if (tipeAnalisis === "nifas_normal") {
+          // An-naqo' fi khilalin nifas: jeda bersih < 15 hari dalam nifas = nifas
+          hukum = "nifas";
+          wajibQodloPuasa = true;
+          keterangan = `Jeda bersih dalam rangkaian nifas (An-naqo' fi khilalin nifas). Masa bersih ini dihukumi NIFAS karena darah keluar kembali sebelum 15 hari suci penuh. Sholat wajib dikerjakan secara dzahir saat darah tidak terlihat, namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama nifas. Puasa hari ini TIDAK SAH dan WAJIB DIQODLO.`;
+        } else if (tipeAnalisis === "nifas_istihadloh") {
+          if (isTamyiz) {
+            // Golongan 1 & 3: bersih diapit darah kuat–kuat → Nifas
+            if (bersihAntaraKuat[faseIdx]) {
+              hukum = "nifas";
+              wajibQodloPuasa = true;
+              keterangan = `${profilTeks}: Jeda bersih ini diapit dua Darah Kuat (Kuat–Bersih–Kuat). Sesuai aturan Mumayyizah Nifas, dihukumi NIFAS. Sholat wajib dikerjakan secara dzahir, namun TIDAK SAH — TIDAK PERLU DIQODLO. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
+            } else {
+              hukum = "istihadloh";
+              keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat. Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH.`;
+            }
+          } else if (ingatKebiasaan === "lupa_semua") {
+            // Golongan 7: seluruh masa bersih = Ihtiyath
+            hukum = "ihtiyath";
+            keterangan = `${profilTeks}: Lupa total adat nifas (Mutahayyiroh Mutlaqoh). Seluruh masa bersih di sela darah dianggap masa keraguan — IHTIYATH. Wajib sholat dan puasa, wajib mandi besar setiap akan sholat fardlu. Haram jima'.`;
+          } else if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
+            // Bersih dalam rentang jatah nifas
+            const nifasHariTotal = Math.round(nifasJamSebenarnya / 24);
+            const hariIni = Math.floor(jamMulaiSeg / 24) + 1;
+            hukum = "nifas";
+            wajibQodloPuasa = true;
+            keterangan = `${profilTeks}: Jeda bersih ini masih dalam rentang jatah nifas (hari ke-${hariIni} dari ${nifasHariTotal} hari). Dihukumi NIFAS. Sholat wajib dikerjakan secara dzahir, namun TIDAK SAH — TIDAK PERLU DIQODLO. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
+          } else {
+            // Bersih di luar jendela nifas
+            if (ingatKebiasaan === "ingat_semua" || statusPengalaman === "mubtadiah") {
+              hukum = "istihadloh";
+              keterangan = `${profilTeks}: Jeda bersih di luar batas masa nifas. Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH.`;
+            } else {
+              hukum = "ihtiyath";
+              keterangan = `${profilTeks}: Jeda bersih setelah kemungkinan akhir nifas (waktu pasti tidak diketahui). IHTIYATH. Wajib sholat dan puasa, wajib mandi besar setiap akan sholat fardlu. Haram jima'.`;
+            }
+          }
+        } else {
+          hukum = "istihadloh";
+          keterangan = `Bersih — Istihadloh`;
+        }
+      }
+
+      entri.push({
+        hari: hariKe,
+        tipe: fase.tipe,
+        hukum,
+        warnaAsli: fase.tipe === "darah" ? (fase as FaseDarahItem).warna : undefined,
+        wajibQodloPuasa,
+        keterangan,
+        jamDiHari: jamSeg,
+      });
+
+      hariKe++;
+    }
+
+    cumJam += totalJamFase;
+  }
+
+  return entri;
+}
+
+/**
+ * Hutang ibadah masa penantian untuk istihadloh nifas.
+ * Penantian 60 hari (bukan 15 hari seperti haid).
+ */
+function kalkHutangIbadahNifas(
+  nifasJamSebenarnya: number | null,
+  kategori: string,
+  isBulanPertama: boolean,
+): string {
+  if (!isBulanPertama) {
+    return `Karena Anda sudah mengetahui adat nifas dari pengalaman sebelumnya, tidak diperlukan masa penantian 60 hari. Anda langsung mandi wajib begitu masa nifas berakhir. Tidak ada hutang sholat/puasa masa penantian.`;
+  }
+  if (nifasJamSebenarnya === null) {
+    return `Ini adalah pertama kali istihadloh nifas Anda. Karena durasi nifas yang sebenarnya tidak dapat dipastikan, besaran hutang ibadah tidak dapat dihitung otomatis. Anda termasuk ${kategori}. Harap berkonsultasi dengan ustadzah atau kyai setempat.`;
+  }
+
+  const penantianJam = NIFAS_MAX_JAM;
+  const istihadlohDalamPenantian = penantianJam - nifasJamSebenarnya;
+  if (istihadlohDalamPenantian <= 0) return "";
+
+  const hutangHari = istihadlohDalamPenantian / 24;
+  const hutangTeks = istihadlohDalamPenantian % 24 === 0
+    ? `${hutangHari} hari`
+    : `${hutangHari.toFixed(1)} hari (${istihadlohDalamPenantian} jam)`;
+  const nifasHari = nifasJamSebenarnya / 24;
+  const nifasTeks = nifasJamSebenarnya % 24 === 0 ? `${nifasHari} hari` : `${nifasHari.toFixed(1)} hari`;
+
+  return `Ini adalah pertama kali istihadloh nifas Anda. Karena harus menunggu 60 hari untuk memastikan status, hari-hari yang ternyata istihadloh namun terlanjur ditinggalkan wajib diqodlo'. Dari 60 hari masa penantian, yang dihukumi nifas sesungguhnya hanya ${nifasTeks}. Sisa ${hutangTeks} (hari ke-${Math.ceil(nifasJamSebenarnya / 24) + 1} s/d hari ke-60) adalah masa istihadloh yang ibadahnya Anda tinggalkan. Anda memiliki hutang sholat (dan puasa jika bertepatan Ramadhan) selama ${hutangTeks} yang wajib diqodlo'.`;
+}
+
+/**
+ * Parsing fase nifas:
+ * - Hitung jeda awal (antara melahirkan dan darah pertama)
+ * - Kelompokkan fase nifas (jeda bersih < 15 hari tetap dalam nifas)
+ * - Fase setelah jeda bersih ≥ 15 hari → haidSetelahItems (darah setelah suci = haid)
+ */
+function parseFaseNifas(daftarFase: FaseItem[]): {
+  jedaAwalJam: number;
+  nifasItems: FaseItem[];
+  haidSetelahItems: FaseItem[];
+} {
+  let jedaAwalJam = 0;
+  let firstBloodIdx = -1;
+
+  for (let i = 0; i < daftarFase.length; i++) {
+    if (daftarFase[i].tipe === "bersih") {
+      jedaAwalJam += jamKeFaseItem(daftarFase[i]);
+    } else {
+      firstBloodIdx = i;
+      break;
+    }
+  }
+
+  if (firstBloodIdx === -1) {
+    return { jedaAwalJam, nifasItems: [], haidSetelahItems: [] };
+  }
+
+  const nifasItems: FaseItem[] = [];
+  const haidSetelahItems: FaseItem[] = [];
+  let inNifas = true;
+
+  for (let i = firstBloodIdx; i < daftarFase.length; i++) {
+    const fase = daftarFase[i];
+    const jam = jamKeFaseItem(fase);
+
+    if (!inNifas) {
+      haidSetelahItems.push(fase);
+      continue;
+    }
+
+    if (fase.tipe === "bersih" && jam >= BERSIH_PEMISAH_JAM) {
+      // Bersih ≥ 15 hari = suci penuh → darah setelahnya adalah haid
+      inNifas = false;
+    } else {
+      nifasItems.push(fase);
+    }
+  }
+
+  return { jedaAwalJam, nifasItems, haidSetelahItems };
+}
+
+/**
+ * Analisis satu siklus nifas (setelah parseFaseNifas).
+ */
+function analyzeSiklusNifas(
+  nifasItems: FaseItem[],
+  statusPengalaman: StatusPengalaman,
+  ingatKebiasaan: IngatKebiasaan,
+  kebiasaanNifasHari: number,
+): {
+  tipe: "nifas_normal" | "nifas_istihadloh" | "nifas_error";
+  totalJamSiklus: number;
+  darahJam: number;
+  bersihJam: number;
+  bersihDalamNifasJam: number;
+  kategori: string;
+  hukum: string;
+  nifasJamSebenarnya: number | null;
+  isLahzhotan: boolean;
+  aturanIbadah?: AturanIbadah;
+  liniMasaHarian: EntriHarian[];
+} {
+  const darahFases = nifasItems.filter((f): f is FaseDarahItem => f.tipe === "darah");
+  const bersihFases = nifasItems.filter((f): f is MasaBersihItem => f.tipe === "bersih");
+  const darahJam = darahFases.reduce((s, f) => s + jamKeFaseItem(f), 0);
+  const bersihJam = bersihFases.reduce((s, f) => s + jamKeFaseItem(f), 0);
+  const totalJam = darahJam + bersihJam;
+
+  if (darahJam === 0) {
+    return {
+      tipe: "nifas_error", totalJamSiklus: totalJam, darahJam, bersihJam,
+      bersihDalamNifasJam: 0, kategori: "", hukum: "Tidak ada darah nifas.",
+      nifasJamSebenarnya: null, isLahzhotan: false, liniMasaHarian: [],
+    };
+  }
+
+  if (totalJam <= NIFAS_MAX_JAM) {
+    // NIFAS NORMAL — total ≤ 60 hari
+    const bersihNote = bersihJam > 0
+      ? ` Jeda bersih ${formatDurasi(bersihJam)} dihukumi nifas (An-naqo' fi khilalin nifas).`
+      : "";
+    return {
+      tipe: "nifas_normal",
+      totalJamSiklus: totalJam,
+      darahJam,
+      bersihJam,
+      bersihDalamNifasJam: bersihJam,
+      kategori: bersihJam > 0 ? "Nifas Normal (dengan An-naqo')" : "Nifas Normal",
+      hukum: `Total nifas ${formatDurasi(totalJam)} — dalam batas 60 hari 60 malam.${bersihNote}`,
+      nifasJamSebenarnya: totalJam,
+      isLahzhotan: false,
+      liniMasaHarian: buatLiniMasaHarianNifas(
+        nifasItems, "nifas_normal", false, ingatKebiasaan, totalJam, 0, statusPengalaman, "",
+      ),
+    };
+  }
+
+  // NIFAS ISTIHADLOH — total > 60 hari
+  let isTamyiz = false;
+  let kuatJam = 0;
+  let kuatSkor = 0;
+
+  if (darahFases.length >= 2) {
+    const skor1 = skorWarnaSifat(darahFases[0]);
+    const skor2 = skorWarnaSifat(darahFases[1]);
+    const jam1 = jamKeFaseItem(darahFases[0]);
+    if (skor1 > skor2 && jam1 >= 24 && jam1 <= NIFAS_MAX_JAM) {
+      kuatJam = jam1;
+      kuatSkor = skor1;
+      const adaFase3Kuat = darahFases.length > 2 && skorWarnaSifat(darahFases[2]) >= skor1;
+      isTamyiz = !adaFase3Kuat;
+    }
+  }
+
+  const { kategori, hukum, nifasJamSebenarnya, isLahzhotan, aturanIbadah } =
+    tentukanKategoriNifasIstihadloh(statusPengalaman, isTamyiz, ingatKebiasaan, kebiasaanNifasHari, kuatJam);
+
+  // Hitung bersihDalamNifasJam
+  let bersihDalamNifasJam = 0;
+  if (isTamyiz) {
+    const kuatRef = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
+    for (let i = 0; i < nifasItems.length; i++) {
+      if (nifasItems[i].tipe !== "bersih") continue;
+      let prevKuat = false;
+      for (let j = i - 1; j >= 0; j--) {
+        if (nifasItems[j].tipe === "darah") { prevKuat = skorWarnaSifat(nifasItems[j] as FaseDarahItem) >= kuatRef; break; }
+      }
+      let nextKuat = false;
+      for (let j = i + 1; j < nifasItems.length; j++) {
+        if (nifasItems[j].tipe === "darah") { nextKuat = skorWarnaSifat(nifasItems[j] as FaseDarahItem) >= kuatRef; break; }
+      }
+      if (prevKuat && nextKuat) bersihDalamNifasJam += jamKeFaseItem(nifasItems[i]);
+    }
+  } else if (ingatKebiasaan !== "lupa_semua" && nifasJamSebenarnya) {
+    let cumJ = 0;
+    for (const fase of nifasItems) {
+      const jam = jamKeFaseItem(fase);
+      if (fase.tipe === "bersih") {
+        bersihDalamNifasJam += Math.max(0, Math.min(cumJ + jam, nifasJamSebenarnya) - Math.min(cumJ, nifasJamSebenarnya));
+      }
+      cumJ += jam;
+    }
+  }
+
+  return {
+    tipe: "nifas_istihadloh",
+    totalJamSiklus: totalJam,
+    darahJam,
+    bersihJam,
+    bersihDalamNifasJam,
+    kategori,
+    hukum,
+    nifasJamSebenarnya,
+    isLahzhotan,
+    aturanIbadah,
+    liniMasaHarian: buatLiniMasaHarianNifas(
+      nifasItems, "nifas_istihadloh", isTamyiz, ingatKebiasaan,
+      nifasJamSebenarnya, kuatSkor, statusPengalaman, kategori,
+    ),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HAID ENGINE — parseSiklus
+// ═══════════════════════════════════════════════════════════════════════
+
 function parseSiklus(daftarFase: FaseItem[]): {
   siklus: FaseItem[][];
   adaPemisah: boolean;
@@ -779,32 +1282,101 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
   }
 
   if (kondisiAwal === "nifas") {
-    const totalNifasJam = totalJamSemua;
-    if (totalNifasJam <= 1440) {
+    const { jedaAwalJam, nifasItems, haidSetelahItems } = parseFaseNifas(daftarFase);
+
+    // Darah baru muncul setelah ≥ 15 hari suci → itu haid, bukan nifas
+    if (jedaAwalJam >= BERSIH_PEMISAH_JAM) {
       return {
-        kesimpulan: `Semua darah (${formatDurasi(totalNifasJam)}) adalah NIFAS`,
-        kategori: "Nifas Normal",
-        hukumHaidl: "",
+        kesimpulan: "Darah Haid (bukan Nifas)",
+        kategori: "Haid setelah suci sempurna",
+        hukumHaidl: `Darah baru keluar setelah ${formatDurasi(jedaAwalJam)} dari melahirkan — melampaui batas 15 hari suci. Darah ini BUKAN nifas, melainkan dihukumi HAID (jika memenuhi syarat minimal 24 jam dan maksimal 15 hari).`,
         hukumIstihadloh: "",
         qodloSholatMulai: qodloMulai,
         qodloSholat: qodloBerhenti,
         hutangIbadah: "",
         panduanBersuci: "",
-        tipeHasil: "nifas",
+        tipeHasil: "haidl_normal",
       };
-    } else {
+    }
+
+    if (nifasItems.length === 0 || !nifasItems.some((f) => f.tipe === "darah")) {
       return {
-        kesimpulan: "Istihadloh Nifas (darah melebihi 60 hari)",
-        kategori: "Nifas Istihadloh",
+        kesimpulan: "Tidak ada darah nifas",
+        kategori: "",
         hukumHaidl: "",
-        hukumIstihadloh: "Darah melampaui 60 hari. Hukum dikembalikan pada adat nifas sebelumnya atau setetes darah pertama.",
+        hukumIstihadloh: "Tidak ditemukan fase darah nifas yang valid. Pastikan Anda menandai minimal 1 hari darah.",
         qodloSholatMulai: "",
         qodloSholat: "",
         hutangIbadah: "",
-        panduanBersuci: PANDUAN_BERSUCI,
-        tipeHasil: "istihadloh",
+        panduanBersuci: "",
+        tipeHasil: "error",
       };
     }
+
+    const hasilNifas = analyzeSiklusNifas(nifasItems, statusPengalaman, ingatKebiasaan, kebiasaanHaidHari);
+    const haidSetelahNote = haidSetelahItems.length > 0
+      ? " Setelah masa suci ≥ 15 hari, darah berikutnya dapat dihukumi haid (perlu analisis terpisah)."
+      : "";
+
+    if (hasilNifas.tipe === "nifas_normal") {
+      const peringatanAnNaqo: PeringatanJedaSuci | undefined = hasilNifas.bersihDalamNifasJam > 0
+        ? {
+            totalJedaJam: hasilNifas.bersihDalamNifasJam,
+            qodloPuasaHari: Math.ceil(hasilNifas.bersihDalamNifasJam / 24),
+            tipeKasus: "haidl_normal",
+            statusPuasa: `Puasa yang Anda kerjakan selama jeda bersih (${formatDurasi(hasilNifas.bersihDalamNifasJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${Math.ceil(hasilNifas.bersihDalamNifasJam / 24)} hari. Sebab masa bersih tersebut secara hukum dihukumi NIFAS (An-naqo' fi khilalin nifas) — darah keluar kembali sebelum 15 hari suci penuh terpenuhi.`,
+            statusSholat: `Sholat yang Anda kerjakan pada masa bersih sementara tersebut TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena secara dzahir wajib sholat saat darah tidak terlihat. Sholat tersebut TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama nifas.`,
+          }
+        : undefined;
+
+      return {
+        kesimpulan: `Semua darah (${formatDurasi(hasilNifas.totalJamSiklus)}) adalah NIFAS`,
+        kategori: hasilNifas.kategori,
+        hukumHaidl: hasilNifas.hukum + haidSetelahNote,
+        hukumIstihadloh: "",
+        qodloSholatMulai: qodloMulai,
+        qodloSholat: qodloBerhenti,
+        hutangIbadah: "",
+        peringatanJedaSuci: peringatanAnNaqo,
+        panduanBersuci: "",
+        tipeHasil: "nifas",
+        liniMasaHarian: hasilNifas.liniMasaHarian.length > 0 ? hasilNifas.liniMasaHarian : undefined,
+      };
+    }
+
+    // Nifas Istihadloh (total > 60 hari)
+    const hutangNifas = kalkHutangIbadahNifas(
+      hasilNifas.nifasJamSebenarnya,
+      hasilNifas.kategori,
+      isBulanPertamaIstihadloh,
+    );
+
+    let peringatanIstNifas: PeringatanJedaSuci | undefined;
+    if (hasilNifas.bersihDalamNifasJam > 0) {
+      const p = hasilNifas.kategori.includes("Mumayyizah")
+        ? buatPeringatanJedaSuciIstihadloh(hasilNifas.bersihDalamNifasJam, "mumayyizah")
+        : buatPeringatanJedaSuciIstihadloh(hasilNifas.bersihDalamNifasJam, "adat_haid");
+      peringatanIstNifas = {
+        ...p,
+        statusPuasa: p.statusPuasa.replace(/haid/gi, "nifas"),
+        statusSholat: p.statusSholat.replace(/haid/gi, "nifas"),
+      };
+    }
+
+    return {
+      kesimpulan: `Istihadloh Nifas (total ${formatDurasi(hasilNifas.totalJamSiklus)} — melebihi batas maksimal nifas 60 hari 60 malam)`,
+      kategori: hasilNifas.kategori,
+      hukumHaidl: "",
+      hukumIstihadloh: hasilNifas.hukum + haidSetelahNote,
+      qodloSholatMulai: qodloMulai,
+      qodloSholat: qodloBerhenti,
+      hutangIbadah: hutangNifas,
+      peringatanJedaSuci: peringatanIstNifas,
+      aturanIbadah: hasilNifas.aturanIbadah,
+      panduanBersuci: PANDUAN_BERSUCI,
+      tipeHasil: "istihadloh",
+      liniMasaHarian: hasilNifas.liniMasaHarian.length > 0 ? hasilNifas.liniMasaHarian : undefined,
+    };
   }
 
   const { siklus, adaPemisah } = parseSiklus(daftarFase);

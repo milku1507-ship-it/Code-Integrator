@@ -75,7 +75,7 @@ const step3Schema = z
       ["ingat_semua", "lupa_semua", "ingat_durasi", "ingat_waktu"],
       { required_error: "Pilih status kebiasaan" },
     ),
-    kebiasaanHaidHari: z.coerce.number().min(0).max(15).optional(),
+    kebiasaanHaidHari: z.coerce.number().min(0).max(60).optional(),
   })
   .refine(
     (data) => {
@@ -193,10 +193,12 @@ function KalenderInputGrid({
   harian,
   onChange,
   maxDays,
+  kondisiAwal,
 }: {
   harian: Record<number, StatusHariInput>;
   onChange: (h: Record<number, StatusHariInput>) => void;
   maxDays: number;
+  kondisiAwal?: "haidl" | "nifas";
 }) {
   const cycle = (day: number) => {
     const cur = harian[day];
@@ -272,11 +274,20 @@ function KalenderInputGrid({
             <span className="font-medium text-emerald-700 dark:text-emerald-400">Bersih:</span>
             <span className="font-bold text-emerald-700 dark:text-emerald-400">{totalBersih} hari</span>
           </div>
-          {totalDays > 15 && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
-              <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 15 hari — akan dianalisis sebagai Mustahadloh</span>
-            </div>
+          {kondisiAwal === "nifas" ? (
+            totalDays > 60 && (
+              <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
+                <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 60 hari — akan dianalisis sebagai Istihadloh Nifas</span>
+              </div>
+            )
+          ) : (
+            totalDays > 15 && (
+              <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
+                <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 15 hari — akan dianalisis sebagai Mustahadloh</span>
+              </div>
+            )
           )}
         </div>
       ) : (
@@ -301,6 +312,14 @@ const HUKUM_CONFIG: Record<HukumHari, {
     textClass: "text-rose-800 dark:text-rose-200",
     borderClass: "border-rose-300 dark:border-rose-700",
     dotClass: "bg-rose-500",
+  },
+  nifas: {
+    label: "Nifas",
+    labelRingkas: "N",
+    bgClass: "bg-teal-100 dark:bg-teal-900/40",
+    textClass: "text-teal-800 dark:text-teal-200",
+    borderClass: "border-teal-300 dark:border-teal-700",
+    dotClass: "bg-teal-500",
   },
   istihadloh: {
     label: "Istihadloh",
@@ -333,7 +352,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
   const selected = selectedHari !== null ? entri.find((e) => e.hari === selectedHari) : null;
   const qodloDays = entri.filter((e) => e.wajibQodloPuasa);
   const jumlahQodlo = qodloDays.length;
-  const bersihSuciDays = entri.filter((e) => e.tipe === "bersih" && e.hukum !== "haid" && e.hukum !== "ihtiyath");
+  const bersihSuciDays = entri.filter((e) => e.tipe === "bersih" && e.hukum !== "haid" && e.hukum !== "nifas" && e.hukum !== "ihtiyath");
   const ihtiyathDays = entri.filter((e) => e.hukum === "ihtiyath");
 
   return (
@@ -353,7 +372,12 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
         {/* ❤️ Merah — Darah Haid */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 shadow-sm">
           <span className="text-sm leading-none select-none">❤️</span>
-          Darah Haid — istirahat beribadah dulu ya
+          Darah Haid
+        </div>
+        {/* 💙 Teal — Nifas (darah & jeda bersih dalam nifas) */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 border-teal-300 dark:border-teal-700 shadow-sm">
+          <span className="text-sm leading-none select-none">💙</span>
+          Nifas / Jeda Bersih Nifas
         </div>
         {/* 🌸 Kuning — Darah Istihadloh */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-sm">
@@ -383,7 +407,8 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           const cfg = HUKUM_CONFIG[e.hukum];
           const isIhtiyath = e.hukum === "ihtiyath";
           const isBersihHaid = e.tipe === "bersih" && e.hukum === "haid";
-          const isBersihSuci = e.tipe === "bersih" && !isIhtiyath && e.hukum !== "haid";
+          const isNifas = e.hukum === "nifas";
+          const isBersihSuci = e.tipe === "bersih" && !isIhtiyath && e.hukum !== "haid" && e.hukum !== "nifas";
           const isSelected = selectedHari === e.hari;
 
           return (
@@ -395,9 +420,11 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 "relative flex flex-col items-center justify-center rounded-xl border-2 aspect-square text-center cursor-pointer transition-all shadow-sm select-none",
                 isBersihHaid
                   ? "bg-green-100 dark:bg-green-900/50 border-green-500 dark:border-green-500 text-green-900 dark:text-green-100"
-                  : isBersihSuci
-                    ? "bg-sky-100 dark:bg-sky-900/50 border-sky-400 dark:border-sky-500 text-sky-900 dark:text-sky-100"
-                    : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
+                  : isNifas
+                    ? "bg-teal-100 dark:bg-teal-900/50 border-teal-400 dark:border-teal-500 text-teal-900 dark:text-teal-100"
+                    : isBersihSuci
+                      ? "bg-sky-100 dark:bg-sky-900/50 border-sky-400 dark:border-sky-500 text-sky-900 dark:text-sky-100"
+                      : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
                 isSelected && "ring-2 ring-offset-1 ring-primary scale-110 z-10",
                 e.jamDiHari < 24 && "opacity-75",
               )}
@@ -408,7 +435,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 {e.hari}
               </span>
               <span className="text-sm leading-none select-none">
-                {isIhtiyath ? "💜" : isBersihHaid ? "💚" : isBersihSuci ? "✨" : e.hukum === "haid" ? "❤️" : "🌸"}
+                {isIhtiyath ? "💜" : isBersihHaid ? "💚" : isNifas ? "💙" : isBersihSuci ? "✨" : e.hukum === "haid" ? "❤️" : "🌸"}
               </span>
               {e.wajibQodloPuasa && (
                 <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" />
@@ -427,23 +454,27 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
       {selected && (() => {
         const selIsIhtiyath = selected.hukum === "ihtiyath";
         const selIsBersihHaid = selected.tipe === "bersih" && selected.hukum === "haid";
-        const selIsBersihSuci = selected.tipe === "bersih" && !selIsIhtiyath && selected.hukum !== "haid";
+        const selIsNifas = selected.hukum === "nifas";
+        const selIsBersihNifas = selected.tipe === "bersih" && selIsNifas;
+        const selIsBersihSuci = selected.tipe === "bersih" && !selIsIhtiyath && selected.hukum !== "haid" && !selIsNifas;
         return (
           <div className={cn(
             "rounded-xl border-2 p-4 transition-all",
             selIsBersihHaid
               ? "bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600"
-              : selIsBersihSuci
-                ? "bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600"
-                : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
+              : selIsNifas
+                ? "bg-teal-50 dark:bg-teal-950/30 border-teal-400 dark:border-teal-600"
+                : selIsBersihSuci
+                  ? "bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600"
+                  : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
           )}>
             <div className="flex items-center gap-2 mb-2">
               {selected.tipe === "bersih" ? (
                 <Wind className={cn("w-4 h-4",
-                  selIsBersihHaid ? "text-green-600" : selIsIhtiyath ? "text-violet-500" : "text-sky-500"
+                  selIsBersihHaid ? "text-green-600" : selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-sky-500"
                 )} />
               ) : (
-                <Droplets className={cn("w-4 h-4", selIsIhtiyath ? "text-violet-500" : "text-rose-600")} />
+                <Droplets className={cn("w-4 h-4", selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-rose-600")} />
               )}
               <span className="font-bold text-sm">
                 Hari ke-{selected.hari}
@@ -453,17 +484,23 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 "ml-auto text-xs font-semibold px-2 py-0.5 rounded-full",
                 selIsBersihHaid
                   ? "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
+                  : selIsBersihNifas
+                    ? "bg-teal-200 dark:bg-teal-800 text-teal-900 dark:text-teal-100"
                   : selIsBersihSuci
                     ? "bg-sky-200 dark:bg-sky-800 text-sky-900 dark:text-sky-100"
                     : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].textClass),
               )}>
                 {selIsBersihHaid
                   ? "Jeda Bersih → Haid (Q)"
+                  : selIsBersihNifas
+                    ? "Jeda Bersih → Nifas (Q)"
                   : selIsBersihSuci
                     ? "Jeda Bersih → Suci/Istihadloh (S)"
                     : selIsIhtiyath
                       ? `${selected.tipe === "bersih" ? "Bersih" : "Darah"} — Ihtiyath (I)`
-                      : `Darah — ${HUKUM_CONFIG[selected.hukum].label} (D)`}
+                      : selIsNifas
+                        ? `${selected.tipe === "bersih" ? "Bersih" : "Darah"} — Nifas (N)`
+                        : `Darah — ${HUKUM_CONFIG[selected.hukum].label} (D)`}
               </span>
             </div>
             <p className="text-sm leading-relaxed">{selected.keterangan}</p>
@@ -476,6 +513,8 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 "mt-3 rounded-lg px-3 py-2 text-xs font-medium flex items-start gap-2",
                 selIsBersihHaid
                   ? "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300"
+                  : selIsBersihNifas
+                    ? "bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300"
                   : selIsIhtiyath
                     ? "bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-300"
                     : "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300",
@@ -484,6 +523,11 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                   <>
                     <span className="inline-block w-2 h-2 rounded-full bg-rose-500 flex-shrink-0 mt-0.5" />
                     <span>Sholat wajib dikerjakan namun <strong>TIDAK SAH</strong> — tidak perlu qodlo &nbsp;|&nbsp; Puasa <strong>TIDAK SAH — wajib diqodlo</strong></span>
+                  </>
+                ) : selIsBersihNifas ? (
+                  <>
+                    <span className="inline-block w-2 h-2 rounded-full bg-teal-500 flex-shrink-0 mt-0.5" />
+                    <span>Jeda bersih dalam nifas (An-naqo') — Sholat wajib dikerjakan namun <strong>TIDAK SAH</strong> — tidak perlu qodlo &nbsp;|&nbsp; Puasa <strong>TIDAK SAH — wajib diqodlo</strong></span>
                   </>
                 ) : selIsIhtiyath ? (
                   <>
@@ -514,7 +558,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
             <div>
               <p className="text-base font-bold text-white">Kumpulan Qodlo Puasa</p>
               <p className="text-xs text-green-100 mt-0.5 leading-snug">
-                Hari-hari bersih yang secara hukum dihukumi Haid — puasa wajib diqodlo
+                Hari-hari bersih yang secara hukum dihukumi Haid/Nifas — puasa wajib diqodlo
               </p>
             </div>
           </div>
@@ -523,8 +567,8 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-b border-green-200 dark:border-green-800">
             <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
               {kategoriStr
-                ? <>Berdasarkan profil <strong>{kategoriStr}</strong>, hari-hari berikut Anda catat &lsquo;Bersih&rsquo; namun secara hukum fiqh tetap dihukumi HAID.</>
-                : "Hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi HAID."}{" "}
+                ? <>Berdasarkan profil <strong>{kategoriStr}</strong>, hari-hari berikut Anda catat &lsquo;Bersih&rsquo; namun secara hukum fiqh tetap dihukumi Haid/Nifas.</>
+                : "Hari-hari berikut Anda catat 'Bersih' namun secara hukum fiqh tetap dihukumi Haid/Nifas."}{" "}
               Di hari-hari tersebut: sholat wajib dikerjakan (karena tampak suci secara dzahir) namun{" "}
               <strong>TIDAK SAH</strong> — tidak perlu diqodlo.{" "}
               <strong>Puasa TIDAK SAH dan wajib diqodlo.</strong>
@@ -543,7 +587,7 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-green-900 dark:text-green-100 mb-0.5">
-                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi HAID
+                    Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""} — Bersih dihukumi {e.hukum === "nifas" ? "NIFAS" : "HAID"}
                   </p>
                   <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
                     {e.keterangan}
@@ -712,8 +756,12 @@ export default function Kalkulator() {
     },
   });
 
+  const isNifasMode = form1.watch("kondisiAwal") === "nifas";
+
   const onStep1Submit = (data: z.infer<typeof step1Schema>) => {
     setFormData((prev) => ({ ...prev, ...data }));
+    if (data.kondisiAwal === "nifas") setKalMaxDays(60);
+    else setKalMaxDays(30);
     setStep(2);
   };
 
@@ -921,24 +969,22 @@ export default function Kalkulator() {
                   name="statusPengalaman"
                   render={({ field }) => (
                     <FormItem className="space-y-3">
-                      <FormLabel>Status Pengalaman Haid</FormLabel>
+                      <FormLabel>
+                        {isNifasMode ? "Status Pengalaman Nifas" : "Status Pengalaman Haid"}
+                      </FormLabel>
                       <div
                         className="grid sm:grid-cols-2 gap-4"
                         data-testid="radio-pengalaman"
                       >
-                        {(
-                          [
-                            {
-                              val: "mubtadiah",
-                              label: "Mubtadi'ah",
-                              desc: "Baru pertama kali mengalami haid.",
-                            },
-                            {
-                              val: "mutadah",
-                              label: "Mu'tadah",
-                              desc: "Sudah pernah haid dan suci sebelumnya.",
-                            },
-                          ] as const
+                        {(isNifasMode
+                          ? [
+                              { val: "mubtadiah" as const, label: "Mubtadi'ah Finnifas", desc: "Baru pertama kali mengalami nifas (melahirkan)." },
+                              { val: "mutadah" as const, label: "Mu'tadah Finnifas", desc: "Sudah pernah nifas sebelumnya dan tahu kebiasaannya." },
+                            ]
+                          : [
+                              { val: "mubtadiah" as const, label: "Mubtadi'ah", desc: "Baru pertama kali mengalami haid." },
+                              { val: "mutadah" as const, label: "Mu'tadah", desc: "Sudah pernah haid dan suci sebelumnya." },
+                            ]
                         ).map(({ val, label, desc }) => (
                           <button
                             key={val}
@@ -1030,15 +1076,22 @@ export default function Kalkulator() {
           <CardContent className="pt-6 space-y-6">
             <div className="flex items-start gap-2 rounded-2xl bg-primary/6 border border-primary/15 p-4 text-sm text-foreground/80">
               <span className="text-base select-none flex-shrink-0 mt-0.5">💡</span>
-              <p>
-                Tandai setiap hari dari hari pertama darah keluar. Hari bersih di antara dua hari darah akan dianalisis sesuai hukum yang berlaku. Masa bersih <strong>≥ 15 hari</strong> berturut-turut menandakan suci penuh.
-              </p>
+              {formData.kondisiAwal === "nifas" ? (
+                <p>
+                  Tandai setiap hari dari hari pertama setelah melahirkan. Jeda bersih <strong>{"<"} 15 hari</strong> di antara dua hari darah tetap dihukumi nifas (An-naqo'). Jeda bersih <strong>≥ 15 hari</strong> menandakan suci penuh — darah setelahnya dihukumi haid. Batas maksimal nifas adalah <strong>60 hari 60 malam</strong>.
+                </p>
+              ) : (
+                <p>
+                  Tandai setiap hari dari hari pertama darah keluar. Hari bersih di antara dua hari darah akan dianalisis sesuai hukum yang berlaku. Masa bersih <strong>≥ 15 hari</strong> berturut-turut menandakan suci penuh.
+                </p>
+              )}
             </div>
 
             <KalenderInputGrid
               harian={harianInput}
               onChange={setHarianInput}
               maxDays={kalMaxDays}
+              kondisiAwal={formData.kondisiAwal}
             />
 
             {step2Error && (
@@ -1118,10 +1171,14 @@ export default function Kalkulator() {
             </Button>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-2xl select-none">💗</span>
-              <CardTitle className="text-2xl font-bold">Kebiasaan Haidmu</CardTitle>
+              <CardTitle className="text-2xl font-bold">
+                {formData.kondisiAwal === "nifas" ? "Kebiasaan Nifasmu" : "Kebiasaan Haidmu"}
+              </CardTitle>
             </div>
             <CardDescription>
-              Ceritakan kebiasaan siklus haidmu sebelumnya ya — ini membantu kami memberi panduan yang akurat 🌸
+              {formData.kondisiAwal === "nifas"
+                ? "Ceritakan kebiasaan nifas sebelumnya ya — ini membantu kami menentukan batas nifasmu yang sebenarnya 🌸"
+                : "Ceritakan kebiasaan siklus haidmu sebelumnya ya — ini membantu kami memberi panduan yang akurat 🌸"}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -1137,8 +1194,9 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Seberapa baik Anda mengingat kebiasaan haid
-                        sebelumnya?
+                        {formData.kondisiAwal === "nifas"
+                          ? "Seberapa baik Anda mengingat kebiasaan nifas sebelumnya?"
+                          : "Seberapa baik Anda mengingat kebiasaan haid sebelumnya?"}
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -1176,7 +1234,11 @@ export default function Kalkulator() {
                     name="kebiasaanHaidHari"
                     render={({ field }) => (
                       <FormItem className="animate-in fade-in zoom-in-95 duration-300">
-                        <FormLabel>Berapa hari biasanya haid Anda?</FormLabel>
+                        <FormLabel>
+                          {formData.kondisiAwal === "nifas"
+                            ? "Berapa hari biasanya nifas Anda? (maks. 60 hari)"
+                            : "Berapa hari biasanya haid Anda? (maks. 15 hari)"}
+                        </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1248,10 +1310,14 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-base font-semibold">
-                        Apakah ini pertama kali darah Anda keluar lebih dari 15 hari?
+                        {formData.kondisiAwal === "nifas"
+                          ? "Apakah ini pertama kali nifas Anda melebihi 60 hari?"
+                          : "Apakah ini pertama kali darah Anda keluar lebih dari 15 hari?"}
                       </FormLabel>
                       <FormDescription className="mb-3">
-                        Jika di bulan-bulan sebelumnya pernah terjadi hal serupa dan Anda sudah mengetahui jadwal adat atau batas darah kuat Anda, pilih "Sudah Pernah".
+                        {formData.kondisiAwal === "nifas"
+                          ? "Jika nifas sebelumnya pernah melebihi 60 hari dan Anda sudah tahu berapa hari nifas Anda yang sebenarnya, pilih \"Sudah Pernah\"."
+                          : "Jika di bulan-bulan sebelumnya pernah terjadi hal serupa dan Anda sudah mengetahui jadwal adat atau batas darah kuat Anda, pilih \"Sudah Pernah\"."}
                       </FormDescription>
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <button
@@ -1267,7 +1333,9 @@ export default function Kalkulator() {
                             Pertama Kali
                           </div>
                           <div className="text-xs text-muted-foreground leading-snug">
-                            Ini adalah kali pertama darah saya keluar lebih dari 15 hari — saya belum tahu kapan seharusnya berhenti.
+                            {formData.kondisiAwal === "nifas"
+                              ? "Ini pertama kali nifas saya lebih dari 60 hari — saya belum tahu berapa hari nifas saya yang sebenarnya."
+                              : "Ini adalah kali pertama darah saya keluar lebih dari 15 hari — saya belum tahu kapan seharusnya berhenti."}
                           </div>
                         </button>
                         <button
@@ -1283,7 +1351,9 @@ export default function Kalkulator() {
                             Sudah Pernah
                           </div>
                           <div className="text-xs text-muted-foreground leading-snug">
-                            Bulan sebelumnya sudah pernah terjadi — saya sudah tahu jadwal adat atau batas darah kuat saya.
+                            {formData.kondisiAwal === "nifas"
+                              ? "Nifas sebelumnya sudah pernah melebihi 60 hari — saya sudah tahu berapa hari nifas saya yang sebenarnya."
+                              : "Bulan sebelumnya sudah pernah terjadi — saya sudah tahu jadwal adat atau batas darah kuat saya."}
                           </div>
                         </button>
                       </div>
@@ -1292,7 +1362,9 @@ export default function Kalkulator() {
                         <div className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3 text-xs text-emerald-800 dark:text-emerald-300">
                           <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                           <span>
-                            Karena Anda sudah mengetahui adat/batas darah, Anda <strong>langsung mandi wajib</strong> saat masa haid berakhir — tanpa perlu menunggu 15 hari. <strong>Tidak ada hutang sholat masa penantian.</strong>
+                            {formData.kondisiAwal === "nifas"
+                              ? <>Karena Anda sudah mengetahui durasi nifas yang sebenarnya, Anda <strong>langsung mandi wajib</strong> saat masa nifas berakhir — tanpa perlu menunggu 60 hari. <strong>Tidak ada hutang sholat masa penantian.</strong></>
+                              : <>Karena Anda sudah mengetahui adat/batas darah, Anda <strong>langsung mandi wajib</strong> saat masa haid berakhir — tanpa perlu menunggu 15 hari. <strong>Tidak ada hutang sholat masa penantian.</strong></>}
                           </span>
                         </div>
                       )}
@@ -1300,7 +1372,9 @@ export default function Kalkulator() {
                         <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-3 text-xs text-orange-800 dark:text-orange-300">
                           <TriangleAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                           <span>
-                            Karena ini pertama kali, Anda harus menunggu 15 hari dulu untuk memastikan status. Hari-hari istihadloh yang terlanjur ditinggalkan tanpa ibadah akan dihitung sebagai <strong>hutang qodlo</strong>.
+                            {formData.kondisiAwal === "nifas"
+                              ? <>Karena ini pertama kali, Anda harus menunggu 60 hari dulu untuk memastikan status nifas. Hari-hari istihadloh nifas yang terlanjur ditinggalkan tanpa ibadah akan dihitung sebagai <strong>hutang qodlo</strong>.</>
+                              : <>Karena ini pertama kali, Anda harus menunggu 15 hari dulu untuk memastikan status. Hari-hari istihadloh yang terlanjur ditinggalkan tanpa ibadah akan dihitung sebagai <strong>hutang qodlo</strong>.</>}
                           </span>
                         </div>
                       )}
