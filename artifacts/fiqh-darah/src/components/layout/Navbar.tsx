@@ -12,11 +12,11 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md shadow-sm shadow-primary/5">
+    <nav className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/90 backdrop-blur-md shadow-sm shadow-primary/5">
       <div className="container mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5" data-testid="nav-brand">
-          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center ring-1 ring-primary/20">
-            <span className="text-primary font-bold text-base leading-none">F</span>
+          <div className="w-8 h-8 rounded-full bg-primary/12 flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+            <span className="text-lg leading-none select-none">🌸</span>
           </div>
           <span className="font-semibold text-base tracking-tight text-foreground">Fiqh Darah</span>
         </Link>
@@ -31,8 +31,8 @@ export function Navbar() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-primary/12 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                    : "text-muted-foreground hover:bg-primary/8 hover:text-foreground"
                 )}
               >
                 <item.icon className="w-4 h-4" />

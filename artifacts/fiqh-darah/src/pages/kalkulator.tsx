@@ -164,26 +164,26 @@ const STATUS_INPUT_CONFIG: Record<StatusHariInput, {
   dot: string;
 }> = {
   kuat: {
-    label: "Darah Kuat",
-    singkat: "K",
+    label: "Darah Kuat ❤️",
+    singkat: "❤️",
     bg: "bg-rose-100 dark:bg-rose-900/50",
-    border: "border-rose-500 dark:border-rose-600",
+    border: "border-rose-400 dark:border-rose-600",
     text: "text-rose-900 dark:text-rose-100",
-    dot: "bg-rose-600",
+    dot: "bg-rose-500",
   },
   lemah: {
-    label: "Darah Lemah",
-    singkat: "L",
+    label: "Darah Lemah 🩸",
+    singkat: "🩸",
     bg: "bg-amber-100 dark:bg-amber-900/50",
-    border: "border-amber-500 dark:border-amber-600",
+    border: "border-amber-400 dark:border-amber-600",
     text: "text-amber-900 dark:text-amber-100",
     dot: "bg-amber-500",
   },
   bersih: {
-    label: "Bersih / Suci",
-    singkat: "B",
+    label: "Bersih / Suci ✨",
+    singkat: "✨",
     bg: "bg-emerald-100 dark:bg-emerald-900/50",
-    border: "border-emerald-500 dark:border-emerald-600",
+    border: "border-emerald-400 dark:border-emerald-600",
     text: "text-emerald-900 dark:text-emerald-100",
     dot: "bg-emerald-500",
   },
@@ -252,7 +252,7 @@ function KalenderInputGrid({
               )}
             >
               <span className="text-[9px] font-medium leading-none mb-0.5 opacity-70">{day}</span>
-              <span className="text-[11px] font-bold leading-none">{s ? STATUS_INPUT_CONFIG[s].singkat : "·"}</span>
+              <span className="text-sm leading-none">{s ? STATUS_INPUT_CONFIG[s].singkat : "·"}</span>
             </button>
           );
         })}
@@ -350,30 +350,30 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
 
       {/* Legenda */}
       <div className="flex flex-wrap gap-2">
-        {/* D merah — Darah Haid */}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-rose-500" />
-          <span className="font-bold">D</span> — Darah Haid (sholat & puasa haram)
+        {/* ❤️ Merah — Darah Haid */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 shadow-sm">
+          <span className="text-sm leading-none select-none">❤️</span>
+          Darah Haid — istirahat beribadah dulu ya
         </div>
-        {/* D kuning — Darah Istihadloh */}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-500" />
-          <span className="font-bold">D</span> — Darah Istihadloh (ibadah SAH, tata cara khusus)
+        {/* 🌸 Kuning — Darah Istihadloh */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-sm">
+          <span className="text-sm leading-none select-none">🌸</span>
+          Darah Istihadloh — ibadah tetap wajib
         </div>
-        {/* Q hijau — Bersih dihukumi Haid */}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-400 dark:border-green-600">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-600" />
-          <span className="font-bold">Q</span> — Jeda Bersih = Haid (sholat tidak sah, puasa qodlo)
+        {/* 💚 Hijau — Jeda Bersih dihukumi Haid */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-400 dark:border-green-600 shadow-sm">
+          <span className="text-sm leading-none select-none">💚</span>
+          Jeda Bersih = Haid — puasanya perlu diganti ya ✨
         </div>
-        {/* S biru — Bersih dihukumi Suci */}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-400 dark:border-sky-600">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-sky-500" />
-          <span className="font-bold">S</span> — Jeda Bersih = Suci/Istihadloh (ibadah SAH)
+        {/* ✨ Biru — Jeda Bersih dihukumi Suci */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-400 dark:border-sky-600 shadow-sm">
+          <span className="text-sm leading-none select-none">✨</span>
+          Alhamdulillah, sholat &amp; puasa sah 🌸
         </div>
-        {/* I ungu — Ihtiyath */}
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700">
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-violet-500" />
-          <span className="font-bold">I</span> — Ihtiyath (masa keraguan, wajib berhati-hati)
+        {/* 💜 Ungu — Ihtiyath */}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700 shadow-sm">
+          <span className="text-sm leading-none select-none">💜</span>
+          Ihtiyath — masa keraguan, wajib hati-hati
         </div>
       </div>
 
@@ -407,8 +407,8 @@ function KalenderHarian({ entri, kategoriStr }: { entri: EntriHarian[]; kategori
               <span className="text-[10px] font-semibold leading-none opacity-60 mb-0.5">
                 {e.hari}
               </span>
-              <span className="text-xs font-bold leading-none">
-                {isIhtiyath ? "I" : isBersihHaid ? "Q" : isBersihSuci ? "S" : "D"}
+              <span className="text-sm leading-none select-none">
+                {isIhtiyath ? "💜" : isBersihHaid ? "💚" : isBersihSuci ? "✨" : e.hukum === "haid" ? "❤️" : "🌸"}
               </span>
               {e.wajibQodloPuasa && (
                 <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" />
@@ -793,17 +793,36 @@ export default function Kalkulator() {
     <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 w-full">
       {step < 5 && (
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              Langkah {step} dari 4
-            </span>
-            <span className="text-sm font-medium text-primary">
-              {Math.round((step / 4) * 100)}%
-            </span>
+          {/* Step dots */}
+          <div className="flex items-center justify-between mb-3">
+            {[
+              { n: 1, label: "Data Diri", emoji: "🌸" },
+              { n: 2, label: "Kalender",  emoji: "❤️" },
+              { n: 3, label: "Kebiasaan", emoji: "💗" },
+              { n: 4, label: "Ibadah",    emoji: "✨" },
+            ].map(({ n, label, emoji }) => (
+              <div key={n} className="flex flex-col items-center gap-1">
+                <div className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center text-base transition-all duration-300 shadow-sm select-none",
+                  step === n
+                    ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                    : step > n
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground/40",
+                )}>
+                  {step > n ? "✓" : emoji}
+                </div>
+                <span className={cn(
+                  "text-[10px] font-medium hidden sm:block transition-colors",
+                  step === n ? "text-primary" : step > n ? "text-primary/70" : "text-muted-foreground/40"
+                )}>{label}</span>
+              </div>
+            ))}
           </div>
-          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+          {/* Progress bar */}
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-500 ease-out"
+              className="h-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500 ease-out rounded-full"
               style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
@@ -811,11 +830,14 @@ export default function Kalkulator() {
       )}
 
       {step === 1 && (
-        <Card className="border-0 shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardHeader className="bg-primary/5 pb-6">
-            <CardTitle className="text-2xl font-serif">Data Dasar</CardTitle>
-            <CardDescription>
-              Informasi umum mengenai kondisi Anda saat ini.
+        <Card className="border-0 shadow-soft step-enter overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-primary/8 to-primary/3 pb-6 border-b border-primary/10">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl select-none">🌸</span>
+              <CardTitle className="text-2xl font-bold">Tentang Kamu</CardTitle>
+            </div>
+            <CardDescription className="text-sm">
+              Ceritakan kondisimu saat ini — kami siapkan panduan yang tepat untukmu 💕
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -973,23 +995,24 @@ export default function Kalkulator() {
       )}
 
       {step === 2 && (
-        <Card className="border-0 shadow-md animate-in fade-in slide-in-from-right-8 duration-300">
-          <CardHeader className="bg-primary/5 pb-6">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-rose-50/80 to-primary/3 dark:from-rose-950/20 pb-6 border-b border-primary/10">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setStep(1)}
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-2xl font-serif">
-                  Kalender Darah
-                </CardTitle>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl select-none">❤️</span>
+                  <CardTitle className="text-2xl font-bold">Kalender Harianmu</CardTitle>
+                </div>
                 <CardDescription className="mt-1">
-                  Ketuk setiap kotak untuk menandai status hari. Ketuk berulang untuk ganti status, ketuk 3× untuk hapus.
+                  Ketuk setiap kotak untuk menandai statusnya. Ketuk berulang untuk ganti, ketuk 3× untuk hapus.
                 </CardDescription>
               </div>
               <Button
@@ -1005,12 +1028,10 @@ export default function Kalkulator() {
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
-            <div className="flex items-start gap-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-300">
-              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 rounded-2xl bg-primary/6 border border-primary/15 p-4 text-sm text-foreground/80">
+              <span className="text-base select-none flex-shrink-0 mt-0.5">💡</span>
               <p>
-                Tandai setiap hari mulai dari hari pertama darah keluar.
-                Hari bersih di antara dua hari darah akan dianalisis sesuai kategori Mustahadloh.
-                Masa bersih <strong>≥ 15 hari</strong> berturut-turut memutus siklus haid.
+                Tandai setiap hari dari hari pertama darah keluar. Hari bersih di antara dua hari darah akan dianalisis sesuai hukum yang berlaku. Masa bersih <strong>≥ 15 hari</strong> berturut-turut menandakan suci penuh.
               </p>
             </div>
 
@@ -1027,23 +1048,23 @@ export default function Kalkulator() {
               </div>
             )}
 
-            <div className="rounded-xl border border-muted bg-muted/20 p-4 text-xs text-muted-foreground space-y-1.5">
-              <p className="font-semibold text-foreground text-sm">Panduan Singkat</p>
-              <div className="grid sm:grid-cols-2 gap-1">
+            <div className="rounded-2xl border border-muted bg-muted/20 p-4 text-xs text-muted-foreground space-y-2">
+              <p className="font-semibold text-foreground text-sm">🗒️ Panduan Singkat</p>
+              <div className="grid sm:grid-cols-2 gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm bg-rose-500 flex-shrink-0" />
-                  <span><strong>Darah Kuat (K)</strong> — ciri khas: hitam, kental, berbau</span>
+                  <span className="text-base select-none leading-none">❤️</span>
+                  <span><strong>Darah Kuat</strong> — hitam, kental, berbau</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm bg-amber-500 flex-shrink-0" />
-                  <span><strong>Darah Lemah (L)</strong> — ciri khas: kuning, encer, tidak berbau</span>
+                  <span className="text-base select-none leading-none">🩸</span>
+                  <span><strong>Darah Lemah</strong> — kuning, encer, tidak berbau</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm bg-emerald-500 flex-shrink-0" />
-                  <span><strong>Bersih (B)</strong> — jeda bersih di antara hari-hari darah</span>
+                  <span className="text-base select-none leading-none">✨</span>
+                  <span><strong>Bersih / Suci</strong> — jeda bersih di antara darah</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-sm bg-muted border border-dashed border-muted-foreground/30 flex-shrink-0" />
+                  <span className="text-base select-none leading-none">·</span>
                   <span><strong>Kosong</strong> — hari di luar rentang (diabaikan)</span>
                 </div>
               </div>
@@ -1085,21 +1106,22 @@ export default function Kalkulator() {
       )}
 
       {step === 3 && (
-        <Card className="border-0 shadow-md animate-in fade-in slide-in-from-right-8 duration-300">
-          <CardHeader className="bg-primary/5 pb-6">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-pink-50/80 to-primary/3 dark:from-pink-950/20 pb-6 border-b border-primary/10">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setStep(2)}
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <CardTitle className="text-2xl font-serif">
-              Kebiasaan Haid
-            </CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl select-none">💗</span>
+              <CardTitle className="text-2xl font-bold">Kebiasaan Haidmu</CardTitle>
+            </div>
             <CardDescription>
-              Informasi mengenai siklus haid Anda sebelumnya (Adat).
+              Ceritakan kebiasaan siklus haidmu sebelumnya ya — ini membantu kami memberi panduan yang akurat 🌸
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -1192,23 +1214,24 @@ export default function Kalkulator() {
       )}
 
       {step === 4 && (
-        <Card className="border-0 shadow-md animate-in fade-in slide-in-from-right-8 duration-300">
-          <CardHeader className="bg-primary/5 pb-6">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-purple-50/60 to-primary/3 dark:from-purple-950/20 pb-6 border-b border-primary/10">
             <Button
               variant="ghost"
               size="sm"
               onClick={() =>
                 setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)
               }
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <CardTitle className="text-2xl font-serif">
-              Waktu Sholat & Qodlo
-            </CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl select-none">✨</span>
+              <CardTitle className="text-2xl font-bold">Waktu Ibadah</CardTitle>
+            </div>
             <CardDescription>
-              Untuk menghitung kewajiban qodlo sholat akibat datang dan berhentinya haid.
+              Bantu kami menghitung kewajiban qodlo sholatmu — jawab sesuai yang kamu ingat ya 💕
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -1412,50 +1435,52 @@ export default function Kalkulator() {
       )}
 
       {step === 5 && hasil && (
-        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
-          <div className="flex justify-center mb-6">
-            <div
-              className={cn(
-                "w-20 h-20 rounded-full flex items-center justify-center shadow-lg",
-                hasil.tipeHasil === "haidl_normal"
-                  ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                  : hasil.tipeHasil === "nifas"
-                    ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
-                    : hasil.tipeHasil === "istihadloh"
-                      ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                      : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-              )}
-            >
-              {hasil.tipeHasil === "error" ? (
-                <AlertCircle className="w-10 h-10" />
-              ) : (
-                <Droplets className="w-10 h-10" />
-              )}
+        <div className="space-y-6 step-enter">
+          {/* Hero icon */}
+          <div className="flex justify-center mb-2">
+            <div className="relative">
+              <div
+                className={cn(
+                  "w-24 h-24 rounded-3xl flex items-center justify-center shadow-soft ring-1",
+                  hasil.tipeHasil === "haidl_normal"
+                    ? "bg-green-100 dark:bg-green-900/30 ring-green-200 dark:ring-green-800"
+                    : hasil.tipeHasil === "nifas"
+                      ? "bg-teal-100 dark:bg-teal-900/30 ring-teal-200 dark:ring-teal-800"
+                      : hasil.tipeHasil === "istihadloh"
+                        ? "bg-amber-100 dark:bg-amber-900/30 ring-amber-200 dark:ring-amber-800"
+                        : "bg-red-100 dark:bg-red-900/30 ring-red-200 dark:ring-red-800",
+                )}
+              >
+                <span className="text-4xl select-none float-blob">
+                  {hasil.tipeHasil === "error" ? "⚠️" : hasil.tipeHasil === "haidl_normal" ? "🌸" : hasil.tipeHasil === "nifas" ? "💗" : "✨"}
+                </span>
+              </div>
+              <span className="absolute -top-1 -right-1 text-xl select-none">💕</span>
             </div>
           </div>
 
           <Card
             className={cn(
-              "border-t-4 shadow-md overflow-hidden",
+              "border-t-4 shadow-soft overflow-hidden",
               hasil.tipeHasil === "haidl_normal"
-                ? "border-t-green-500"
+                ? "border-t-green-400"
                 : hasil.tipeHasil === "nifas"
-                  ? "border-t-teal-500"
+                  ? "border-t-teal-400"
                   : hasil.tipeHasil === "istihadloh"
-                    ? "border-t-amber-500"
-                    : "border-t-red-500",
+                    ? "border-t-amber-400"
+                    : "border-t-red-400",
             )}
           >
-            <CardHeader className="text-center pb-8 border-b bg-muted/20">
+            <CardHeader className="text-center pb-8 border-b bg-gradient-to-b from-muted/30 to-background">
               <CardTitle
-                className="text-3xl font-serif leading-tight mb-2"
+                className="text-2xl sm:text-3xl font-bold leading-tight mb-2"
                 data-testid="hasil-kesimpulan"
               >
                 {hasil.kesimpulan}
               </CardTitle>
               {hasil.kategori && (
                 <div
-                  className="inline-block px-3 py-1 bg-background border rounded-full text-sm font-medium text-muted-foreground shadow-sm mt-2"
+                  className="inline-block px-4 py-1.5 bg-background border border-border rounded-full text-sm font-medium text-muted-foreground shadow-sm mt-2"
                   data-testid="hasil-kategori"
                 >
                   {hasil.kategori}
