@@ -43,6 +43,10 @@ export interface SiklusInfo {
   totalJamSiklus: number;
   darahJamSiklus: number;
   bersihDalamJam: number;
+  /** Dari total bersihDalamJam, berapa jam yang jatuh dalam periode haid sesungguhnya.
+   *  Untuk haidl_normal: sama dengan bersihDalamJam (semua bersih = haid, Hukum Jam'u).
+   *  Untuk istihadloh: hanya bersih yang berada dalam jendela haidJamSebenarnya pertama. */
+  bersihDalamHaidJam: number;
   kesimpulan: string;
   hukumDetail: string;
   tipe: "haidl_normal" | "istihadloh" | "error";
@@ -145,6 +149,21 @@ function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
     qodloPuasaHari,
     statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(totalJedaJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. Sebab masa berhenti itu secara dzahir mewajibkan puasa — namun hakikatnya masih dalam rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh), sehingga puasanya gugur.`,
     statusSholat: `Sholat yang Anda kerjakan pada masa berhenti sementara tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena Anda tidak tahu darah akan keluar kembali (mengira sudah suci). Anda juga TIDAK WAJIB MENGQODLO sholat-sholat tersebut, karena kewajiban sholat memang gugur selama masa haid.`,
+  };
+}
+
+/**
+ * Varian untuk kasus istihadloh: bersih yang jatuh di dalam jendela adat haid.
+ * Alasan berbeda dari haidl_normal (bukan Hukum Jam'u 15 hari, melainkan karena
+ * masa bersih itu berada dalam periode adat haid yang ditetapkan fiqh).
+ */
+function buatPeringatanJedaSuciIstihadloh(bersihDalamHaidJam: number): PeringatanJedaSuci {
+  const qodloPuasaHari = bersihDalamHaidJam > 0 ? Math.ceil(bersihDalamHaidJam / 24) : undefined;
+  return {
+    totalJedaJam: bersihDalamHaidJam,
+    qodloPuasaHari,
+    statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(bersihDalamHaidJam)}) yang jatuh dalam periode adat haid TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. Sebab secara hukum fiqh, masa bersih yang berada di dalam jendela waktu haid tetap dihukumi haid, sehingga puasanya batal.`,
+    statusSholat: `Sholat yang Anda kerjakan di masa berhenti sementara yang jatuh dalam periode haid tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena secara dzahir Anda wajib sholat saat darah tidak terlihat. Sholat tersebut TIDAK PERLU DIQODLO, karena kewajiban sholat gugur selama masa haid.`,
   };
 }
 
@@ -344,6 +363,7 @@ function analyzeSingleSiklus(
       totalJamSiklus: totalJam,
       darahJamSiklus: darahJam,
       bersihDalamJam: bersihJam,
+      bersihDalamHaidJam: 0,
       kesimpulan: `Istihadloh — darah hanya ${formatDurasi(darahJam)} (kurang dari minimal 24 jam)`,
       hukumDetail: `Total darah ${formatDurasi(darahJam)} — kurang dari syarat minimal 24 jam (1 hari 1 malam).`,
       tipe: "error",
@@ -356,6 +376,8 @@ function analyzeSingleSiklus(
       totalJamSiklus: totalJam,
       darahJamSiklus: darahJam,
       bersihDalamJam: bersihJam,
+      // Haidl_normal: semua bersih masuk hukum haid (Hukum Jam'u, total ≤ 15 hari)
+      bersihDalamHaidJam: bersihJam,
       kesimpulan: `HAIDL NORMAL — total ${formatDurasi(totalJam)}${bersihNote}`,
       hukumDetail: `Durasi ${formatDurasi(totalJam)} memenuhi syarat haidl (minimal 24 jam, maksimal 15 hari).${bersihNote}`,
       tipe: "haidl_normal",
@@ -398,11 +420,28 @@ function analyzeSingleSiklus(
     lemahJam,
   );
 
+  // Hitung berapa jam dari fase bersih yang jatuh di dalam jendela haid sesungguhnya
+  // (fase diproses berurutan, sehingga kita bisa melacak posisi kumulatif)
+  let bersihDalamHaidJam = 0;
+  if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
+    let cumJam = 0;
+    for (const fase of items) {
+      const jam = jamKeFaseItem(fase);
+      if (fase.tipe === "bersih") {
+        const overlapStart = Math.min(cumJam, haidJamSebenarnya);
+        const overlapEnd = Math.min(cumJam + jam, haidJamSebenarnya);
+        bersihDalamHaidJam += Math.max(0, overlapEnd - overlapStart);
+      }
+      cumJam += jam;
+    }
+  }
+
   return {
     nomorSiklus,
     totalJamSiklus: totalJam,
     darahJamSiklus: darahJam,
     bersihDalamJam: bersihJam,
+    bersihDalamHaidJam,
     kesimpulan: `Istihadloh — total ${formatDurasi(totalJam)} melebihi batas 15 hari${bersihNote}`,
     hukumDetail: `${kategori}: ${hukum}`,
     tipe: "istihadloh",
@@ -581,6 +620,9 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       qodloSholatMulai: qodloMulai,
       qodloSholat: qodloBerhenti,
       hutangIbadah: hutang,
+      peringatanJedaSuci: s.bersihDalamHaidJam > 0
+        ? buatPeringatanJedaSuciIstihadloh(s.bersihDalamHaidJam)
+        : undefined,
       aturanIbadah: s.aturanIbadah,
       panduanBersuci: PANDUAN_BERSUCI,
       tipeHasil: "istihadloh",
@@ -593,10 +635,9 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
   const allHaidl = daftarSiklusInfo.every((s) => s.tipe === "haidl_normal");
   const totalDarahJam = daftarSiklusInfo.reduce((sum, s) => sum + s.darahJamSiklus, 0);
 
-  // Peringatan jeda suci di dalam siklus haidl normal
+  // Peringatan jeda suci: jumlahkan bersihDalamHaidJam dari semua siklus
   const totalJedaJamHaidl = daftarSiklusInfo
-    .filter((s) => s.tipe === "haidl_normal")
-    .reduce((sum, s) => sum + s.bersihDalamJam, 0);
+    .reduce((sum, s) => sum + s.bersihDalamHaidJam, 0);
   const peringatanJedaSuciMulti = totalJedaJamHaidl > 0
     ? buatPeringatanJedaSuci(totalJedaJamHaidl)
     : undefined;
