@@ -54,6 +54,12 @@ export interface AturanIbadah {
   haram: string[];
 }
 
+export interface PeringatanJedaSuci {
+  totalJedaJam: number;
+  statusPuasa: string;
+  statusSholat: string;
+}
+
 export interface HasilAnalisis {
   kesimpulan: string;
   kategori: string;
@@ -62,6 +68,7 @@ export interface HasilAnalisis {
   qodloSholatMulai: string;
   qodloSholat: string;
   hutangIbadah: string;
+  peringatanJedaSuci?: PeringatanJedaSuci;
   aturanIbadah?: AturanIbadah;
   panduanBersuci: string;
   tipeHasil: "haidl_normal" | "nifas" | "istihadloh" | "error";
@@ -125,6 +132,14 @@ function kalkQodloSholatBerhenti(waktu: WaktuBerhenti): string {
     maghrib: "Wajib mengqodlo sholat MAGHRIB.",
   };
   return map[waktu] ?? "";
+}
+
+function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
+  return {
+    totalJedaJam,
+    statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(totalJedaJam)}) TIDAK SAH dan WAJIB DIQODLO. Sebab masa berhenti tersebut hakikatnya masih merupakan rangkaian masa haid (Hukum Jam'u — darah keluar lagi sebelum 15 hari suci penuh).`,
+    statusSholat: `Sholat yang Anda kerjakan pada masa berhenti sementara tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena Anda tidak tahu darah akan keluar kembali (mengira sudah suci). Anda juga TIDAK WAJIB MENGQODLO sholat-sholat tersebut, karena kewajiban sholat memang gugur selama masa haid.`,
+  };
 }
 
 const PANDUAN_BERSUCI = `Tata Cara Bersuci bagi Wanita Mustahadloh:
@@ -534,6 +549,9 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
         qodloSholatMulai: qodloMulai,
         qodloSholat: qodloBerhenti,
         hutangIbadah: "",
+        peringatanJedaSuci: s.bersihDalamJam > 0
+          ? buatPeringatanJedaSuci(s.bersihDalamJam)
+          : undefined,
         panduanBersuci: "",
         tipeHasil: "haidl_normal",
         daftarSiklus: hasBersihItem ? daftarSiklusInfo : undefined,
@@ -568,6 +586,14 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
   const anyIstihadloh = daftarSiklusInfo.some((s) => s.tipe === "istihadloh" || s.tipe === "error");
   const allHaidl = daftarSiklusInfo.every((s) => s.tipe === "haidl_normal");
   const totalDarahJam = daftarSiklusInfo.reduce((sum, s) => sum + s.darahJamSiklus, 0);
+
+  // Peringatan jeda suci di dalam siklus haidl normal
+  const totalJedaJamHaidl = daftarSiklusInfo
+    .filter((s) => s.tipe === "haidl_normal")
+    .reduce((sum, s) => sum + s.bersihDalamJam, 0);
+  const peringatanJedaSuciMulti = totalJedaJamHaidl > 0
+    ? buatPeringatanJedaSuci(totalJedaJamHaidl)
+    : undefined;
 
   // Hutang only computed per-istihadloh cycle when meaningful
   let hutangMulti = "";
@@ -607,6 +633,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     qodloSholatMulai: qodloMulai,
     qodloSholat: qodloBerhenti,
     hutangIbadah: hutangMulti,
+    peringatanJedaSuci: peringatanJedaSuciMulti,
     aturanIbadah: aturanIbadahMulti,
     panduanBersuci: anyIstihadloh ? PANDUAN_BERSUCI : "",
     tipeHasil: anyIstihadloh ? "istihadloh" : "haidl_normal",

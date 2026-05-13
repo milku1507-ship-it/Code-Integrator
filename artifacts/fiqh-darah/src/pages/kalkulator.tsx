@@ -49,6 +49,7 @@ import {
   InputUser,
   HasilAnalisis,
   AturanIbadah,
+  PeringatanJedaSuci,
   FaseItem,
   FaseDarahItem,
   MasaBersihItem,
@@ -1151,6 +1152,34 @@ export default function Kalkulator() {
                     <p className="text-muted-foreground leading-relaxed">
                       {hasil.hukumHaidl}
                     </p>
+                  </div>
+                )}
+
+                {hasil.peringatanJedaSuci && (
+                  <div className="p-6 sm:p-8 bg-yellow-50/70 dark:bg-yellow-950/20 border-l-4 border-yellow-400">
+                    <h3 className="text-lg font-medium mb-4 text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
+                      <TriangleAlert className="w-5 h-5" />
+                      Peringatan: Darah Terputus-putus (Hukum Jam&apos;u)
+                    </h3>
+                    <p className="text-sm text-yellow-900/70 dark:text-yellow-200/70 mb-4 leading-relaxed">
+                      Terdeteksi masa berhenti sementara (<strong>{formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}</strong>) di antara fase-fase darah Anda. Karena total rangkaian tidak melebihi 15 hari, seluruh masa berhenti tersebut tetap dihitung sebagai haid. Perhatikan status ibadah Anda selama masa berhenti itu:
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3">
+                        <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-1">Status Puasa</p>
+                          <p className="text-sm text-foreground leading-relaxed">{hasil.peringatanJedaSuci.statusPuasa}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                        <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-1">Status Sholat</p>
+                          <p className="text-sm text-foreground leading-relaxed">{hasil.peringatanJedaSuci.statusSholat}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
