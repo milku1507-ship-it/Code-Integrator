@@ -1,0 +1,58 @@
+
+Masukan logika ketentuan ini untuk kasuk haid terputus putus melebihi batas maksimal 15 har
+
+A. Kelompok Mubtadi’ah (Baru Pertama Kali Haid)
+1. Mubtadi’ah Mumayyizah
+Kondisi: Baru pertama haid, mengeluarkan darah kuat (misal: Hitam/Merah) dan darah lemah (misal: Kuning/Keruh).
+Hukum: Darah kuat adalah Haid, darah lemah adalah Istihadloh.
+Logika Jeda Bersih: * Jeda di sela-sela darah kuat = Haid.
+Jeda di sela-sela darah lemah = Istihadloh.
+2. Mubtadi’ah Ghoiru Mumayyizah
+Kondisi: Baru pertama haid, tapi semua darah warnanya sama (atau tidak memenuhi syarat Tamyiz).
+Hukum: Haid ditetapkan 1 hari 1 malam (24 jam), sisanya (29 hari jika siklus sebulan) adalah Istihadloh.
+Logika Jeda Bersih: * Jeda di dalam 24 jam pertama = Haid.
+Jeda setelah 24 jam pertama hingga akhir bulan = Istihadloh.
+
+B. Kelompok Mu’tadah (Sudah Memiliki Kebiasaan/Adat)
+3. Mu’tadah Mumayyizah
+Kondisi: Pernah haid sebelumnya, sekarang keluar darah kuat dan lemah.
+Hukum: Mengikuti Tamyiz (warna darah), bukan adat lama. Kuat = Haid, Lemah = Istihadloh.
+Logika Jeda Bersih: Sama dengan Mubtadi’ah Mumayyizah (Jeda mengikuti sifat darah yang mengapitnya).
+4. Mu’tadah Ghoiru Mumayyizah Zakiroh Lil Adat
+Kondisi: Darah satu warna, dan dia Ingat waktu serta durasi adatnya (misal: ingat bulan lalu haid 7 hari tanggal 1).
+Hukum: Haid dikembalikan ke Adat Lama. 7 hari = Haid, sisanya = Istihadloh.
+Logika Jeda Bersih: * Jeda yang jatuh pada hari ke 1-7 (rentang adat) = Haid.
+Jeda yang jatuh setelah hari ke-7 = Istihadloh.
+5. Mu’tadah Ghoiru Mumayyizah Nasiyah Lil Adat (Mutahayyirah Mutlaqoh)
+Kondisi: Darah satu warna, dan dia Lupa Total baik durasi maupun waktu dimulainya adat.
+Hukum: Harus berhati-hati (Ihtiyath). Dianggap haid dalam hal yang dilarang (sholat tetap wajib tapi harus mandi setiap waktu), dianggap suci dalam hal ibadah.
+Logika Jeda Bersih: Seluruh masa jeda tetap dianggap masa keraguan, wajib mengikuti prosedur ibadah Mustahadloh Mutahayyirah.
+
+C. Kelompok Mutahayyirah (Wanita yang Bingung)
+6. Mutahayyirah Zakiroh Lil Adat Qodron La Waqtan
+Kondisi: Ingat durasinya (misal: 5 hari), tapi Lupa Kapan Dimulainya (apakah awal bulan atau tengah bulan).
+Hukum: Menetapkan 5 hari tersebut sebagai haid di waktu yang paling diyakini.
+Logika Jeda Bersih: Jeda dihukumi Haid jika jatuh pada durasi yang diyakini sebagai masa adatnya.
+7. Mutahayyirah Zakiroh Lil Adat Waqtan La Qodron
+Kondisi: Ingat kapan dimulainya (misal: tanggal 1), tapi Lupa Durasinya (apakah 5, 7, atau 9 hari).
+Hukum: Menetapkan tanggal 1 sebagai awal haid dengan durasi minimal (1 hari 1 malam) sebagai keyakinan, sisanya ragu-ragu sampai batas maksimal (15 hari).
+Logika Jeda Bersih: Jeda di tanggal 1 = Haid. Jeda di hari ke 2-15 = Masa keraguan.
+
+Ringkasan Logika Program untuk Integrasi Digital:
+Kategori
+Penentu Jeda (Masa Bersih)
+Kunci Logika Kode
+Mumayyizah
+Sifat Darah (Kuat/Lemah)
+if warna == kuat: Haid
+Mu'tadah Ghoiru Mumayyizah
+Jatah Adat
+if hari <= adat: Haid
+Mubtadi'ah Ghoiru Mumayyizah
+24 Jam Pertama
+if hari <= 1: Haid
+Mutahayyirah
+Keyakinan Terkecil
+Ihtiyath / Hati-hati
+Instruksi Integrasi: Bila sistem mendeteksi total_hari > 15, sistem harus meminta input profil pengguna (Mubtadi’ah/Mu’tadah). Jika Mu’tadah, sistem wajib mengambil data adat_haid bulan sebelumnya untuk memvalidasi apakah masa bersih di sela-sela darah tersebut masuk dalam "jatah haid" atau sudah masuk "wilayah istihadloh".
+

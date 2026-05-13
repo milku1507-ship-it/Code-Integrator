@@ -153,16 +153,22 @@ function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
 }
 
 /**
- * Varian untuk kasus istihadloh: bersih yang jatuh di dalam jendela adat haid.
- * Alasan berbeda dari haidl_normal (bukan Hukum Jam'u 15 hari, melainkan karena
- * masa bersih itu berada dalam periode adat haid yang ditetapkan fiqh).
+ * Varian untuk kasus istihadloh.
+ * konteks = "adat_haid"  : Bersih jatuh dalam jendela adat haid (Golongan 2, 4, 6, 7).
+ * konteks = "mumayyizah" : Bersih jatuh di antara dua fase darah kuat (Golongan 1 & 3).
  */
-function buatPeringatanJedaSuciIstihadloh(bersihDalamHaidJam: number): PeringatanJedaSuci {
+function buatPeringatanJedaSuciIstihadloh(
+  bersihDalamHaidJam: number,
+  konteks: "adat_haid" | "mumayyizah" = "adat_haid",
+): PeringatanJedaSuci {
   const qodloPuasaHari = bersihDalamHaidJam > 0 ? Math.ceil(bersihDalamHaidJam / 24) : undefined;
+  const alasan = konteks === "mumayyizah"
+    ? `Sebab masa bersih tersebut mengapit dua fase darah kuat, sehingga secara hukum fiqh dihukumi berada dalam rangkaian masa haid (mengikuti sifat darah yang mengelilinginya).`
+    : `Sebab secara hukum fiqh, masa bersih yang berada di dalam jendela waktu haid (sesuai adat yang telah ditetapkan) tetap dihukumi haid, sehingga puasanya batal.`;
   return {
     totalJedaJam: bersihDalamHaidJam,
     qodloPuasaHari,
-    statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(bersihDalamHaidJam)}) yang jatuh dalam periode adat haid TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. Sebab secara hukum fiqh, masa bersih yang berada di dalam jendela waktu haid tetap dihukumi haid, sehingga puasanya batal.`,
+    statusPuasa: `Puasa yang Anda kerjakan selama masa berhenti sementara (${formatDurasi(bersihDalamHaidJam)}) TIDAK SAH dan WAJIB DIQODLO sebanyak ${qodloPuasaHari} hari. ${alasan}`,
     statusSholat: `Sholat yang Anda kerjakan di masa berhenti sementara yang jatuh dalam periode haid tersebut juga TIDAK SAH secara hukum. Namun, Anda TIDAK BERDOSA mengerjakannya karena secara dzahir Anda wajib sholat saat darah tidak terlihat. Sholat tersebut TIDAK PERLU DIQODLO, karena kewajiban sholat gugur selama masa haid.`,
   };
 }
@@ -420,21 +426,52 @@ function analyzeSingleSiklus(
     lemahJam,
   );
 
-  // Hitung berapa jam dari fase bersih yang jatuh di dalam jendela haid sesungguhnya
-  // (fase diproses berurutan, sehingga kita bisa melacak posisi kumulatif)
+  // ═══ Klasifikasi Masa Bersih dalam Haid — per Kategori Fiqh ═══
+  //
+  // Mumayyizah (Golongan 1 & 3, isTamyiz = true):
+  //   Bersih mengikuti SIFAT darah yang mendahuluinya.
+  //   Bersih setelah darah kuat (skor ≥ skor fase pertama) = HAID.
+  //   Bersih setelah darah lemah = ISTIHADLOH.
+  //
+  // Golongan 5 (Nasiyah / Mutahayyirah lupa_semua):
+  //   Seluruh masa jeda = masa keraguan (ihtiyath).
+  //   Ibadah pada masa jeda WAJIB dikerjakan dan SAH — tidak ada qodlo.
+  //   → bersihDalamHaidJam = 0 (tidak memunculkan peringatan qodlo).
+  //   Aturan ihtiyath sudah dijelaskan di blok aturanIbadah.
+  //
+  // Non-Mumayyizah lainnya (Golongan 2, 4, 6, 7):
+  //   Berbasis jendela waktu haidJamSebenarnya.
+  //   Bersih yang jatuh dalam rentang [0, haidJamSebenarnya] = HAID.
   let bersihDalamHaidJam = 0;
-  if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
-    let cumJam = 0;
+
+  if (isTamyiz) {
+    // Golongan 1 & 3 — berbasis kekuatan darah
+    const kuatSkor = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
+    let lastBloodIsKuat = false;
     for (const fase of items) {
       const jam = jamKeFaseItem(fase);
-      if (fase.tipe === "bersih") {
-        const overlapStart = Math.min(cumJam, haidJamSebenarnya);
-        const overlapEnd = Math.min(cumJam + jam, haidJamSebenarnya);
-        bersihDalamHaidJam += Math.max(0, overlapEnd - overlapStart);
+      if (fase.tipe === "darah") {
+        lastBloodIsKuat = skorWarnaSifat(fase) >= kuatSkor;
+      } else if (fase.tipe === "bersih" && lastBloodIsKuat) {
+        bersihDalamHaidJam += jam;
       }
-      cumJam += jam;
+    }
+  } else if (ingatKebiasaan !== "lupa_semua") {
+    // Golongan 2, 4, 6, 7 — berbasis jendela waktu haidJamSebenarnya
+    if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
+      let cumJam = 0;
+      for (const fase of items) {
+        const jam = jamKeFaseItem(fase);
+        if (fase.tipe === "bersih") {
+          const overlapStart = Math.min(cumJam, haidJamSebenarnya);
+          const overlapEnd = Math.min(cumJam + jam, haidJamSebenarnya);
+          bersihDalamHaidJam += Math.max(0, overlapEnd - overlapStart);
+        }
+        cumJam += jam;
+      }
     }
   }
+  // else: Golongan 5 (lupa_semua / Nasiyah) → bersihDalamHaidJam = 0 (sudah default)
 
   return {
     nomorSiklus,
@@ -621,7 +658,10 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       qodloSholat: qodloBerhenti,
       hutangIbadah: hutang,
       peringatanJedaSuci: s.bersihDalamHaidJam > 0
-        ? buatPeringatanJedaSuciIstihadloh(s.bersihDalamHaidJam)
+        ? buatPeringatanJedaSuciIstihadloh(
+            s.bersihDalamHaidJam,
+            (s.kategoriStr ?? "").includes("Mumayyizah") ? "mumayyizah" : "adat_haid",
+          )
         : undefined,
       aturanIbadah: s.aturanIbadah,
       panduanBersuci: PANDUAN_BERSUCI,
