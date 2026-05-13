@@ -1,19 +1,21 @@
-# [Project name]
+# Fiqh Darah Calculator
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A specialized tool for Muslim women to determine the legal status of vaginal bleeding (Haidl, Nifas, and Istihadloh) according to Islamic jurisprudence (Shafi'i school).
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/fiqh-darah run dev` — run the frontend (port 5000)
+- `PORT=8080 pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string (auto-provisioned by Replit)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React 19, Vite, Tailwind CSS 4, Wouter, Framer Motion, Radix UI
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,24 +24,32 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/fiqh-darah/` — React frontend (Vite)
+- `artifacts/api-server/` — Express backend
+- `artifacts/fiqh-darah/src/lib/fiqhEngine.ts` — Core Fiqh calculation logic
+- `lib/db/src/schema/` — Drizzle ORM schema definitions
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for codegen)
+- `lib/api-client-react/` — Generated React Query hooks
+- `lib/api-zod/` — Generated Zod validation schemas
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The core Fiqh engine runs entirely client-side — no sensitive user data sent to server
+- Frontend uses port 5000 (required for Replit webview)
+- API server runs on port 8080
+- Database is Replit's built-in PostgreSQL (DATABASE_URL auto-set)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+A step-by-step calculator that classifies a woman's bleeding type (Haidl/Menstruasi, Nifas, Istihadloh) based on blood characteristics (color, thickness, odor), duration, and personal history. Provides day-by-day rulings on ritual obligations.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Language: Indonesian (app UI is in Bahasa Indonesia)
+- Islamic jurisprudence: Shafi'i school (Mazhab Syafi'i)
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Always run `pnpm install` first if node_modules are missing
+- The vite config requires both `PORT` and `BASE_PATH` env vars to be set
+- After OpenAPI spec changes, re-run codegen before using updated types
