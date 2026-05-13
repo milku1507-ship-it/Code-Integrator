@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -8,14 +8,13 @@ import {
   ArrowRight,
   AlertCircle,
   Calculator,
-  Plus,
-  Trash2,
   CheckCircle2,
   RotateCcw,
   Droplets,
   Wind,
   Info,
   TriangleAlert,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,8 +52,6 @@ import {
   EntriHarian,
   HukumHari,
   FaseItem,
-  FaseDarahItem,
-  MasaBersihItem,
   formatDurasi,
 } from "@/lib/fiqhEngine";
 import { cn } from "@/lib/utils";
@@ -70,47 +67,6 @@ const step1Schema = z.object({
   statusPengalaman: z.enum(["mubtadiah", "mutadah"], {
     required_error: "Pilih status pengalaman",
   }),
-});
-
-const faseItemSchema = z
-  .object({
-    tipe: z.enum(["darah", "bersih"]),
-    warna: z
-      .enum(["hitam", "merah", "merah kekuningan", "kuning", "keruh"])
-      .optional(),
-    kental: z.boolean().default(false),
-    bau: z.boolean().default(false),
-    hari: z.coerce
-      .number()
-      .min(0, "Tidak boleh negatif")
-      .max(100, "Jumlah hari tidak valid"),
-    jam: z.coerce
-      .number()
-      .min(0, "Tidak boleh negatif")
-      .max(23, "Maksimal 23 jam"),
-  })
-  .superRefine((data, ctx) => {
-    if (Number(data.hari) * 24 + Number(data.jam) === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Masukkan minimal 1 jam atau setengah hari",
-        path: ["hari"],
-      });
-    }
-    if (data.tipe === "darah" && !data.warna) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Pilih warna darah",
-        path: ["warna"],
-      });
-    }
-  });
-
-const step2Schema = z.object({
-  daftarFase: z
-    .array(faseItemSchema)
-    .min(1, "Minimal 1 fase")
-    .max(10, "Maksimal 10 fase"),
 });
 
 const step3Schema = z
@@ -147,8 +103,188 @@ const step4Schema = z.object({
   waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
 });
 
-type Step2FormData = z.infer<typeof step2Schema>;
-type FaseFormItem = z.infer<typeof faseItemSchema>;
+export type StatusHariInput = "kuat" | "lemah" | "bersih";
+
+function kalenderKePhase(harian: Record<number, StatusHariInput>): FaseItem[] {
+  const keys = Object.keys(harian).map(Number).sort((a, b) => a - b);
+  if (keys.length === 0) return [];
+
+  const firstDay = keys[0];
+  const lastDay = keys[keys.length - 1];
+  const phases: FaseItem[] = [];
+  let currentStatus: StatusHariInput | null = null;
+  let currentCount = 0;
+
+  for (let day = firstDay; day <= lastDay; day++) {
+    const status: StatusHariInput = harian[day] ?? "bersih";
+    if (status === currentStatus) {
+      currentCount++;
+    } else {
+      if (currentStatus !== null && currentCount > 0) {
+        if (currentStatus === "bersih") {
+          phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
+        } else {
+          phases.push({
+            tipe: "darah",
+            warna: currentStatus === "kuat" ? "hitam" : "kuning",
+            kental: false,
+            bau: false,
+            hari: currentCount,
+            jam: 0,
+          });
+        }
+      }
+      currentStatus = status;
+      currentCount = 1;
+    }
+  }
+  if (currentStatus !== null && currentCount > 0) {
+    if (currentStatus === "bersih") {
+      phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
+    } else {
+      phases.push({
+        tipe: "darah",
+        warna: currentStatus === "kuat" ? "hitam" : "kuning",
+        kental: false,
+        bau: false,
+        hari: currentCount,
+        jam: 0,
+      });
+    }
+  }
+  return phases;
+}
+
+const STATUS_INPUT_CONFIG: Record<StatusHariInput, {
+  label: string;
+  singkat: string;
+  bg: string;
+  border: string;
+  text: string;
+  dot: string;
+}> = {
+  kuat: {
+    label: "Darah Kuat",
+    singkat: "K",
+    bg: "bg-rose-100 dark:bg-rose-900/50",
+    border: "border-rose-500 dark:border-rose-600",
+    text: "text-rose-900 dark:text-rose-100",
+    dot: "bg-rose-600",
+  },
+  lemah: {
+    label: "Darah Lemah",
+    singkat: "L",
+    bg: "bg-amber-100 dark:bg-amber-900/50",
+    border: "border-amber-500 dark:border-amber-600",
+    text: "text-amber-900 dark:text-amber-100",
+    dot: "bg-amber-500",
+  },
+  bersih: {
+    label: "Bersih / Suci",
+    singkat: "B",
+    bg: "bg-emerald-100 dark:bg-emerald-900/50",
+    border: "border-emerald-500 dark:border-emerald-600",
+    text: "text-emerald-900 dark:text-emerald-100",
+    dot: "bg-emerald-500",
+  },
+};
+
+function KalenderInputGrid({
+  harian,
+  onChange,
+  maxDays,
+}: {
+  harian: Record<number, StatusHariInput>;
+  onChange: (h: Record<number, StatusHariInput>) => void;
+  maxDays: number;
+}) {
+  const cycle = (day: number) => {
+    const cur = harian[day];
+    const next: StatusHariInput | undefined =
+      !cur ? "kuat" : cur === "kuat" ? "lemah" : cur === "lemah" ? "bersih" : undefined;
+    const updated = { ...harian };
+    if (next) updated[day] = next;
+    else delete updated[day];
+    onChange(updated);
+  };
+
+  const keys = Object.keys(harian).map(Number);
+  const firstDay = keys.length > 0 ? Math.min(...keys) : null;
+  const lastDay = keys.length > 0 ? Math.max(...keys) : null;
+  const totalDays = firstDay !== null && lastDay !== null ? lastDay - firstDay + 1 : 0;
+  const totalDarah = keys.filter((k) => harian[k] === "kuat" || harian[k] === "lemah").length;
+  const totalBersih = lastDay !== null && firstDay !== null
+    ? keys.filter((k) => harian[k] === "bersih" && k >= firstDay && k <= lastDay).length
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {(Object.entries(STATUS_INPUT_CONFIG) as [StatusHariInput, typeof STATUS_INPUT_CONFIG[StatusHariInput]][]).map(([s, cfg]) => (
+          <div key={s} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border-2", cfg.bg, cfg.border, cfg.text)}>
+            <span className={cn("w-2 h-2 rounded-full", cfg.dot)} />
+            {cfg.label}
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border-2 border-muted bg-muted/40 text-muted-foreground">
+          <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />
+          Kosong (tap 3× untuk reset)
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1" data-testid="kalender-input-grid">
+        {Array.from({ length: maxDays }, (_, i) => i + 1).map((day) => {
+          const s = harian[day];
+          const cfg = s ? STATUS_INPUT_CONFIG[s] : null;
+          const isInRange = firstDay !== null && lastDay !== null && day >= firstDay && day <= lastDay;
+
+          return (
+            <button
+              key={day}
+              type="button"
+              onClick={() => cycle(day)}
+              data-testid={`hari-input-${day}`}
+              className={cn(
+                "relative flex flex-col items-center justify-center rounded-lg aspect-square border-2 text-center transition-all select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1",
+                s ? cn(cfg!.bg, cfg!.border, cfg!.text, "shadow-sm") : isInRange
+                  ? "bg-muted/30 border-dashed border-muted-foreground/30 text-muted-foreground/50"
+                  : "bg-background border-muted/40 text-muted-foreground/40 hover:border-muted-foreground/60",
+              )}
+            >
+              <span className="text-[9px] font-medium leading-none mb-0.5 opacity-70">{day}</span>
+              <span className="text-[11px] font-bold leading-none">{s ? STATUS_INPUT_CONFIG[s].singkat : "·"}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {firstDay !== null && lastDay !== null ? (
+        <div className="flex flex-wrap gap-3 text-sm">
+          <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5">
+            <span className="font-medium">Total rentang:</span>
+            <span className="font-bold">{totalDays} hari</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5">
+            <span className="font-medium text-rose-700 dark:text-rose-400">Darah:</span>
+            <span className="font-bold text-rose-700 dark:text-rose-400">{totalDarah} hari</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5">
+            <span className="font-medium text-emerald-700 dark:text-emerald-400">Bersih:</span>
+            <span className="font-bold text-emerald-700 dark:text-emerald-400">{totalBersih} hari</span>
+          </div>
+          {totalDays > 15 && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
+              <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Melebihi 15 hari — akan dianalisis sebagai Mustahadloh</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">Ketuk kotak hari untuk mulai mencatat. Ketuk berulang untuk ganti status.</p>
+      )}
+    </div>
+  );
+}
 
 const HUKUM_CONFIG: Record<HukumHari, {
   label: string;
@@ -324,6 +460,9 @@ export default function Kalkulator() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<InputUser>>({});
   const [hasil, setHasil] = useState<HasilAnalisis | null>(null);
+  const [harianInput, setHarianInput] = useState<Record<number, StatusHariInput>>({});
+  const [kalMaxDays, setKalMaxDays] = useState<30 | 60>(30);
+  const [step2Error, setStep2Error] = useState<string | null>(null);
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -332,20 +471,6 @@ export default function Kalkulator() {
       kondisiAwal: formData.kondisiAwal || "haidl",
       statusPengalaman: formData.statusPengalaman || "mubtadiah",
     },
-  });
-
-  const form2 = useForm<Step2FormData>({
-    resolver: zodResolver(step2Schema),
-    defaultValues: {
-      daftarFase: (formData.daftarFase as FaseFormItem[] | undefined) || [
-        { tipe: "darah", warna: "merah", kental: false, bau: false, hari: 1, jam: 0 },
-      ],
-    },
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control: form2.control,
-    name: "daftarFase",
   });
 
   const form3 = useForm<z.infer<typeof step3Schema>>({
@@ -371,20 +496,15 @@ export default function Kalkulator() {
     setStep(2);
   };
 
-  const onStep2Submit = (data: Step2FormData) => {
-    const converted: FaseItem[] = data.daftarFase.map((f) => {
-      if (f.tipe === "bersih") {
-        return { tipe: "bersih" as const, hari: Number(f.hari) || 0, jam: Number(f.jam) || 0 };
-      }
-      return {
-        tipe: "darah" as const,
-        warna: f.warna as FaseDarahItem["warna"],
-        kental: f.kental ?? false,
-        bau: f.bau ?? false,
-        hari: Number(f.hari) || 0,
-        jam: Number(f.jam) || 0,
-      };
-    });
+  const onStep2Submit = () => {
+    setStep2Error(null);
+    const keys = Object.keys(harianInput).map(Number);
+    const hasDarah = keys.some((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah");
+    if (!hasDarah) {
+      setStep2Error("Tandai minimal 1 hari darah (Kuat atau Lemah) pada kalender.");
+      return;
+    }
+    const converted = kalenderKePhase(harianInput);
     setFormData((prev) => ({ ...prev, daftarFase: converted }));
     if (formData.statusPengalaman === "mubtadiah") {
       setStep(4);
@@ -440,22 +560,12 @@ export default function Kalkulator() {
     setStep(1);
     setFormData({});
     setHasil(null);
+    setHarianInput({});
+    setKalMaxDays(30);
+    setStep2Error(null);
     form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
-    form2.reset({
-      daftarFase: [
-        { tipe: "darah", warna: "merah", kental: false, bau: false, hari: 1, jam: 0 },
-      ],
-    });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
     form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
-  };
-
-  const appendDarah = () => {
-    append({ tipe: "darah", warna: "merah", kental: false, bau: false, hari: 1, jam: 0 } as FaseFormItem);
-  };
-
-  const appendBersih = () => {
-    append({ tipe: "bersih", warna: undefined, kental: false, bau: false, hari: 1, jam: 0 } as unknown as FaseFormItem);
   };
 
   return (
@@ -652,285 +762,103 @@ export default function Kalkulator() {
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <CardTitle className="text-2xl font-serif">
-              Fase Darah & Masa Bersih
-            </CardTitle>
-            <CardDescription>
-              Catat fase darah dan masa bersih di sela-selanya secara berurutan.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl font-serif">
+                  Kalender Darah
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Ketuk setiap kotak untuk menandai status hari. Ketuk berulang untuk ganti status, ketuk 3× untuk hapus.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0 gap-1.5"
+                onClick={() => setKalMaxDays(kalMaxDays === 30 ? 60 : 30)}
+              >
+                {kalMaxDays === 30 ? "30" : "60"} hari
+                <RefreshCw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="mb-4 flex items-start gap-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-300">
+          <CardContent className="pt-6 space-y-6">
+            <div className="flex items-start gap-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-300">
               <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <p>
-                Masa bersih <strong>kurang dari 15 hari</strong> di antara dua fase darah akan dihitung sebagai haid (Hukum Jam'u — pendapat Ar-Roajih Syafi'iyah). Masa bersih <strong>15 hari atau lebih</strong> memutus siklus haid.
+                Tandai setiap hari mulai dari hari pertama darah keluar.
+                Hari bersih di antara dua hari darah akan dianalisis sesuai kategori Mustahadloh.
+                Masa bersih <strong>≥ 15 hari</strong> berturut-turut memutus siklus haid.
               </p>
             </div>
 
-            <Form {...form2}>
-              <form
-                onSubmit={form2.handleSubmit(onStep2Submit)}
-                className="space-y-8"
-                data-testid="form-step-2"
-              >
-                <div className="space-y-4">
-                  {fields.map((field, index) => {
-                    const tipe = form2.watch(`daftarFase.${index}.tipe`);
-                    const isBersih = tipe === "bersih";
+            <KalenderInputGrid
+              harian={harianInput}
+              onChange={setHarianInput}
+              maxDays={kalMaxDays}
+            />
 
-                    return (
-                      <div
-                        key={field.id}
-                        className={cn(
-                          "relative border rounded-2xl p-5 shadow-sm",
-                          isBersih
-                            ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                            : "bg-card border-border",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm",
-                            isBersih
-                              ? "bg-emerald-500 text-white"
-                              : "bg-primary text-primary-foreground",
-                          )}
-                        >
-                          {index + 1}
-                        </div>
+            {step2Error && (
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {step2Error}
+              </div>
+            )}
 
-                        <div className="flex items-center gap-2 mb-4 pl-5">
-                          {isBersih ? (
-                            <Wind className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Droplets className="w-4 h-4 text-primary" />
-                          )}
-                          <span
-                            className={cn(
-                              "text-sm font-semibold",
-                              isBersih
-                                ? "text-emerald-700 dark:text-emerald-400"
-                                : "text-primary",
-                            )}
-                          >
-                            {isBersih ? "Masa Bersih / Suci" : "Fase Darah"}
-                          </span>
-
-                          {fields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="ml-auto h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => remove(index)}
-                              data-testid={`btn-remove-fase-${index}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 gap-5">
-                          {!isBersih && (
-                            <FormField
-                              control={form2.control}
-                              name={`daftarFase.${index}.warna`}
-                              render={({ field: f }) => (
-                                <FormItem>
-                                  <FormLabel>Warna Darah</FormLabel>
-                                  <Select
-                                    onValueChange={f.onChange}
-                                    value={f.value ?? ""}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger
-                                        data-testid={`select-warna-${index}`}
-                                      >
-                                        <SelectValue placeholder="Pilih warna" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="hitam">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-3 h-3 rounded-full bg-black" />{" "}
-                                          Hitam
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="merah">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-3 h-3 rounded-full bg-red-600" />{" "}
-                                          Merah
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="merah kekuningan">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-3 h-3 rounded-full bg-orange-500" />{" "}
-                                          Merah Kekuningan
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="kuning">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-3 h-3 rounded-full bg-yellow-400" />{" "}
-                                          Kuning
-                                        </div>
-                                      </SelectItem>
-                                      <SelectItem value="keruh">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-3 h-3 rounded-full bg-stone-500" />{" "}
-                                          Keruh
-                                        </div>
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-
-                          <FormField
-                            control={form2.control}
-                            name={`daftarFase.${index}.hari`}
-                            render={({ field: f }) => (
-                              <FormItem className={isBersih ? "sm:col-span-1" : ""}>
-                                <FormLabel>Jumlah Hari</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    placeholder="0"
-                                    {...f}
-                                    data-testid={`input-hari-${index}`}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form2.control}
-                            name={`daftarFase.${index}.jam`}
-                            render={({ field: f }) => (
-                              <FormItem>
-                                <FormLabel>Tambah Jam (0–23)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="23"
-                                    step="1"
-                                    placeholder="0"
-                                    {...f}
-                                    data-testid={`input-jam-${index}`}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Opsional — untuk durasi yang tidak genap hari.
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {!isBersih && (
-                            <div className="sm:col-span-2 grid grid-cols-2 gap-4 border-t pt-4">
-                              <FormField
-                                control={form2.control}
-                                name={`daftarFase.${index}.kental`}
-                                render={({ field: f }) => (
-                                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                      <FormLabel>Darah Kental?</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                      <Switch
-                                        checked={f.value ?? false}
-                                        onCheckedChange={f.onChange}
-                                        data-testid={`switch-kental-${index}`}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form2.control}
-                                name={`daftarFase.${index}.bau`}
-                                render={({ field: f }) => (
-                                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                      <FormLabel>Berbau Busuk?</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                      <Switch
-                                        checked={f.value ?? false}
-                                        onCheckedChange={f.onChange}
-                                        data-testid={`switch-bau-${index}`}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          )}
-
-                          {isBersih && (
-                            <div className="sm:col-span-2">
-                              <div className="rounded-lg bg-emerald-100/60 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 text-xs text-emerald-700 dark:text-emerald-400">
-                                <strong>Catatan:</strong> Jika masa bersih ini kurang dari 15 hari, akan dihitung sebagai haid (Hukum Jam'u). Jika 15 hari atau lebih, siklus haid baru dimulai setelahnya.
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="rounded-xl border border-muted bg-muted/20 p-4 text-xs text-muted-foreground space-y-1.5">
+              <p className="font-semibold text-foreground text-sm">Panduan Singkat</p>
+              <div className="grid sm:grid-cols-2 gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm bg-rose-500 flex-shrink-0" />
+                  <span><strong>Darah Kuat (K)</strong> — ciri khas: hitam, kental, berbau</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm bg-amber-500 flex-shrink-0" />
+                  <span><strong>Darah Lemah (L)</strong> — ciri khas: kuning, encer, tidak berbau</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm bg-emerald-500 flex-shrink-0" />
+                  <span><strong>Bersih (B)</strong> — jeda bersih di antara hari-hari darah</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm bg-muted border border-dashed border-muted-foreground/30 flex-shrink-0" />
+                  <span><strong>Kosong</strong> — hari di luar rentang (diabaikan)</span>
+                </div>
+              </div>
+            </div>
 
-                {fields.length < 10 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-dashed border-2 bg-transparent hover:bg-red-50 hover:border-red-400 hover:text-red-700 dark:hover:bg-red-950/20 dark:hover:border-red-700 dark:hover:text-red-400 transition-colors"
-                      onClick={appendDarah}
-                      data-testid="btn-add-darah"
-                    >
-                      <Droplets className="w-4 h-4 mr-2" /> Tambah Darah
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-dashed border-2 bg-transparent hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700 dark:hover:bg-emerald-950/20 dark:hover:border-emerald-700 dark:hover:text-emerald-400 transition-colors"
-                      onClick={appendBersih}
-                      data-testid="btn-add-bersih"
-                    >
-                      <Wind className="w-4 h-4 mr-2" /> Tambah Masa Bersih
-                    </Button>
-                  </div>
-                )}
-
-                <div className="flex justify-between pt-4 border-t">
+            <div className="flex justify-between pt-2 border-t">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep(1)}
+              >
+                Kembali
+              </Button>
+              <div className="flex items-center gap-3">
+                {Object.keys(harianInput).length > 0 && (
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setStep(1)}
+                    size="sm"
+                    className="text-muted-foreground gap-1.5"
+                    onClick={() => { setHarianInput({}); setStep2Error(null); }}
                   >
-                    Kembali
+                    <RotateCcw className="w-3.5 h-3.5" /> Reset
                   </Button>
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="rounded-full px-8 gap-2"
-                    data-testid="btn-next-2"
-                  >
-                    Selanjutnya <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                )}
+                <Button
+                  type="button"
+                  size="lg"
+                  className="rounded-full px-8 gap-2"
+                  data-testid="btn-next-2"
+                  onClick={onStep2Submit}
+                >
+                  Analisis <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

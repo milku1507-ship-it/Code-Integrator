@@ -1,0 +1,40 @@
+Untuk memperbaiki masalah pada Replit dan memastikan logika 7 kategori Mustahadloh berjalan sesuai dengan urutan hari yang tepat, kita perlu merombak metode input. Berdasarkan **Screenshot_2026-05-13-14-21-04-95.jpg**, masalahnya adalah sistem memproses data secara terpisah (fase demi fase) sehingga kehilangan konteks "urutan hari" yang krusial bagi hukum Mustahadloh.
+
+Berikut adalah prompt perbaikan yang logis untuk mengubah metode input menjadi berbasis kalender interaktif:
+
+---
+
+## **Prompt Perbaikan: Implementasi Input Berbasis Kalender & Logika 7 Mustahadloh**
+
+**Tujuan:** Mengganti input manual "Jumlah Hari" menjadi **Kalender Interaktif** di tahap awal agar sistem mendapatkan data harian yang presisi untuk memproses hukum Mustahadloh secara detail.
+
+### **1. Perubahan Metode Input (UI/UX)**
+
+* "Ubah bagian input pada `Kalkulator.tsx`. Alih-alih mengisi angka jumlah hari secara manual, tampilkan sebuah **Grid Kalender (1-30 atau 1-60 hari)** di Tab Input."
+* "Setiap kotak tanggal dalam kalender harus bisa diklik untuk mengubah statusnya (Toggle) antara: **Darah Kuat**, **Darah Lemah**, atau **Bersih/Suci**."
+* "Pastikan urutan input ini disimpan dalam sebuah array `harian_user` yang mencatat status setiap harinya secara berurutan. Ini penting agar sistem tahu persis di hari keberapa 'Jeda Bersih' terjadi."
+
+### **2. Integrasi Logika 7 Mustahadloh (Backend Engine)**
+
+"Gunakan array `harian_user` tersebut untuk menjalankan logika pada `fiqhEngine.ts`. Jika total hari (sejak darah pertama hingga terakhir) > 15 hari, jalankan filter hukum harian berdasarkan kategori berikut:"
+
+| Kategori Mustahadloh | Perlakuan Hari Bersih (Jeda) di Kalender |
+| --- | --- |
+| **Mubtadi’ah Mumayyizah** | Jika hari 'Bersih' diapit oleh 'Darah Kuat', tandai sebagai **Haid**. Jika diapit 'Darah Lemah', tandai **Istihadloh**. |
+| **Mubtadi’ah Ghoiru Mumayyizah** | Hanya hari 'Bersih' yang jatuh pada **Hari ke-1** yang dianggap **Haid**. Sisanya **Istihadloh**. |
+| **Mu’tadah Ghoiru Mumayyizah** | Jika hari 'Bersih' $\le$ `adat_haid` (misal hari ke-5 dari adat 7 hari), maka **Haid**. Jika > `adat_haid`, maka **Istihadloh**. |
+| **Mutahayyirah (Lupa Adat)** | Setiap hari 'Bersih' harus ditandai sebagai masa **Ihtiyath** (Hati-hati). |
+
+### **3. Sinkronisasi Hasil & Visualisasi**
+
+* "Setelah user selesai mengisi kalender di Tab Input dan menekan 'Analisis', tampilkan kembali kalender tersebut di Tab Hasil dengan **Warna Indikator Hukum** yang sudah diproses."
+* "Jika sebuah hari bersih dihukumi Haid, beri warna **Hijau** di kalender tersebut dan masukkan keterangan ke dalam `kumpulan_qodlo`: *'Hari ke-x: Anda bersih, namun secara hukum dianggap Haid (Wajib Qodlo Puasa)'*."
+* "Gunakan format div dengan `border-left` hijau seperti pada instruksi sebelumnya untuk setiap penjelasan jeda bersih yang ditemukan."
+
+### **4. Validasi Teknis**
+
+"Pastikan fungsi `hitungTotalHari()` menghitung dari indeks pertama darah hingga indeks terakhir darah yang diinput di kalender, termasuk hari-hari bersih yang ada di antaranya."
+
+---
+
+**Saran Penggunaan:** Gunakan prompt ini untuk memerintah AI di Replit agar memodifikasi file `Kalkulator.tsx` dan `fiqhEngine.ts` secara sinkron. Dengan input berbasis kalender sejak awal, tidak akan ada lagi data yang "tersesat" atau tidak terdeteksi saat durasi melebihi 15 hari.
