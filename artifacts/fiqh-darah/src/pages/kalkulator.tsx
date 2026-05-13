@@ -50,6 +50,8 @@ import {
   HasilAnalisis,
   AturanIbadah,
   PeringatanJedaSuci,
+  EntriHarian,
+  HukumHari,
   FaseItem,
   FaseDarahItem,
   MasaBersihItem,
@@ -147,6 +149,176 @@ const step4Schema = z.object({
 
 type Step2FormData = z.infer<typeof step2Schema>;
 type FaseFormItem = z.infer<typeof faseItemSchema>;
+
+const HUKUM_CONFIG: Record<HukumHari, {
+  label: string;
+  labelRingkas: string;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
+  dotClass: string;
+}> = {
+  haid: {
+    label: "Haid",
+    labelRingkas: "H",
+    bgClass: "bg-rose-100 dark:bg-rose-900/40",
+    textClass: "text-rose-800 dark:text-rose-200",
+    borderClass: "border-rose-300 dark:border-rose-700",
+    dotClass: "bg-rose-500",
+  },
+  istihadloh: {
+    label: "Istihadloh",
+    labelRingkas: "I",
+    bgClass: "bg-amber-100 dark:bg-amber-900/40",
+    textClass: "text-amber-800 dark:text-amber-200",
+    borderClass: "border-amber-300 dark:border-amber-700",
+    dotClass: "bg-amber-500",
+  },
+  ihtiyath: {
+    label: "Ihtiyath",
+    labelRingkas: "?",
+    bgClass: "bg-violet-100 dark:bg-violet-900/40",
+    textClass: "text-violet-800 dark:text-violet-200",
+    borderClass: "border-violet-300 dark:border-violet-700",
+    dotClass: "bg-violet-500",
+  },
+  suci: {
+    label: "Suci",
+    labelRingkas: "S",
+    bgClass: "bg-sky-100 dark:bg-sky-900/40",
+    textClass: "text-sky-800 dark:text-sky-200",
+    borderClass: "border-sky-300 dark:border-sky-700",
+    dotClass: "bg-sky-400",
+  },
+};
+
+function KalenderHarian({ entri }: { entri: EntriHarian[] }) {
+  const [selectedHari, setSelectedHari] = useState<number | null>(null);
+  const selected = selectedHari !== null ? entri.find((e) => e.hari === selectedHari) : null;
+  const jumlahQodlo = entri.filter((e) => e.wajibQodloPuasa).length;
+
+  return (
+    <div className="p-6 sm:p-8 border-t">
+      <h3 className="text-lg font-medium mb-1 text-foreground flex items-center gap-2">
+        <Info className="w-5 h-5 text-blue-500" />
+        Kalender Harian — Rincian Status per Hari
+      </h3>
+      <p className="text-sm text-muted-foreground mb-5">
+        Ketuk hari mana saja untuk melihat keterangan detailnya.
+      </p>
+
+      {/* Legenda */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        {(Object.entries(HUKUM_CONFIG) as [HukumHari, typeof HUKUM_CONFIG[HukumHari]][]).map(([hukum, cfg]) => (
+          <div key={hukum} className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border", cfg.bgClass, cfg.textClass, cfg.borderClass)}>
+            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dotClass)} />
+            {cfg.label}
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-500" />
+          Bersih = Haid (Qodlo Puasa)
+        </div>
+      </div>
+
+      {/* Grid hari */}
+      <div className="grid grid-cols-7 gap-1.5 mb-5">
+        {entri.map((e) => {
+          const cfg = HUKUM_CONFIG[e.hukum];
+          const isBersihHaid = e.tipe === "bersih" && e.hukum === "haid";
+          const isSelected = selectedHari === e.hari;
+
+          return (
+            <button
+              key={e.hari}
+              type="button"
+              onClick={() => setSelectedHari(isSelected ? null : e.hari)}
+              className={cn(
+                "relative flex flex-col items-center justify-center rounded-xl border-2 aspect-square text-center cursor-pointer transition-all shadow-sm select-none",
+                isBersihHaid
+                  ? "bg-green-100 dark:bg-green-900/40 border-green-400 dark:border-green-600 text-green-900 dark:text-green-100"
+                  : cn(cfg.bgClass, cfg.borderClass, cfg.textClass),
+                isSelected && "ring-2 ring-offset-1 ring-primary scale-105",
+                e.jamDiHari < 24 && "opacity-70",
+              )}
+              title={e.keterangan}
+              data-testid={`hari-${e.hari}`}
+            >
+              <span className="text-[10px] font-semibold leading-none opacity-60 mb-0.5">
+                {e.hari}
+              </span>
+              <span className="text-xs font-bold leading-none">
+                {isBersihHaid ? "Q" : e.tipe === "bersih" ? "S" : e.tipe === "darah" ? "D" : "?"}
+              </span>
+              {e.wajibQodloPuasa && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" />
+              )}
+              {e.jamDiHari < 24 && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] leading-none opacity-50">
+                  {e.jamDiHari}j
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Detail hari yang dipilih */}
+      {selected && (
+        <div className={cn(
+          "rounded-xl border-2 p-4 mb-4 transition-all",
+          selected.tipe === "bersih" && selected.hukum === "haid"
+            ? "bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600"
+            : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].borderClass),
+        )}>
+          <div className="flex items-center gap-2 mb-2">
+            {selected.tipe === "bersih" ? (
+              <Wind className={cn("w-4 h-4", selected.hukum === "haid" ? "text-green-600" : "text-sky-500")} />
+            ) : (
+              <Droplets className="w-4 h-4 text-rose-600" />
+            )}
+            <span className="font-bold text-sm">
+              Hari ke-{selected.hari}
+              {selected.jamDiHari < 24 && <span className="font-normal text-xs ml-1 opacity-70">({selected.jamDiHari} jam)</span>}
+            </span>
+            <span className={cn(
+              "ml-auto text-xs font-semibold px-2 py-0.5 rounded-full",
+              selected.tipe === "bersih" && selected.hukum === "haid"
+                ? "bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100"
+                : cn(HUKUM_CONFIG[selected.hukum].bgClass, HUKUM_CONFIG[selected.hukum].textClass),
+            )}>
+              {selected.tipe === "bersih" && selected.hukum === "haid"
+                ? "Bersih → Haid"
+                : `${selected.tipe === "bersih" ? "Bersih" : "Darah"} — ${HUKUM_CONFIG[selected.hukum].label}`}
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed">{selected.keterangan}</p>
+          {selected.warnaAsli && (
+            <p className="text-xs mt-1 opacity-70">Warna darah: {selected.warnaAsli}</p>
+          )}
+        </div>
+      )}
+
+      {/* Ringkasan qodlo */}
+      {jumlahQodlo > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 px-4 py-3">
+          <div className="text-center flex-shrink-0">
+            <p className="text-2xl font-extrabold text-green-700 dark:text-green-300 leading-none">{jumlahQodlo}</p>
+            <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-0.5">hari</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-green-800 dark:text-green-200">
+              Total Hari Bersih yang Wajib Qodlo Puasa
+            </p>
+            <p className="text-xs text-green-700/80 dark:text-green-400/80 mt-0.5 leading-snug">
+              Hari-hari bersih yang ditandai hijau (Q) berada dalam masa haid secara hukum — puasa di hari-hari tersebut wajib diqodlo.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Kalkulator() {
   const [step, setStep] = useState(1);
@@ -1299,6 +1471,10 @@ export default function Kalkulator() {
                       </div>
                     )}
                   </div>
+                )}
+
+                {hasil.liniMasaHarian && hasil.liniMasaHarian.length > 0 && (
+                  <KalenderHarian entri={hasil.liniMasaHarian} />
                 )}
 
                 {hasil.qodloSholatMulai && (

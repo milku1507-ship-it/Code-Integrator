@@ -65,6 +65,29 @@ export interface PeringatanJedaSuci {
   statusSholat: string;
 }
 
+/**
+ * Satu entri per hari (atau segmen parsial) dalam lini masa harian.
+ * Digunakan untuk menampilkan kalender per-hari di hasil akhir.
+ */
+export type HukumHari = "haid" | "istihadloh" | "ihtiyath" | "suci";
+
+export interface EntriHarian {
+  /** Nomor hari (1-indeks, dalam konteks siklus ini) */
+  hari: number;
+  /** Apakah hari ini fase darah atau bersih */
+  tipe: "darah" | "bersih";
+  /** Status hukum fiqh hari ini */
+  hukum: HukumHari;
+  /** Warna darah asli (hanya untuk tipe "darah") */
+  warnaAsli?: WarnaDarah;
+  /** Apakah wajib qodlo puasa di hari ini */
+  wajibQodloPuasa: boolean;
+  /** Keterangan singkat */
+  keterangan: string;
+  /** Jumlah jam aktual di hari ini (24 untuk hari penuh, < 24 untuk parsial) */
+  jamDiHari: number;
+}
+
 export interface HasilAnalisis {
   kesimpulan: string;
   kategori: string;
@@ -79,6 +102,8 @@ export interface HasilAnalisis {
   tipeHasil: "haidl_normal" | "nifas" | "istihadloh" | "error";
   daftarSiklus?: SiklusInfo[];
   adaPemisahBersih?: boolean;
+  /** Lini masa harian: array EntriHarian untuk setiap hari dalam rangkaian */
+  liniMasaHarian?: EntriHarian[];
 }
 
 export function formatDurasi(jam: number): string {
@@ -140,8 +165,6 @@ function kalkQodloSholatBerhenti(waktu: WaktuBerhenti): string {
 }
 
 function buatPeringatanJedaSuci(totalJedaJam: number): PeringatanJedaSuci {
-  // Secara otomatis: saat darah berhenti sementara, wanita WAJIB sholat dan puasa
-  // (tidak tahu darah akan keluar lagi), sehingga ibadahnya tidak sah dan wajib diqodlo.
   const qodloPuasaHari = totalJedaJam > 0 ? Math.ceil(totalJedaJam / 24) : undefined;
 
   return {
@@ -220,7 +243,6 @@ function tentukanKategoriMushtadloh(
         haidJamSebenarnya: kuatJam,
       };
     } else {
-      // ── Mu'tadah Ghoiru Mumayyizah — 4 Sub-Kategori ──
       if (ingatKebiasaan === "ingat_semua") {
         return {
           kategori: "Mu'tadah Ghoiru Mumayyizah — Dzakiroh Li'adatiha Qodran wa Waqtan (Golongan 4)",
@@ -305,28 +327,21 @@ function tentukanKategoriMushtadloh(
 
 /**
  * Menghitung hutang ibadah masa penantian bagi wanita mustahadloh.
- *
- * Kaidah: Seorang wanita baru tahu dirinya mustahadloh setelah hari ke-15 (bulan pertama).
- * Pada bulan kedua dan seterusnya, ia sudah tahu adat/batas darahnya, sehingga
- * langsung mandi begitu masa haidnya habis — tidak ada masa penantian, tidak ada hutang.
  */
 function kalkHutangIbadah(
   haidJamSebenarnya: number | null,
   kategori: string,
   isBulanPertama: boolean,
 ): string {
-  // ── Bulan kedua dan seterusnya: tidak ada masa penantian 15 hari ──
   if (!isBulanPertama) {
     return `Karena Anda sudah mengetahui adat/batas darah dari bulan-bulan sebelumnya, tidak diperlukan masa penantian 15 hari. Anda langsung mandi wajib begitu masa haid Anda berakhir. Tidak ada hutang sholat/puasa masa penantian.`;
   }
 
-  // ── Bulan pertama: durasi haid tidak dapat dipastikan ──
   if (haidJamSebenarnya === null) {
     return `Ini adalah bulan pertama istihadloh Anda. Anda termasuk ${kategori}. Karena durasi haid yang sebenarnya tidak dapat dipastikan, besaran hutang ibadah masa penantian tidak dapat dihitung secara otomatis. Harap berkonsultasi dengan ustadzah atau kyai setempat untuk menentukan jumlah sholat/puasa yang wajib diqodlo'.`;
   }
 
-  // ── Bulan pertama: hitung hutang ──
-  const penantianJam = 360; // 15 hari
+  const penantianJam = 360;
   const istihadlohDalamPenantianJam = penantianJam - haidJamSebenarnya;
 
   if (istihadlohDalamPenantianJam <= 0) return "";
@@ -345,13 +360,161 @@ function kalkHutangIbadah(
   return `Ini adalah bulan pertama istihadloh Anda. Karena harus menunggu 15 hari untuk memastikan status, hari-hari yang ternyata istihadloh namun terlanjur ditinggalkan wajib diqodlo'. Dari 15 hari masa penantian, yang dihukumi haid sesungguhnya hanya ${haidTeks}. Sisa ${hutangTeks} (hari ke-${Math.ceil(haidJamSebenarnya / 24) + 1} s/d hari ke-15) adalah masa istihadloh yang ibadahnya Anda tinggalkan. Anda memiliki hutang sholat (dan puasa jika bertepatan Ramadhan) selama ${hutangTeks} yang wajib diqodlo'.`;
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────────────
+ * PRE-PROCESSING: Transformasi fase ke Lini Masa Harian
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * Mengubah daftar fase (darah/bersih) menjadi array EntriHarian agar
+ * posisi "Jeda Bersih" dapat divalidasi secara presisi per hari.
+ *
+ * Contoh: Fase 1 (Hitam, 3 hari) + Fase 2 (Bersih, 2 hari)
+ *   → [Darah-Haid, Darah-Haid, Darah-Haid, Bersih-Haid, Bersih-Haid]
+ */
+function buatLiniMasaHarian(
+  items: FaseItem[],
+  tipeAnalisis: "haidl_normal" | "istihadloh" | "error",
+  isTamyiz: boolean,
+  ingatKebiasaan: IngatKebiasaan,
+  haidJamSebenarnya: number | null,
+  kuatSkor: number,
+  hariMulai = 1,
+): EntriHarian[] {
+  const entri: EntriHarian[] = [];
+  let hariKe = hariMulai;
+  let cumJam = 0;
+  let lastBloodIsKuat = false;
+
+  for (const fase of items) {
+    const totalJamFase = jamKeFaseItem(fase);
+    if (totalJamFase === 0) continue;
+
+    const hariPenuh = Math.floor(totalJamFase / 24);
+    const sisaJam = totalJamFase % 24;
+    const jumlahSegmen = hariPenuh + (sisaJam > 0 ? 1 : 0);
+
+    for (let seg = 0; seg < jumlahSegmen; seg++) {
+      const isPartialDay = seg === jumlahSegmen - 1 && sisaJam > 0;
+      const jamSeg = isPartialDay ? sisaJam : 24;
+      const jamMulaiSeg = cumJam + seg * 24;
+
+      let hukum: HukumHari;
+      let wajibQodloPuasa = false;
+      let keterangan: string;
+
+      if (fase.tipe === "darah") {
+        const faseDarah = fase as FaseDarahItem;
+        const skorFase = skorWarnaSifat(faseDarah);
+
+        if (tipeAnalisis === "haidl_normal") {
+          hukum = "haid";
+          keterangan = `Darah ${faseDarah.warna} — Haid`;
+        } else if (tipeAnalisis === "istihadloh") {
+          if (isTamyiz) {
+            if (skorFase >= kuatSkor) {
+              hukum = "haid";
+              lastBloodIsKuat = true;
+              keterangan = `Darah kuat (${faseDarah.warna}) — Haid`;
+            } else {
+              hukum = "istihadloh";
+              lastBloodIsKuat = false;
+              keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
+            }
+          } else if (ingatKebiasaan === "lupa_semua") {
+            if (jamMulaiSeg < 24) {
+              hukum = "haid";
+              keterangan = `Darah — Haid (24 jam pertama)`;
+            } else {
+              hukum = "ihtiyath";
+              keterangan = `Darah — Masa Ihtiyath (status diragukan)`;
+            }
+          } else {
+            if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
+              hukum = "haid";
+              keterangan = `Darah — Haid (dalam masa adat)`;
+            } else {
+              if (ingatKebiasaan === "ingat_semua") {
+                hukum = "istihadloh";
+                keterangan = `Darah — Istihadloh (setelah masa adat)`;
+              } else {
+                hukum = "ihtiyath";
+                keterangan = `Darah — Masa Ihtiyath (setelah kemungkinan masa haid)`;
+              }
+            }
+          }
+        } else {
+          hukum = "istihadloh";
+          keterangan = `Darah — Istihadloh`;
+        }
+      } else {
+        // tipe === "bersih"
+        if (tipeAnalisis === "haidl_normal") {
+          hukum = "haid";
+          wajibQodloPuasa = true;
+          keterangan = `Bersih — Hukum Haid (Jam'u). Wajib Qodlo Puasa.`;
+        } else if (tipeAnalisis === "istihadloh") {
+          if (isTamyiz) {
+            if (lastBloodIsKuat) {
+              hukum = "haid";
+              wajibQodloPuasa = true;
+              keterangan = `Bersih di antara darah kuat — Hukum Haid. Wajib Qodlo Puasa.`;
+            } else {
+              hukum = "suci";
+              keterangan = `Bersih di antara darah lemah — Istihadloh/Suci. Ibadah Sah.`;
+            }
+          } else if (ingatKebiasaan === "lupa_semua") {
+            hukum = "ihtiyath";
+            keterangan = `Bersih — Masa Ihtiyath (wajib sholat, status haid diragukan).`;
+          } else if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
+            hukum = "haid";
+            wajibQodloPuasa = true;
+            keterangan = `Bersih dalam masa adat — Hukum Haid. Wajib Qodlo Puasa.`;
+          } else {
+            if (ingatKebiasaan === "ingat_semua") {
+              hukum = "suci";
+              keterangan = `Bersih — Suci/Istihadloh. Ibadah Sah.`;
+            } else {
+              hukum = "ihtiyath";
+              keterangan = `Bersih — Masa Ihtiyath (wajib sholat, mandi tiap waktu).`;
+            }
+          }
+        } else {
+          hukum = "suci";
+          keterangan = `Bersih — Suci`;
+        }
+      }
+
+      entri.push({
+        hari: hariKe,
+        tipe: fase.tipe,
+        hukum,
+        warnaAsli: fase.tipe === "darah" ? (fase as FaseDarahItem).warna : undefined,
+        wajibQodloPuasa,
+        keterangan,
+        jamDiHari: jamSeg,
+      });
+
+      hariKe++;
+    }
+
+    cumJam += totalJamFase;
+  }
+
+  return entri;
+}
+
 function analyzeSingleSiklus(
   items: FaseItem[],
   nomorSiklus: number,
   statusPengalaman: StatusPengalaman,
   ingatKebiasaan: IngatKebiasaan,
   kebiasaanHaidHari: number,
-): SiklusInfo & { haidJamSebenarnya?: number | null; kategoriStr?: string; aturanIbadah?: AturanIbadah } {
+): SiklusInfo & {
+  haidJamSebenarnya?: number | null;
+  kategoriStr?: string;
+  aturanIbadah?: AturanIbadah;
+  liniMasaSiklus?: EntriHarian[];
+} {
   const darahFases = items.filter((f): f is FaseDarahItem => f.tipe === "darah");
   const bersihFases = items.filter((f): f is MasaBersihItem => f.tipe === "bersih");
 
@@ -373,6 +536,7 @@ function analyzeSingleSiklus(
       kesimpulan: `Istihadloh — darah hanya ${formatDurasi(darahJam)} (kurang dari minimal 24 jam)`,
       hukumDetail: `Total darah ${formatDurasi(darahJam)} — kurang dari syarat minimal 24 jam (1 hari 1 malam).`,
       tipe: "error",
+      liniMasaSiklus: buatLiniMasaHarian(items, "error", false, ingatKebiasaan, null, 0),
     };
   }
 
@@ -382,17 +546,18 @@ function analyzeSingleSiklus(
       totalJamSiklus: totalJam,
       darahJamSiklus: darahJam,
       bersihDalamJam: bersihJam,
-      // Haidl_normal: semua bersih masuk hukum haid (Hukum Jam'u, total ≤ 15 hari)
       bersihDalamHaidJam: bersihJam,
       kesimpulan: `HAIDL NORMAL — total ${formatDurasi(totalJam)}${bersihNote}`,
       hukumDetail: `Durasi ${formatDurasi(totalJam)} memenuhi syarat haidl (minimal 24 jam, maksimal 15 hari).${bersihNote}`,
       tipe: "haidl_normal",
+      liniMasaSiklus: buatLiniMasaHarian(items, "haidl_normal", false, ingatKebiasaan, null, 0),
     };
   }
 
   let isTamyiz = false;
   let kuatJam = 0;
   let lemahJam = 0;
+  let kuatSkor = 0;
 
   if (darahFases.length >= 2) {
     const fase1 = darahFases[0];
@@ -404,6 +569,7 @@ function analyzeSingleSiklus(
     if (skor1 > skor2 && jam1 >= 24 && jam1 <= 360) {
       kuatJam = jam1;
       lemahJam = totalJam - kuatJam;
+      kuatSkor = skor1;
 
       let adaFase3Kuat = false;
       if (darahFases.length > 2) {
@@ -426,38 +592,20 @@ function analyzeSingleSiklus(
     lemahJam,
   );
 
-  // ═══ Klasifikasi Masa Bersih dalam Haid — per Kategori Fiqh ═══
-  //
-  // Mumayyizah (Golongan 1 & 3, isTamyiz = true):
-  //   Bersih mengikuti SIFAT darah yang mendahuluinya.
-  //   Bersih setelah darah kuat (skor ≥ skor fase pertama) = HAID.
-  //   Bersih setelah darah lemah = ISTIHADLOH.
-  //
-  // Golongan 5 (Nasiyah / Mutahayyirah lupa_semua):
-  //   Seluruh masa jeda = masa keraguan (ihtiyath).
-  //   Ibadah pada masa jeda WAJIB dikerjakan dan SAH — tidak ada qodlo.
-  //   → bersihDalamHaidJam = 0 (tidak memunculkan peringatan qodlo).
-  //   Aturan ihtiyath sudah dijelaskan di blok aturanIbadah.
-  //
-  // Non-Mumayyizah lainnya (Golongan 2, 4, 6, 7):
-  //   Berbasis jendela waktu haidJamSebenarnya.
-  //   Bersih yang jatuh dalam rentang [0, haidJamSebenarnya] = HAID.
   let bersihDalamHaidJam = 0;
 
   if (isTamyiz) {
-    // Golongan 1 & 3 — berbasis kekuatan darah
-    const kuatSkor = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
+    const kuatSkorRef = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
     let lastBloodIsKuat = false;
     for (const fase of items) {
       const jam = jamKeFaseItem(fase);
       if (fase.tipe === "darah") {
-        lastBloodIsKuat = skorWarnaSifat(fase) >= kuatSkor;
+        lastBloodIsKuat = skorWarnaSifat(fase) >= kuatSkorRef;
       } else if (fase.tipe === "bersih" && lastBloodIsKuat) {
         bersihDalamHaidJam += jam;
       }
     }
   } else if (ingatKebiasaan !== "lupa_semua") {
-    // Golongan 2, 4, 6, 7 — berbasis jendela waktu haidJamSebenarnya
     if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
       let cumJam = 0;
       for (const fase of items) {
@@ -471,7 +619,15 @@ function analyzeSingleSiklus(
       }
     }
   }
-  // else: Golongan 5 (lupa_semua / Nasiyah) → bersihDalamHaidJam = 0 (sudah default)
+
+  const liniMasaSiklus = buatLiniMasaHarian(
+    items,
+    "istihadloh",
+    isTamyiz,
+    ingatKebiasaan,
+    haidJamSebenarnya ?? null,
+    kuatSkor,
+  );
 
   return {
     nomorSiklus,
@@ -485,6 +641,7 @@ function analyzeSingleSiklus(
     haidJamSebenarnya,
     kategoriStr: kategori,
     aturanIbadah,
+    liniMasaSiklus,
   };
 }
 
@@ -537,8 +694,6 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
   const totalJamSemua = daftarFase.reduce((sum, f) => sum + jamKeFaseItem(f), 0);
   const qodloMulai = kalkQodloSholatMulai(waktuMulaiDarah, sudahSholatSebelumDarah);
   const qodloBerhenti = kalkQodloSholatBerhenti(waktuBerhentiTotal);
-
-  const emptyHutang = "";
 
   if (usiaTahun < 9 && kondisiAwal !== "nifas") {
     return {
@@ -604,8 +759,23 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     analyzeSingleSiklus(items, idx + 1, statusPengalaman, ingatKebiasaan, kebiasaanHaidHari),
   );
 
+  // Gabungkan lini masa dari semua siklus, offset hari per siklus
+  function gabungkanLiniMasa(): EntriHarian[] {
+    const semua: EntriHarian[] = [];
+    let offsetHari = 0;
+    for (const s of daftarSiklusInfo) {
+      const lini = s.liniMasaSiklus ?? [];
+      for (const e of lini) {
+        semua.push({ ...e, hari: e.hari + offsetHari });
+      }
+      offsetHari += lini.length;
+    }
+    return semua;
+  }
+
   if (siklus.length === 1 && !adaPemisah) {
     const s = daftarSiklusInfo[0];
+    const liniMasaHarian = s.liniMasaSiklus ?? [];
 
     if (s.tipe === "error") {
       return {
@@ -619,6 +789,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
         panduanBersuci: "",
         tipeHasil: "error",
         daftarSiklus: hasBersihItem ? daftarSiklusInfo : undefined,
+        liniMasaHarian: hasBersihItem ? liniMasaHarian : undefined,
       };
     }
 
@@ -637,6 +808,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
         panduanBersuci: "",
         tipeHasil: "haidl_normal",
         daftarSiklus: hasBersihItem ? daftarSiklusInfo : undefined,
+        liniMasaHarian: liniMasaHarian.length > 0 ? liniMasaHarian : undefined,
       };
     }
 
@@ -667,6 +839,7 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       panduanBersuci: PANDUAN_BERSUCI,
       tipeHasil: "istihadloh",
       daftarSiklus: hasBersihItem ? daftarSiklusInfo : undefined,
+      liniMasaHarian: liniMasaHarian.length > 0 ? liniMasaHarian : undefined,
     };
   }
 
@@ -675,14 +848,11 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
   const allHaidl = daftarSiklusInfo.every((s) => s.tipe === "haidl_normal");
   const totalDarahJam = daftarSiklusInfo.reduce((sum, s) => sum + s.darahJamSiklus, 0);
 
-  // Peringatan jeda suci: jumlahkan bersihDalamHaidJam dari semua siklus
-  const totalJedaJamHaidl = daftarSiklusInfo
-    .reduce((sum, s) => sum + s.bersihDalamHaidJam, 0);
+  const totalJedaJamHaidl = daftarSiklusInfo.reduce((sum, s) => sum + s.bersihDalamHaidJam, 0);
   const peringatanJedaSuciMulti = totalJedaJamHaidl > 0
     ? buatPeringatanJedaSuci(totalJedaJamHaidl)
     : undefined;
 
-  // Hutang only computed per-istihadloh cycle when meaningful
   let hutangMulti = "";
   let aturanIbadahMulti: AturanIbadah | undefined;
   if (anyIstihadloh) {
@@ -701,10 +871,11 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
       } else {
         hutangMulti = `Terdapat ${istihadlohSiklus.length} siklus istihadloh dan ini adalah bulan pertama Anda mengalaminya. Setiap siklus memiliki hutang ibadah masa penantian masing-masing. Silakan konsultasikan dengan ustadzah atau kyai untuk perhitungan rinci per siklus.`;
       }
-      // Use aturan ibadah from the last istihadloh siklus as representative
       aturanIbadahMulti = istihadlohSiklus[istihadlohSiklus.length - 1].aturanIbadah;
     }
   }
+
+  const liniMasaGabungan = gabungkanLiniMasa();
 
   return {
     kesimpulan: `Terdapat ${siklus.length} siklus haid terpisah (dipisahkan suci ≥15 hari)`,
@@ -723,8 +894,9 @@ export function jalankanMesinFiqh(input: InputUser): HasilAnalisis {
     peringatanJedaSuci: peringatanJedaSuciMulti,
     aturanIbadah: aturanIbadahMulti,
     panduanBersuci: anyIstihadloh ? PANDUAN_BERSUCI : "",
-    tipeHasil: anyIstihadloh ? "istihadloh" : "haidl_normal",
+    tipeHasil: allHaidl ? "haidl_normal" : "istihadloh",
     daftarSiklus: daftarSiklusInfo,
-    adaPemisahBersih: true,
+    adaPemisahBersih: adaPemisah,
+    liniMasaHarian: liniMasaGabungan.length > 0 ? liniMasaGabungan : undefined,
   };
 }
