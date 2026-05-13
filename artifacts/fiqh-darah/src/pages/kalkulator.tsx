@@ -1156,43 +1156,71 @@ export default function Kalkulator() {
                 )}
 
                 {hasil.peringatanJedaSuci && (
-                  <div className="p-6 sm:p-8 bg-yellow-50/70 dark:bg-yellow-950/20 border-l-4 border-yellow-400">
-                    <h3 className="text-lg font-medium mb-4 text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
-                      <TriangleAlert className="w-5 h-5" />
-                      Peringatan: Darah Terputus-putus (Hukum Jam&apos;u)
-                    </h3>
-                    <p className="text-sm text-yellow-900/70 dark:text-yellow-200/70 mb-4 leading-relaxed">
-                      Terdeteksi masa berhenti sementara (<strong>{formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}</strong>) di antara fase-fase darah Anda. Karena total rangkaian tidak melebihi 15 hari, seluruh masa berhenti tersebut tetap dihitung sebagai haid. Perhatikan status ibadah Anda selama masa berhenti itu:
-                    </p>
-
-                    {hasil.peringatanJedaSuci.qodloPuasaHari !== undefined && (
-                      <div className="mb-4 flex items-center gap-3 rounded-xl bg-rose-100 dark:bg-rose-950/50 border-2 border-rose-400 dark:border-rose-600 p-4">
-                        <TriangleAlert className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
-                        <div>
-                          <p className="text-sm font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wide">Wajib Qodlo Puasa</p>
-                          <p className="text-2xl font-bold text-rose-700 dark:text-rose-300 mt-0.5">
-                            {hasil.peringatanJedaSuci.qodloPuasaHari} hari
-                          </p>
-                          <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">
-                            Puasa yang dikerjakan saat darah berhenti sementara tidak sah — wajib diganti.
-                          </p>
-                        </div>
+                  <div className="border-l-4 border-emerald-600 dark:border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/25 p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <Info className="w-5 h-5 mt-0.5 flex-shrink-0 text-emerald-700 dark:text-emerald-400" />
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-0.5">
+                          Hukum Suci di Sela-sela Haid
+                        </p>
+                        <h3 className="text-base font-semibold text-emerald-900 dark:text-emerald-200">
+                          Darah Terputus-putus — Total{" "}
+                          <span className="font-bold">{formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}</span> masa berhenti sementara
+                        </h3>
                       </div>
-                    )}
+                    </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3">
+                    {/* Penjelasan kewajiban dzahir */}
+                    <div className="rounded-xl bg-emerald-100/70 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 p-4 mb-5 text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed space-y-2">
+                      <p>
+                        Pada saat darah berhenti sementara, Anda <strong>wajib mandi besar dan melaksanakan sholat serta puasa</strong> — karena secara dzahir (tampak) Anda dihukumi <strong>suci</strong> pada hari-hari tersebut. Tindakan Anda <strong>benar secara syariat</strong> saat itu.
+                      </p>
+                      <p>
+                        Namun karena darah keluar kembali dan total keseluruhan (darah + masa berhenti) tidak melebihi <strong>15 hari</strong>, masa berhenti tersebut secara hukum Fiqh <strong>ditarik kembali menjadi Haid</strong>. Konsekuensi ibadah di masa itu pun berubah:
+                      </p>
+                    </div>
+
+                    {/* Konsekuensi Sholat */}
+                    <div className="flex items-start gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 mb-3">
+                      <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                          Sholat — Tidak Sah, Tidak Berdosa, Tidak Perlu Qodlo
+                        </p>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          Sholat yang Anda kerjakan di masa berhenti tersebut hukumnya <strong>tidak sah</strong> — karena ternyata masih dalam rangkaian haid. Namun Anda <strong>tidak berdosa</strong>, karena Anda menjalankan kewajiban syariat saat darah tidak terlihat. Sholat tersebut juga <strong>tidak perlu diqodlo</strong>, karena kewajiban sholat memang gugur selama masa haid.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Konsekuensi Puasa + Counter Qodlo */}
+                    <div className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/30 p-4">
+                      <div className="flex items-start gap-3">
                         <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-1">Status Puasa</p>
-                          <p className="text-sm text-foreground leading-relaxed">{hasil.peringatanJedaSuci.statusPuasa}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
-                        <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-1">Status Sholat</p>
-                          <p className="text-sm text-foreground leading-relaxed">{hasil.peringatanJedaSuci.statusSholat}</p>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm font-bold text-rose-700 dark:text-rose-300">
+                            Puasa — Tidak Sah, <span className="underline decoration-wavy">Wajib Diqodlo</span>
+                          </p>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            Karena hari-hari jeda berubah status menjadi haid, puasa yang Anda kerjakan saat itu menjadi <strong>batal</strong>. Puasa tersebut wajib diganti (diqodlo), sebab Anda memang berkewajiban berpuasa saat darah tidak terlihat — namun ternyata masa itu masih dalam rangkaian haid.
+                          </p>
+                          {hasil.peringatanJedaSuci.qodloPuasaHari !== undefined && (
+                            <div className="mt-3 flex items-center gap-4 rounded-lg bg-rose-100 dark:bg-rose-900/40 border border-rose-300 dark:border-rose-700 px-4 py-3">
+                              <div className="text-center">
+                                <p className="text-3xl font-extrabold text-rose-700 dark:text-rose-300 leading-none">
+                                  {hasil.peringatanJedaSuci.qodloPuasaHari}
+                                </p>
+                                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-0.5">hari</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Wajib Qodlo Puasa</p>
+                                <p className="text-xs text-rose-600/80 dark:text-rose-400/80 leading-snug mt-0.5">
+                                  Ganti puasa sebanyak ini karena masa berhenti sementara ({formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}) dihukumi haid.
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
