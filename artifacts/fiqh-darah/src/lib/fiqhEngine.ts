@@ -641,47 +641,93 @@ function analyzeSingleSiklus(
       }
 
       if (kuatKeduaFaseIdx === -1) {
-        // Tidak ada darah kuat kedua → mumayyizah dengan syarat 1 & 2 saja
-        isTamyiz = true;
-        kuatJam = jam1;
+        // Tidak ada darah kuat kedua
+        // Cek apakah ada TIGA TINGKAT darah menurun: kuat → lemah → lebih lemah
+        // Contoh: hitam(5h) → merah(8h) → kuning(terus-menerus)
+        // Hukum: jika kuat + lemah ≤ 15 hari → keduanya haidl; lebih lemah = istihadloh
+        const hasTigaTingkat =
+          darahFases.length >= 3 &&
+          skorWarnaSifat(darahFases[1]) < skor1 &&
+          skorWarnaSifat(darahFases[2]) < skorWarnaSifat(darahFases[1]);
+
+        if (hasTigaTingkat) {
+          const jamLemah1 = jamKeFaseItem(darahFases[1]);
+          const kuat1PlusLemah1 = jam1 + jamLemah1;
+          if (kuat1PlusLemah1 <= 360) {
+            // Kuat + lemah ≤ 15 hari → keduanya = haidl; lebih lemah = istihadloh
+            haidJamCatatan = kuat1PlusLemah1;
+          } else {
+            // Kuat + lemah > 15 hari → hanya kuat saja = haidl; lebih lemah = istihadloh
+            isTamyiz = true;
+            kuatJam = jam1;
+          }
+        } else {
+          // Tidak ada kuat kedua, tidak ada tiga tingkat → mumayyizah (syarat 1 & 2 cukup)
+          isTamyiz = true;
+          kuatJam = jam1;
+        }
       } else {
         // Ada darah kuat kedua → hitung lemah di antara kuat-1 dan kuat-2
-        // (semua fase di antara fase darah pertama dan fase darah kuat kedua)
         let lemahAntaraJam = 0;
         let firstKuatPassed = false;
         for (const item of items) {
           if (!firstKuatPassed) {
-            if (item.tipe === "darah" && skorWarnaSifat(item as FaseDarahItem) >= skor1
-                && jamKeFaseItem(item) === jam1) {
+            if (
+              item.tipe === "darah" &&
+              skorWarnaSifat(item as FaseDarahItem) >= skor1 &&
+              jamKeFaseItem(item) === jam1
+            ) {
               firstKuatPassed = true;
             }
             continue;
           }
-          // Setelah kuat pertama: kumpulkan semua fase sampai bertemu kuat kedua
           if (item.tipe === "darah" && skorWarnaSifat(item as FaseDarahItem) >= skor1) {
-            break; // Sudah sampai kuat kedua
+            break;
           }
           lemahAntaraJam += jamKeFaseItem(item);
         }
 
-        if (lemahAntaraJam >= 360) {
-          // Syarat-3 terpenuhi: darah lemah ≥ 15 hari → tamyiz penuh, kedua kuat = haidl
-          isTamyiz = true;
-          // kuatJam = total semua fase darah dengan skor kuat
-          kuatJam = darahFases
-            .filter(f => skorWarnaSifat(f) >= skor1)
-            .reduce((s, f) => s + jamKeFaseItem(f), 0);
-        } else {
-          // Syarat-3 tidak terpenuhi → terapkan Kaidah Catatan
-          const kuat1PlusLemah = jam1 + lemahAntaraJam;
-          if (kuat1PlusLemah <= 360) {
-            // kuat1 + lemah ≤ 15 hari → kuat1 + lemah = haidl; kuat2 = istihadloh
-            haidJamCatatan = kuat1PlusLemah;
-          } else {
-            // kuat1 + lemah > 15 hari → hanya kuat1 = haidl; lemah + kuat2 = istihadloh
-            haidJamCatatan = jam1;
+        // ── SYARAT 4: Darah lemah harus keluar terus-menerus tanpa dijeda darah kuat ──
+        // Jika ada darah kuat KETIGA atau lebih setelah kuat kedua → pola bergantian
+        // (kuat-lemah-kuat-lemah-kuat...) → Syarat 4 tidak terpenuhi.
+        const kuatsSetelahKuat2 = darahFases
+          .slice(kuatKeduaFaseIdx + 1)
+          .filter(f => skorWarnaSifat(f) >= skor1);
+
+        if (kuatsSetelahKuat2.length > 0) {
+          // Pola bergantian — cari kuat terakhir dan hitung jendela keseluruhan
+          // Jika jendela (kuat pertama hingga akhir kuat terakhir) ≤ 15 hari:
+          //   → semua fase dalam jendela = haidl (kasus bergantian terbatas)
+          //   Contoh: hitam-merah bergantian 10 hari, lalu hitam hari ke-11 → haid = 11 hari
+          // Jika jendela > 15 hari: TIDAK mumayyizah → jatuh ke Ghoiru Mumayyizah
+          const lastKuatFase = kuatsSetelahKuat2[kuatsSetelahKuat2.length - 1];
+          let windowJam = 0;
+          for (const item of items) {
+            windowJam += jamKeFaseItem(item);
+            if (item === lastKuatFase) break;
           }
-          // isTamyiz tetap false; kuatJam tidak diset (akan diabaikan)
+          if (windowJam <= 360) {
+            haidJamCatatan = windowJam;
+          }
+          // Jika windowJam > 360: isTamyiz=false, haidJamCatatan=null
+          // → tentukanKategoriMushtadloh akan menerapkan Ghoiru Mumayyizah (24 jam haid)
+        } else {
+          // Tidak ada kuat ketiga → pola sederhana kuat-lemah-kuat (Syarat 4 terpenuhi)
+          if (lemahAntaraJam >= 360) {
+            // Syarat-3 terpenuhi: darah lemah ≥ 15 hari → tamyiz penuh, kedua kuat = haidl
+            isTamyiz = true;
+            kuatJam = darahFases
+              .filter(f => skorWarnaSifat(f) >= skor1)
+              .reduce((s, f) => s + jamKeFaseItem(f), 0);
+          } else {
+            // Syarat-3 tidak terpenuhi → terapkan Kaidah Catatan
+            const kuat1PlusLemah = jam1 + lemahAntaraJam;
+            if (kuat1PlusLemah <= 360) {
+              haidJamCatatan = kuat1PlusLemah;
+            } else {
+              haidJamCatatan = jam1;
+            }
+          }
         }
       }
 

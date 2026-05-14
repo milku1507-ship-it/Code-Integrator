@@ -143,8 +143,8 @@ export default function Panduan() {
           {[
             { title: "Mubtadi'ah", desc: "Wanita yang baru pertama kali mengalami haidl (belum punya kebiasaan)." },
             { title: "Mu'tadah", desc: "Wanita yang sudah pernah haidl dan suci sehingga memiliki kebiasaan (adat)." },
-            { title: "Mumayyizah (Tamyiz)", desc: "Dapat membedakan darah kuat (hitam/merah/kental/berbau) dan darah lemah (kuning/encer), serta memenuhi 3 syarat tamyiz." },
-            { title: "Ghoiru Mumayyizah", desc: "Tidak bisa membedakan sifat darah (satu warna) atau bisa dibedakan namun tidak memenuhi 3 syarat mumayyizah." },
+            { title: "Mumayyizah (Tamyiz)", desc: "Dapat membedakan darah kuat (hitam/merah/kental/berbau) dan darah lemah (kuning/encer), serta memenuhi 4 syarat tamyiz." },
+            { title: "Ghoiru Mumayyizah", desc: "Tidak bisa membedakan sifat darah (satu warna) atau bisa dibedakan namun tidak memenuhi seluruh 4 syarat mumayyizah." },
             { title: "Darah Kuat", desc: "Darah yang memiliki ciri dominan: warna hitam/merah tua, kental, atau berbau. Didahulukan sebagai tanda haidl." },
             { title: "Darah Lemah", desc: "Darah dengan ciri kurang dominan: warna kuning/coklat muda, encer, atau tidak berbau." },
             { title: "Mutahayyiroh", desc: "Wanita yang lupa kebiasaan haidlnya secara keseluruhan sehingga tidak bisa memastikan hari haidl dan sucinya." },
@@ -248,69 +248,142 @@ export default function Panduan() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-foreground">3 Syarat Mumayyizah:</p>
+            <p className="text-sm font-semibold text-foreground">4 Syarat Mumayyizah (semuanya harus terpenuhi):</p>
             <Syarat items={[
               "Darah kuat tidak kurang dari sehari semalam (24 jam).",
               "Darah kuat tidak melebihi 15 hari 15 malam.",
-              "Darah lemah tidak kurang dari 15 hari 15 malam dan keluar secara terus-menerus. (Syarat ini hanya berlaku jika ada darah kuat kedua — untuk menentukan apakah darah kuat kedua juga dihukumi haidl. Jika tidak ada darah kuat kedua, cukup syarat 1 dan 2.)",
+              "Darah lemah tidak kurang dari 15 hari jika darah masih terus keluar. Syarat ini tidak berlaku jika darah berhenti setelah fase lemah (tidak ada darah kuat kedua). Juga tidak berlaku jika kuat + lemah ≤ 15 hari (Kaidah Catatan).",
+              "Darah lemah keluar terus-menerus tanpa dijeda oleh darah kuat. Jika pola darah bergantian (kuat-lemah-kuat-lemah...) maka lemah tidak dianggap menerus → syarat 4 tidak terpenuhi.",
             ]} />
+          </div>
+
+          <div className="rounded-xl bg-muted/60 border p-4 space-y-3">
+            <p className="text-xs font-semibold text-foreground">Hierarki Kekuatan Darah (dari terkuat ke terlemah):</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: "Hitam kental+bau", color: "bg-slate-800 text-white" },
+                { label: "Hitam", color: "bg-slate-700 text-white" },
+                { label: "Merah kental+bau", color: "bg-red-700 text-white" },
+                { label: "Merah", color: "bg-red-500 text-white" },
+                { label: "Merah kekuningan", color: "bg-orange-400 text-white" },
+                { label: "Kuning", color: "bg-yellow-400 text-slate-800" },
+                { label: "Keruh", color: "bg-slate-300 text-slate-700" },
+              ].map((d, i) => (
+                <span key={i} className={`text-xs px-2 py-0.5 rounded-full font-medium ${d.color}`}>{d.label}</span>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Kental dan berbau menambah derajat kekuatan. Jika dua darah setara dan berbeda sifat (misal: hitam kental vs. hitam bau), yang keluar lebih dahulu dihukumi haidl.</p>
           </div>
 
           <div>
             <p className="text-sm font-semibold text-foreground mb-1">Contoh-Contoh:</p>
 
-            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh 1 — Kuat lalu Lemah (syarat 1 & 2 cukup):</p>
+            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh 1 — Kuat lalu Lemah (syarat 1 & 2 cukup, darah berhenti setelah lemah):</p>
             <Contoh items={[
               { label: "Darah Kuat", nilai: "5 hari", hukum: "haidl" },
               { label: "Darah Lemah", nilai: "25 hari", hukum: "istihadloh" },
             ]} />
+            <p className="text-xs text-muted-foreground mt-1">Haidl = 5 hari. Lemah 25 hari = istihadloh (suci).</p>
 
-            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 2 — Kuat-Lemah-Kuat (lemah ≥ 15 hari → syarat 3 terpenuhi, kedua kuat = haidl):</p>
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 2 — Kuat lalu Lemah, darah berhenti (syarat 3 tidak diperlukan):</p>
+            <Contoh items={[
+              { label: "Darah Kuat", nilai: "10 hari", hukum: "haidl" },
+              { label: "Darah Lemah", nilai: "10 hari", hukum: "istihadloh" },
+              { label: "Berhenti", nilai: "suci", hukum: "ihtiyath" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Lemah hanya 10 hari tapi darah berhenti → syarat 3 (lemah ≥ 15 hari) tidak perlu diperhitungkan. Haidl = 10 hari kuat.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 3 — Kuat-Lemah-Kuat (lemah ≥ 15 hari → syarat 3 terpenuhi, kedua kuat = haidl):</p>
             <Contoh items={[
               { label: "Darah Kuat 1", nilai: "3 hari", hukum: "haidl" },
               { label: "Darah Lemah", nilai: "16 hari", hukum: "istihadloh" },
               { label: "Darah Kuat 2", nilai: "7 hari", hukum: "haidl" },
             ]} />
-            <p className="text-xs text-muted-foreground mt-1">Haidl = 3 + 7 = 10 hari. Lemah 16 hari = istihadloh.</p>
+            <p className="text-xs text-muted-foreground mt-1">Lemah 16 hari ≥ 15 hari, terus-menerus (syarat 3 & 4 ✓). Haidl = 3 + 7 = 10 hari. Lemah = istihadloh.</p>
 
-            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 3 — Kuat lalu Lemah (tanpa kuat kedua):</p>
-            <Contoh items={[
-              { label: "Darah Kuat", nilai: "10 hari", hukum: "haidl" },
-              { label: "Darah Lemah", nilai: "10 hari", hukum: "istihadloh" },
-            ]} />
-
-            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 4 — Kuat-Lemah-Kuat (lemah &lt; 15 hari → syarat 3 tidak terpenuhi, kuat kedua bukan haidl):</p>
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 4 — Kuat-Lemah-Kuat (lemah &lt; 15 hari → syarat 3 tidak terpenuhi):</p>
             <Contoh items={[
               { label: "Darah Kuat 1", nilai: "8 hari", hukum: "haidl" },
               { label: "Darah Lemah", nilai: "8 hari", hukum: "istihadloh" },
               { label: "Darah Kuat 2", nilai: "8 hari", hukum: "istihadloh" },
             ]} />
-            <p className="text-xs text-muted-foreground mt-1">Lemah (8 hari) &lt; 15 hari → syarat 3 tidak terpenuhi. Haidl hanya darah kuat pertama (8 hari).</p>
+            <p className="text-xs text-muted-foreground mt-1">Lemah (8 hari) &lt; 15 hari → syarat 3 tidak terpenuhi → lihat Kaidah Catatan. Kuat1 + lemah = 16 &gt; 15 → haidl hanya kuat pertama (8 hari).</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 5 — Bergantian terus (syarat 4 gagal, jendela &gt; 15 hari):</p>
+            <Contoh items={[
+              { label: "Hari ke-1", nilai: "1 hari", hukum: "haidl" },
+              { label: "Selebihnya", nilai: "29 hari+", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Hitam 1 hari → merah 1 hari → hitam 1 hari → merah 1 hari … terus lebih dari 15 hari. Darah lemah tidak menerus (syarat 4 gagal) → TIDAK mumayyizah → dihukumi Ghoiru Mumayyizah: haidl hanya 1 hari pertama.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 6 — Bergantian terbatas, lalu kuat terakhir (jendela ≤ 15 hari):</p>
+            <Contoh items={[
+              { label: "Hari 1–10 (bergantian)", nilai: "10 hari", hukum: "haidl" },
+              { label: "Hari ke-11 (kuat)", nilai: "1 hari", hukum: "haidl" },
+              { label: "Merah (menerus)", nilai: "selebihnya", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Hitam-merah bergantian 10 hari, lalu hitam kembali hari ke-11, kemudian merah mengalir terus. Jendela dari hitam pertama sampai hitam terakhir = 11 hari ≤ 15 → haidl = 11 hari. Merah setelahnya = istihadloh.</p>
           </div>
 
           <div className="rounded-xl bg-muted/60 border p-4">
-            <p className="text-xs font-semibold text-foreground mb-2">📌 Kaidah Catatan — Pola Kuat-Lemah-Kuat (Lemah &lt; 15 hari)</p>
+            <p className="text-xs font-semibold text-foreground mb-2">📌 Kaidah Catatan — Pola Kuat-Lemah-Kuat (Lemah &lt; 15 hari, satu blok lemah menerus)</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Apabila darah lemah diapit dua darah kuat dan darah lemah &lt; 15 hari:
+              Apabila darah lemah diapit dua darah kuat, lemah &lt; 15 hari, dan lemah mengalir menerus (tidak bergantian):
             </p>
             <ul className="text-xs text-muted-foreground mt-2 space-y-1 pl-4 list-disc">
-              <li><strong>Kuat1 + Lemah ≤ 15 hari</strong> → kuat1 <em>dan</em> lemah = haidl; kuat2 = istihadloh.</li>
+              <li><strong>Kuat1 + Lemah ≤ 15 hari</strong> → kuat1 <em>dan</em> lemah keduanya = haidl; kuat2 = istihadloh.</li>
               <li><strong>Kuat1 + Lemah &gt; 15 hari</strong> → hanya kuat1 = haidl; lemah + kuat2 = istihadloh.</li>
             </ul>
-            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (kuat1+lemah = 8+7 = 15 ≤ 15):</p>
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh A (kuat1+lemah = 8+7 = 15 ≤ 15 → keduanya haidl):</p>
             <Contoh items={[
               { label: "Darah Kuat 1", nilai: "8 hari", hukum: "haidl" },
               { label: "Darah Lemah", nilai: "7 hari", hukum: "haidl" },
               { label: "Darah Kuat 2", nilai: "8 hari", hukum: "istihadloh" },
             ]} />
-            <p className="text-xs text-muted-foreground mt-1">Total haidl = 15 hari (kuat1 + lemah dijumlah tidak melebihi 15 hari).</p>
+            <p className="text-xs text-muted-foreground mt-1">Total haidl = 15 hari. Kuat2 = istihadloh.</p>
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh B (kuat1+lemah = 8+8 = 16 &gt; 15 → hanya kuat1):</p>
+            <Contoh items={[
+              { label: "Darah Kuat 1", nilai: "8 hari", hukum: "haidl" },
+              { label: "Darah Lemah", nilai: "8 hari", hukum: "istihadloh" },
+              { label: "Darah Kuat 2", nilai: "8 hari", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Total haidl = 8 hari saja.</p>
+
+            <div className="mt-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Perbedaan Pendapat Ulama — Kasus 7+7+7:</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                Hitam 7 hari → merah 7 hari → hitam 7 hari (total 21 hari). Kuat1+lemah = 14 ≤ 15.<br/>
+                <strong>Imam Ibnu Hajar al-Haitami:</strong> haidl hanya hitam pertama (7 hari).<br/>
+                <strong>Imam al-Ramli (Ibnu Suraij):</strong> haidl = hitam1 + merah = 14 hari, hitam2 = istihadloh.<br/>
+                Kalkulator ini mengikuti pendapat Imam al-Ramli (Kaidah Catatan).
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-muted/60 border p-4">
+            <p className="text-xs font-semibold text-foreground mb-2">📌 Kasus Tiga Tingkat — Kuat → Lemah → Lebih Lemah</p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+              Jika darah keluar berturut-turut dengan tiga tingkat kekuatan yang menurun (misal: hitam → merah → kuning), hukumnya:
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-1 pl-4 list-disc">
+              <li>Darah kuat + darah lemah (pertama) = haidl, <strong>jika total keduanya ≤ 15 hari</strong>.</li>
+              <li>Darah lebih lemah (ketiga) = istihadloh.</li>
+              <li>Syarat: darah kuat harus yang pertama keluar. Yang langsung mengiringi kuat adalah yang lemah, bukan yang lebih lemah.</li>
+            </ul>
+            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (hitam 5h → merah 8h → kuning terus):</p>
+            <Contoh items={[
+              { label: "Hitam (kuat)", nilai: "5 hari", hukum: "haidl" },
+              { label: "Merah (lemah)", nilai: "8 hari", hukum: "haidl" },
+              { label: "Kuning (lebih lemah)", nilai: "terus", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Hitam + merah = 13 hari ≤ 15 hari → keduanya haidl. Kuning = istihadloh.</p>
           </div>
 
           <div>
             <p className="text-sm font-semibold text-foreground">Ketentuan Mandi:</p>
             <ul className="text-sm text-muted-foreground mt-1 space-y-1 pl-4 list-disc">
-              <li><strong>Bulan pertama:</strong> harus menunggu 15 hari dahulu sebelum mandi.</li>
-              <li><strong>Bulan kedua dan seterusnya:</strong> mandi wajib segera saat melihat perpindahan dari darah kuat ke darah lemah.</li>
+              <li><strong>Bulan pertama:</strong> harus menunggu 15 hari dahulu sebelum mandi (belum diketahui apakah istihadloh atau bukan).</li>
+              <li><strong>Bulan kedua dan seterusnya:</strong> mandi wajib segera saat melihat perpindahan dari darah kuat ke darah lemah (sudah diketahui pola istihadlohnya).</li>
             </ul>
           </div>
         </GolonganCard>
@@ -345,12 +418,12 @@ export default function Panduan() {
             <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 3 — Darah berlangsung 3 bulan:</p>
             <p className="text-xs text-muted-foreground">Tiap awal bulan: 1 hari = haidl. Sisa bulan = istihadloh. Total haidl dalam 3 bulan = 3 hari.</p>
 
-            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 4 — Darah silih berganti (1 hari kuat, 1 hari lemah dst. selama 30 hari):</p>
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 4 — Darah silih berganti lebih dari 15 hari (syarat 4 tidak terpenuhi):</p>
             <Contoh items={[
               { label: "Hari ke-1", nilai: "1 hari", hukum: "haidl" },
               { label: "Selebihnya", nilai: "29 hari", hukum: "istihadloh" },
             ]} />
-            <p className="text-xs text-muted-foreground mt-1">Darah lemah tidak mengalir terus-menerus selama 15 hari → syarat mumayyizah tidak terpenuhi.</p>
+            <p className="text-xs text-muted-foreground mt-1">Hitam 1 hari → merah 1 hari → hitam 1 hari → merah 1 hari … terus lebih dari 15 hari. Darah lemah tidak keluar terus-menerus karena selalu dijeda darah kuat (syarat 4 tidak terpenuhi) → TIDAK mumayyizah → haidl = 1 hari pertama.</p>
           </div>
 
           <div>
@@ -365,39 +438,63 @@ export default function Panduan() {
         {/* 03 */}
         <GolonganCard nomor="03" judul="Mu'tadah Mumayyizah" subJudul="Sudah pernah haidl · Dapat membedakan darah" color="green">
           <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
-            Wanita yang sudah pernah haidl dan suci (memiliki kebiasaan/adat), kemudian darahnya melebihi 15 hari, serta darahnya dapat dibedakan kuat-lemah dan memenuhi syarat mumayyizah.
+            Wanita yang sudah pernah haidl dan suci (memiliki kebiasaan/adat), kemudian darahnya melebihi 15 hari, serta darahnya dapat dibedakan kuat-lemah dan memenuhi seluruh 4 syarat mumayyizah.
           </p>
 
           <InfoBox color="green">
-            Hukumnya <strong>sama dengan Mubtadi'ah Mumayyizah</strong>: darah kuat = haidl, darah lemah = istihadloh. Demikian pula ketentuan mandinya.
+            <strong>Tamyiz (perbedaan sifat darah) didahulukan atas adat.</strong> Meskipun sudah punya kebiasaan haidl, jika tamyiz memenuhi 4 syarat, maka darah kuat = haidl dan darah lemah = istihadloh — bukan mengikuti hitungan adat. Syarat, hukum, dan ketentuan mandi sama dengan Golongan 01.
           </InfoBox>
 
           <div>
-            <p className="text-sm font-semibold text-foreground mb-1">Contoh:</p>
-            <p className="text-xs text-muted-foreground">Darah keluar 27 hari:</p>
+            <p className="text-sm font-semibold text-foreground mb-1">Contoh-Contoh:</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh 1 — Tamyiz menggantikan adat:</p>
+            <p className="text-xs text-muted-foreground">Adat haidl 6 hari. Darah keluar: hitam 8 hari lalu merah 10 hari (total 18 hari).</p>
             <Contoh items={[
-              { label: "Darah Kuat", nilai: "12 hari", hukum: "haidl" },
-              { label: "Darah Lemah", nilai: "15 hari", hukum: "istihadloh" },
+              { label: "Hitam (kuat)", nilai: "8 hari", hukum: "haidl" },
+              { label: "Merah (lemah)", nilai: "10 hari", hukum: "istihadloh" },
             ]} />
+            <p className="text-xs text-muted-foreground mt-1">Meskipun adat hanya 6 hari, tamyiz berlaku: hitam 8 hari = haidl. Bukan 6 hari sesuai adat.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 2 — Kuat-Lemah-Kuat (lemah ≥ 15 hari, kedua kuat = haidl):</p>
+            <p className="text-xs text-muted-foreground">Adat haidl 5 hari. Darah: hitam 3h → merah 16h → hitam 7h.</p>
+            <Contoh items={[
+              { label: "Hitam 1", nilai: "3 hari", hukum: "haidl" },
+              { label: "Merah", nilai: "16 hari", hukum: "istihadloh" },
+              { label: "Hitam 2", nilai: "7 hari", hukum: "haidl" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Tamyiz berlaku: haidl = 3 + 7 = 10 hari. Lemah 16 hari = istihadloh. Adat (5 hari) diabaikan.</p>
           </div>
 
-          <div className="rounded-xl bg-muted/60 border p-4">
-            <p className="text-xs font-semibold text-foreground mb-2">📌 Kasus Khusus — Lemah Dulu, lalu Kuat Setelah Aqollu Thuhri (15 hari)</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Apabila darah lemah keluar terlebih dahulu, kemudian setelah melewati masa <em>aqollu thuhri</em> (15 hari) barulah muncul darah kuat:
-            </p>
-            <ul className="text-xs text-muted-foreground mt-2 space-y-1 pl-4 list-disc">
-              <li>Sejumlah hari <strong>sesuai adat</strong> dari permulaan darah lemah = haidl.</li>
-              <li>Darah lemah sisanya (antara adat dan hari ke-15) = istihadloh.</li>
-              <li>Darah kuat yang muncul setelah hari ke-15 = haidl baru.</li>
-            </ul>
-            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (adat haidl = 3 hari, total darah 21 hari):</p>
-            <Contoh items={[
-              { label: "Lemah (adat)", nilai: "3 hari", hukum: "haidl" },
-              { label: "Lemah (tengah)", nilai: "16 hari", hukum: "istihadloh" },
-              { label: "Darah Kuat", nilai: "2 hari", hukum: "haidl" },
-            ]} />
-            <p className="text-xs text-muted-foreground mt-1">Darah kuat 2 hari keluar setelah lemah melewati aqollu thuhri (15 hari), sehingga dihukumi haidl baru.</p>
+          <div className="rounded-xl bg-muted/60 border p-4 space-y-3">
+            <p className="text-xs font-semibold text-foreground">📌 Kasus Khusus — Kapan Adat Berlaku, Bukan Tamyiz?</p>
+
+            <div>
+              <p className="text-xs font-medium text-foreground mb-1">1. Darah lemah keluar lebih dulu, darah kuat muncul setelah aqollu thuhri (15 hari):</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Jika darah lemah keluar di awal (bukan kuat), kemudian setelah ≥ 15 hari barulah muncul darah kuat → adat yang berlaku untuk periode pertama, darah kuat setelahnya = haidl baru.
+              </p>
+              <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (adat = 5 hari pertama bulan. Sekarang: merah 20h → hitam 5h):</p>
+              <Contoh items={[
+                { label: "Merah (adat)", nilai: "5 hari", hukum: "haidl" },
+                { label: "Merah (tengah)", nilai: "15 hari", hukum: "istihadloh" },
+                { label: "Hitam (baru)", nilai: "5 hari", hukum: "haidl" },
+              ]} />
+              <p className="text-xs text-muted-foreground mt-1">Darah lemah keluar lebih dahulu, melampaui aqollu thuhri 15 hari → tamyiz tidak bisa dipakai dari awal. Adat 5 hari pertama = haidl, sisanya istihadloh, hitam 5 hari setelahnya = haidl baru.</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-foreground mb-1">2. Darah kuat melebihi 15 hari (syarat 2 tidak terpenuhi):</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Jika darah kuat keluar lebih dari 15 hari → tamyiz tidak bisa dipakai → gunakan adat.
+              </p>
+              <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (adat = 5 hari. Hitam 16h → merah terus):</p>
+              <Contoh items={[
+                { label: "Hitam (adat)", nilai: "5 hari", hukum: "haidl" },
+                { label: "Hitam + merah", nilai: "selebihnya", hukum: "istihadloh" },
+              ]} />
+              <p className="text-xs text-muted-foreground mt-1">Hitam melebihi 15 hari → syarat 2 tamyiz gagal → pakai adat: haidl = 5 hari pertama.</p>
+            </div>
           </div>
         </GolonganCard>
 
@@ -564,18 +661,62 @@ export default function Panduan() {
         {/* Nifas 01 */}
         <GolonganCard nomor="N1" judul="Mubtadi'ah Mumayyizah fin Nifas" subJudul="Pertama kali nifas · Dapat membedakan darah" color="violet">
           <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
-            Wanita yang pertama kali nifas, darah melebihi 60 hari, dan darah <strong>dapat dibedakan kuat-lemah</strong> serta darah kuat tidak melebihi 60 hari.
+            Wanita yang pertama kali nifas, darah melebihi 60 hari, dan darah <strong>dapat dibedakan kuat-lemah</strong> serta darah kuat tidak melebihi 60 hari. Berlaku 4 syarat tamyiz seperti pada haidl, dengan ketentuan batas maksimal diganti dari 15 hari menjadi 60 hari.
           </p>
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-sm">
             <span className="font-semibold text-primary">Hukum: </span>
-            <span className="text-muted-foreground">Darah kuat = Nifas. Darah lemah = Istihadloh.</span>
+            <span className="text-muted-foreground">Darah kuat = Nifas. Darah lemah = Istihadloh. Tidak ada jeda 15 hari antara kelahiran dan keluarnya darah (jika ada, darah selanjutnya = haidl bukan nifas).</span>
           </div>
+
           <div>
-            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh:</p>
+            <p className="text-sm font-semibold text-foreground mb-1">Contoh-Contoh:</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh 1 — Kuat dulu (langsung setelah lahir), lalu lemah:</p>
             <Contoh items={[
-              { label: "Darah Kuat", nilai: "55 hari", hukum: "nifas" },
-              { label: "Darah Lemah", nilai: "10 hari", hukum: "istihadloh" },
+              { label: "Hitam (kuat)", nilai: "20 hari", hukum: "nifas" },
+              { label: "Merah (lemah)", nilai: "50 hari", hukum: "istihadloh" },
             ]} />
+            <p className="text-xs text-muted-foreground mt-1">Nifas = 20 hari (hitam). Merah 50 hari = istihadloh.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 2 — Ada jeda 15 hari (memutus nifas):</p>
+            <Contoh items={[
+              { label: "Nifas awal", nilai: "2 hari", hukum: "nifas" },
+              { label: "Jeda suci", nilai: "15 hari", hukum: "ihtiyath" },
+              { label: "Hitam > 15h + merah", nilai: "selebihnya", hukum: "haidl" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Jeda 15 hari memutus siklus nifas. Darah hitam yang keluar setelahnya = haidl bercampur istihadloh (bukan nifas lagi). Kuat &gt; 15 hari → tamyiz gagal → merujuk ke golongan haidl.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 3 — Lemah dulu, lalu kuat, lalu lebih lemah (darah menurun bertahap):</p>
+            <Contoh items={[
+              { label: "Pirang (lemah)", nilai: "20 hari", hukum: "nifas" },
+              { label: "Hitam (kuat)", nilai: "40 hari", hukum: "nifas" },
+              { label: "Merah (lebih lemah)", nilai: "20 hari", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Pirang 20h + hitam 40h = 60 hari = nifas (tidak mungkin memisahkan, keduanya dihitung nifas bersama). Merah = istihadloh.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 4 — Lemah lalu kuat (lemah pertama &lt; 15 hari):</p>
+            <Contoh items={[
+              { label: "Merah (lemah)", nilai: "15 hari", hukum: "nifas" },
+              { label: "Hitam (kuat)", nilai: "40 hari", hukum: "nifas" },
+              { label: "Merah/pirang", nilai: "selebihnya", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Merah 15h + hitam 40h = 55 hari nifas (lemah awal tidak memisahkan hitam dari nifas karena &lt; 15 hari). Selebihnya istihadloh.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 5 — Kuat → lemah → lebih lemah (tiga tingkat menurun):</p>
+            <Contoh items={[
+              { label: "Hitam (kuat)", nilai: "X hari", hukum: "nifas" },
+              { label: "Merah (lemah)", nilai: "Y hari", hukum: "nifas" },
+              { label: "Kuning (lebih lemah)", nilai: "selebihnya", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Hitam + merah = nifas (jika keduanya ≤ 60 hari). Kuning (lebih lemah) = istihadloh.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 6 — Lemah di awal, kuat di tengah, lebih lemah di akhir:</p>
+            <Contoh items={[
+              { label: "Merah (lemah)", nilai: "10 hari", hukum: "istihadloh" },
+              { label: "Hitam (kuat)", nilai: "30 hari", hukum: "nifas" },
+              { label: "Kuning (lebih lemah)", nilai: "30 hari", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Hitam keluar di tengah (setelah merah 10h). Nifas = hitam saja (30 hari). Merah di awal dan kuning = istihadloh.</p>
           </div>
         </GolonganCard>
 
@@ -617,15 +758,27 @@ export default function Panduan() {
           </p>
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-sm">
             <span className="font-semibold text-primary">Hukum: </span>
-            <span className="text-muted-foreground">Darah kuat = Nifas. Darah lemah = Istihadloh. <strong>Nifas tidak disamakan dengan adat nifas sebelumnya</strong>, melainkan mengikuti darah kuat.</span>
+            <span className="text-muted-foreground">Darah kuat = Nifas. Darah lemah = Istihadloh. <strong>Tamyiz (sifat darah) didahulukan atas adat nifas</strong> — sama seperti Mu'tadah Mumayyizah dalam haidl. Penjelasan rinci mengikuti ketentuan N1.</span>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh (adat nifas 45 hari, kali ini kuat 55 hari + lemah 10 hari):</p>
+            <p className="text-sm font-semibold text-foreground mt-3 mb-1">Contoh-Contoh:</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-2">Contoh 1 — Tamyiz menggantikan adat nifas:</p>
+            <p className="text-xs text-muted-foreground">Adat nifas 40 hari. Setelah lahir: hitam 20 hari → merah hingga melebihi hari ke-60.</p>
             <Contoh items={[
-              { label: "Darah Kuat", nilai: "55 hari", hukum: "nifas" },
-              { label: "Darah Lemah", nilai: "10 hari", hukum: "istihadloh" },
+              { label: "Hitam (kuat)", nilai: "20 hari", hukum: "nifas" },
+              { label: "Merah (lemah)", nilai: "selebihnya", hukum: "istihadloh" },
             ]} />
-            <p className="text-xs text-muted-foreground mt-1">Nifas = 55 hari (darah kuat), meski adat nifas sebelumnya hanya 45 hari.</p>
+            <p className="text-xs text-muted-foreground mt-1">Nifas = 20 hari (hitam, darah kuat). Bukan 40 hari sesuai adat. Merah = istihadloh.</p>
+
+            <p className="text-xs text-muted-foreground font-medium mt-3">Contoh 2 — Lemah di awal, kuat di tengah (lemah awal &lt; 15 hari):</p>
+            <p className="text-xs text-muted-foreground">Adat nifas 30 hari. Setelah lahir: merah 10 hari → hitam → menjelang hari ke-60 merah lagi.</p>
+            <Contoh items={[
+              { label: "Merah awal (lemah)", nilai: "10 hari", hukum: "istihadloh" },
+              { label: "Hitam (kuat)", nilai: "30–40 hari", hukum: "nifas" },
+              { label: "Merah akhir", nilai: "selebihnya", hukum: "istihadloh" },
+            ]} />
+            <p className="text-xs text-muted-foreground mt-1">Merah awal 10 hari &lt; 15 hari → tidak memutus nifas. Hitam = nifas (kuat). Merah akhir = istihadloh.</p>
           </div>
         </GolonganCard>
 
