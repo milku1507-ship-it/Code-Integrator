@@ -647,15 +647,15 @@ export default function Panduan() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          MUSTAHADLOH NIFAS — 5 GOLONGAN
+          MUSTAHADLOH NIFAS — 7 GOLONGAN
          ══════════════════════════════════════════════════════════════ */}
       <div className="space-y-4 mb-10">
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-violet-500" />
-          <h2 className="text-base font-semibold text-foreground">Pembagian Mustahadloh Nifas (5 Golongan)</h2>
+          <h2 className="text-base font-semibold text-foreground">Pembagian Mustahadloh Nifas (7 Golongan)</h2>
         </div>
         <p className="text-sm text-muted-foreground -mt-1">
-          Wanita yang mengeluarkan darah nifas melebihi 60 hari 60 malam dibagi menjadi lima golongan.
+          Wanita yang mengeluarkan darah nifas melebihi 60 hari 60 malam dibagi menjadi tujuh golongan — sama seperti mustahadloh haidl, dengan batas maksimal 60 hari (bukan 15 hari).
         </p>
 
         {/* Nifas 01 */}
@@ -823,14 +823,14 @@ export default function Panduan() {
         </GolonganCard>
 
         {/* Nifas 05 */}
-        <GolonganCard nomor="N5" judul="Mu'tadah Ghoiru Mumayyizah fin Nifas — Lupa Adat" subJudul="Sudah pernah nifas · Tidak bisa membedakan · Lupa lama & waktu nifas" color="violet">
+        <GolonganCard nomor="N5" judul="Mu'tadah Ghoiru Mumayyizah fin Nifas — Mutahayyiroh" subJudul="Sudah pernah nifas · Tidak bisa membedakan · Lupa lama & waktu nifas" color="violet">
           <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
-            Wanita yang sudah pernah nifas, darah melebihi 60 hari, tidak bisa membedakan kuat-lemah, dan <strong>lupa lama maupun waktu kebiasaan nifasnya</strong>.
+            Wanita yang sudah pernah nifas, darah melebihi 60 hari, tidak bisa membedakan kuat-lemah, dan <strong>lupa lama maupun waktu kebiasaan nifasnya secara keseluruhan</strong>. Disebut juga <em>Mutahayyiroh fin Nifas</em>.
           </p>
 
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-sm">
             <span className="font-semibold text-primary">Hukum: </span>
-            <span className="text-muted-foreground">Darah setetes pertama = nifas secara yakin. Selanjutnya wajib berhati-hati (ihtiyath): wajib mandi setiap akan sholat fardlu sampai hari ke-60. Setelah hari ke-60, cukup wudlu tiap akan sholat.</span>
+            <span className="text-muted-foreground">Darah setetes pertama = nifas secara yakin. Selanjutnya wajib berhati-hati (ihtiyath): wajib mandi setiap akan sholat fardlu sampai hari ke-60. Setelah hari ke-60, cukup wudlu tiap akan sholat fardlu.</span>
           </div>
 
           <div>
@@ -843,8 +843,58 @@ export default function Panduan() {
           </div>
 
           <InfoBox color="amber">
-            Hukum Golongan N5 juga berlaku bagi Mu'tadah Ghoiru Mumayyizah fin Nifas yang lupa <em>salah satu</em> dari lama atau waktu nifasnya (Qodron atau Waktan saja).
+            Semua hari yang dihukumi istihadloh dalam masalah nifas, sholat yang ditinggalkan wajib diqodlo'. Demikian pula puasa jika bertepatan dengan bulan Ramadlan.
           </InfoBox>
+        </GolonganCard>
+
+        {/* Nifas 06 */}
+        <GolonganCard nomor="N6" judul="Mu'tadah Ghoiru Mumayyizah fin Nifas — Ingat Lama, Lupa Waktu Mulai" subJudul="Ingat kuantitas nifas · Lupa kapan mulainya" color="violet">
+          <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
+            Wanita yang sudah pernah nifas, darah melebihi 60 hari, tidak bisa membedakan kuat-lemah, dan <strong>ingat lama masa nifasnya tetapi lupa kapan tanggal mulai nifas</strong> (ingat qodron, lupa waktan).
+          </p>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Hukum:</p>
+            <ul className="text-sm text-muted-foreground space-y-1 pl-4 list-disc">
+              <li>Hari yang <strong>yakin nifas</strong> (pasti masuk dalam masa nifas) → dihukumi nifas.</li>
+              <li>Hari yang <strong>yakin bukan nifas</strong> (pasti sudah lewat 60 hari) → dihukumi istihadloh.</li>
+              <li>Hari yang <strong>mungkin nifas atau istihadloh</strong> → ihtiyath (seperti mutahayyiroh).</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Contoh:</p>
+            <p className="text-xs text-muted-foreground">Adat nifas 40 hari dalam 60 hari pertama setelah lahir. Ia ingat lama nifasnya 40 hari, tapi lupa mulai dari hari ke berapa. Yang ia ingat: pada hari ke-1 setelah lahir ia masih nifas.</p>
+            <div className="space-y-1 text-xs text-muted-foreground mt-2">
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-1:</span><span>Yakin nifas → nifas</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-2 s/d 20:</span><span>Mungkin nifas / mungkin tidak → ihtiyath</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-21:</span><span>Yakin nifas (paling lambat nifas masuk) → nifas</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-22 s/d 60:</span><span>Mungkin nifas atau putus nifas → ihtiyath</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-61+:</span><span>Yakin bukan nifas → istihadloh, wudlu tiap sholat</span></div>
+            </div>
+            <InfoBox color="amber">
+              Mandi wajib hanya pada hari-hari yang mungkin merupakan akhir nifas (masa ihtiyath). Setelah hari ke-60, cukup wudlu tiap sholat.
+            </InfoBox>
+          </div>
+        </GolonganCard>
+
+        {/* Nifas 07 */}
+        <GolonganCard nomor="N7" judul="Mu'tadah Ghoiru Mumayyizah fin Nifas — Ingat Waktu Mulai, Lupa Lama" subJudul="Ingat kapan mulai nifas · Lupa kuantitas nifas" color="violet">
+          <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
+            Wanita yang sudah pernah nifas, darah melebihi 60 hari, tidak bisa membedakan kuat-lemah, dan <strong>ingat kapan mulai nifas tetapi lupa berapa lama nifasnya</strong> (ingat waktan, lupa qodron).
+          </p>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Contoh (ingat nifas mulai hari ke-1 setelah lahir, lupa berapa hari lamanya):</p>
+            <div className="space-y-1 text-xs text-muted-foreground mt-2">
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-1:</span><span>Yakin nifas → nifas</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-2 s/d 60:</span><span>Mungkin nifas / mungkin sudah putus nifas → ihtiyath (mandi tiap sholat fardlu)</span></div>
+              <div className="flex gap-2"><span className="font-medium w-32">Hari ke-61+:</span><span>Yakin bukan nifas → istihadloh, wudlu tiap sholat</span></div>
+            </div>
+            <InfoBox color="amber">
+              Masa yakin nifas (hari ke-1) berlaku hukum nifas. Masa mungkin (hari ke-2 s/d 60) berlaku hukum ihtiyath. Masa yakin bukan nifas (hari ke-61+) berlaku hukum istihadloh.
+            </InfoBox>
+          </div>
 
           <InfoBox color="amber">
             Semua hari yang dihukumi istihadloh dalam masalah nifas, sholat yang ditinggalkan wajib diqodlo'. Demikian pula puasa jika bertepatan dengan bulan Ramadlan.
