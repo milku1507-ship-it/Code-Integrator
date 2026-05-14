@@ -229,7 +229,7 @@ function tentukanKategoriMushtadloh(
     if (isTamyiz) {
       return {
         kategori: "Mubtadi'ah Mumayyizah (Golongan 1)",
-        hukum: `${kuatLabel} darah kuat adalah HAIDL. ${lemahLabel} darah lemah adalah ISTIHADLOH.`,
+        hukum: `${kuatLabel} darah kuat adalah HAIDL. Darah lemah dan masa berhenti yang berada di sela-sela darah kuat juga dihukumi HAIDL. Darah lemah yang keluar terus-menerus setelah darah kuat terakhir adalah ISTIHADLOH.`,
         haidJamSebenarnya: kuatJam,
       };
     } else {
@@ -243,7 +243,7 @@ function tentukanKategoriMushtadloh(
     if (isTamyiz) {
       return {
         kategori: "Mu'tadah Mumayyizah (Golongan 3)",
-        hukum: `${kuatLabel} darah kuat adalah HAIDL. ${lemahLabel} darah lemah adalah ISTIHADLOH.`,
+        hukum: `${kuatLabel} darah kuat adalah HAIDL. Darah lemah dan masa berhenti yang berada di sela-sela darah kuat juga dihukumi HAIDL. Darah lemah yang keluar terus-menerus setelah darah kuat terakhir adalah ISTIHADLOH.`,
         haidJamSebenarnya: kuatJam,
       };
     } else {
@@ -286,11 +286,11 @@ function tentukanKategoriMushtadloh(
         };
       } else if (ingatKebiasaan === "ingat_durasi") {
         return {
-          kategori: "Mu'tadah Ghoiru Mumayyizah — Ingat Durasi, Lupa Waktu (Golongan 6)",
-          hukum: `Haidl sejumlah ${kebiasaanHari} hari, namun karena lupa tanggal mulainya, hari-hari yang dimungkinkan sebagai haid atau suci dihukumi Mutahayyiroh.`,
+          kategori: "Mu'tadah Ghoiru Mumayyizah — Dzakiroh lil-'Adad Nasiyah lil-Waqt (Golongan 7)",
+          hukum: `Haidl sejumlah ${kebiasaanHari} hari (ingat durasi), namun karena lupa tanggal mulainya, hari-hari yang dimungkinkan sebagai haid atau suci dihukumi Mutahayyiroh. Hari yang diyakini murni haid/suci secara probabilitas dihukumi haid/suci.`,
           haidJamSebenarnya: kebiasaanHari * 24,
           aturanIbadah: {
-            judul: "Aturan Ibadah Ihtiyat (Ingat Durasi, Lupa Waktu Mulai)",
+            judul: "Aturan Ibadah Ihtiyath (Golongan 7 — Ingat Durasi, Lupa Waktu Mulai)",
             wajib: [
               "Pada hari-hari yang diragukan (dimungkinkan haid atau suci): dihukumi Mutahayyiroh.",
               "Wajib sholat, puasa, dan thowaf pada hari-hari yang diragukan tersebut.",
@@ -306,11 +306,11 @@ function tentukanKategoriMushtadloh(
         };
       } else {
         return {
-          kategori: "Mu'tadah Ghoiru Mumayyizah — Ingat Waktu, Lupa Durasi (Golongan 7)",
-          hukum: "Hari/waktu yang diyakini biasa mulai haid = HAIDL (24 jam pertama). Hari-hari setelahnya yang meragukan dihukumi Mutahayyiroh.",
+          kategori: "Mu'tadah Ghoiru Mumayyizah — Dzakiroh lil-Waqt Nasiyah lil-'Adad (Golongan 6)",
+          hukum: "Hari/waktu yang diyakini biasa mulai haid dihukumi HAIDL (24 jam pertama = pasti haid). Hari-hari berikutnya saat darah terputus-putus adalah hari ambigu/diragukan yang wajib ihtiyath, serta wajib mandi setiap hendak shalat wajib pada hari-hari yang diragukan tersebut.",
           haidJamSebenarnya: 24,
           aturanIbadah: {
-            judul: "Aturan Ibadah Ihtiyat (Ingat Waktu Mulai, Lupa Durasi)",
+            judul: "Aturan Ibadah Ihtiyath (Golongan 6 — Ingat Waktu Mulai, Lupa Durasi)",
             wajib: [
               "Hari pertama (24 jam yang diyakini sebagai awal haid): berlaku hukum haid penuh — haram sholat, puasa, jima', dsb.",
               "Pada hari-hari setelahnya yang meragukan (dihukumi Mutahayyiroh): wajib sholat, puasa, dan thowaf.",
@@ -390,13 +390,18 @@ function buatLiniMasaHarian(
   let hariKe = hariMulai;
   let cumJam = 0;
 
-  // ── Pre-compute: untuk tamyiz, tandai bersih yang "di antara dua darah kuat" ──
-  // Sebuah fase bersih hanya dihukumi Haid jika fase darah SEBELUM dan SESUDAHNYA
-  // keduanya darah kuat. Bersih setelah kuat-sebelum-lemah = Istihadloh.
+  // ── Pre-compute: untuk tamyiz, tandai bersih dan lemah "di antara dua darah kuat" ──
+  // Hukum Mumayyizah (G1 & G3): yang dihukumi haid/nifas adalah darah kuat BESERTA darah
+  // lemah dan masa berhenti yang berada di sela-sela darah kuat. Darah lemah yang keluar
+  // terus-menerus setelah darah kuat terakhir = istihadloh.
   const bersihAntaraKuat: boolean[] = new Array(items.length).fill(false);
+  const lemahAntaraKuat: boolean[] = new Array(items.length).fill(false);
   if (isTamyiz && tipeAnalisis === "istihadloh") {
     for (let i = 0; i < items.length; i++) {
-      if (items[i].tipe !== "bersih") continue;
+      const isLemah = items[i].tipe === "darah" && skorWarnaSifat(items[i] as FaseDarahItem) < kuatSkor;
+      const isBersih = items[i].tipe === "bersih";
+      if (!isLemah && !isBersih) continue;
+
       let prevKuat = false;
       for (let j = i - 1; j >= 0; j--) {
         if (items[j].tipe === "darah") {
@@ -411,7 +416,8 @@ function buatLiniMasaHarian(
           break;
         }
       }
-      bersihAntaraKuat[i] = prevKuat && nextKuat;
+      if (isBersih) bersihAntaraKuat[i] = prevKuat && nextKuat;
+      if (isLemah) lemahAntaraKuat[i] = prevKuat && nextKuat;
     }
   }
 
@@ -442,13 +448,18 @@ function buatLiniMasaHarian(
           keterangan = `Darah ${faseDarah.warna} — Haid`;
         } else if (tipeAnalisis === "istihadloh") {
           if (isTamyiz) {
-            // Golongan 1 & 3 (Mumayyizah): darah kuat = Haid, darah lemah = Istihadloh
+            // Golongan 1 & 3 (Mumayyizah): darah kuat = Haid, darah lemah antara dua kuat = Haid,
+            // darah lemah setelah kuat terakhir = Istihadloh.
             if (skorFase >= kuatSkor) {
               hukum = "haid";
               keterangan = `Darah kuat (${faseDarah.warna}) — Haid`;
+            } else if (lemahAntaraKuat[faseIdx]) {
+              hukum = "haid";
+              wajibQodloPuasa = true;
+              keterangan = `Darah lemah (${faseDarah.warna}) — Haid (berada di sela-sela dua darah kuat, dihukumi Haid sesuai kaidah Mumayyizah). Sholat wajib dikerjakan secara dzahir saat darah tidak terlihat, namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa TIDAK SAH dan WAJIB DIQODLO.`;
             } else {
               hukum = "istihadloh";
-              keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
+              keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh (setelah darah kuat terakhir)`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
             // Golongan 5 (Mutahayyiroh Mutlaqoh): haid hanya 24 jam pertama, setelahnya Ihtiyath
@@ -486,11 +497,13 @@ function buatLiniMasaHarian(
         const profilTeks = kategoriStr ? `Berdasarkan profil ${kategoriStr}` : "Berdasarkan analisis hukum";
 
         if (tipeAnalisis === "haidl_normal") {
-          // LOGIKA 1: Haid Terputus-putus — Total rangkaian ≤ 15 hari (Hukum Jam'u/Talfiq)
-          // Seluruh jeda bersih ditarik dan dihukumi Haid
+          // LOGIKA 1: Haid Terputus-putus — Total rangkaian ≤ 15 hari (Hukum Jam'u/An-Naqo')
+          // Saat darah berhenti (jeda): secara dzahir ia terhukum suci → wajib segera mandi besar,
+          // sholat, dan puasa. Namun jika darah keluar kembali dalam 15 hari, seluruh jeda ditarik
+          // kembali menjadi haid. Sholat tidak sah (tidak berdosa), puasa wajib diqodlo.
           hukum = "haid";
           wajibQodloPuasa = true;
-          keterangan = `Jeda bersih dalam rangkaian haid (Hukum Jam'u — total siklus ≤ 15 hari). Masa bersih ini dihukumi HAID. Sholat wajib dikerjakan secara dzahir saat darah tidak terlihat, namun TIDAK SAH — TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa hari ini TIDAK SAH dan WAJIB DIQODLO.`;
+          keterangan = `Jeda bersih dalam rangkaian haid (Hukum An-Naqo'/Jam'u — total siklus ≤ 15 hari). Saat darah berhenti, secara dzahir wajib segera mandi besar, sholat, dan puasa. Namun karena darah keluar kembali sebelum 15 hari suci penuh, masa bersih ini ditarik hukumnya menjadi HAID. Sholat yang dikerjakan saat jeda TIDAK SAH (tidak berdosa karena tidak tahu). TIDAK PERLU DIQODLO karena kewajiban sholat gugur selama haid. Puasa hari ini TIDAK SAH dan WAJIB DIQODLO.`;
         } else if (tipeAnalisis === "istihadloh") {
           // LOGIKA 2: Mustahadloh Terputus-putus — Total rangkaian > 15 hari
           // Hukum jeda bersih dikembalikan ke masing-masing golongan
@@ -768,11 +781,11 @@ function analyzeSingleSiklus(
     haidJamCatatan !== null ? "ingat_semua" : ingatKebiasaan;
 
   if (isTamyiz) {
-    // Bersih dihitung sebagai "dalam haid" hanya jika diapit dua darah kuat
-    // (kuat–bersih–kuat). Bersih kuat→lemah atau lemah→kuat = Istihadloh.
+    // Bersih dan lemah yang dihitung sebagai "dalam haid" hanya jika diapit dua darah kuat.
+    // Hukum Mumayyizah (G1 & G3): darah kuat + darah lemah antara kuat + bersih antara kuat = haid.
     const kuatSkorRef = darahFases.length > 0 ? skorWarnaSifat(darahFases[0]) : 0;
+    let lemahAntaraKuatJam = 0;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].tipe !== "bersih") continue;
       let prevKuat = false;
       for (let j = i - 1; j >= 0; j--) {
         if (items[j].tipe === "darah") {
@@ -787,9 +800,20 @@ function analyzeSingleSiklus(
           break;
         }
       }
-      if (prevKuat && nextKuat) {
+      if (items[i].tipe === "bersih" && prevKuat && nextKuat) {
         bersihDalamHaidJam += jamKeFaseItem(items[i]);
       }
+      if (
+        items[i].tipe === "darah" &&
+        skorWarnaSifat(items[i] as FaseDarahItem) < kuatSkorRef &&
+        prevKuat && nextKuat
+      ) {
+        lemahAntaraKuatJam += jamKeFaseItem(items[i]);
+      }
+    }
+    // Update haidJamSebenarnya: haid sesungguhnya = kuat + lemah-antara-kuat + bersih-antara-kuat
+    if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined) {
+      haidJamSebenarnya = haidJamSebenarnya + lemahAntaraKuatJam + bersihDalamHaidJam;
     }
   } else if (ingatKebiasaanEfektif !== "lupa_semua") {
     if (haidJamSebenarnya !== null && haidJamSebenarnya !== undefined && haidJamSebenarnya > 0) {
@@ -1036,7 +1060,11 @@ function buatLiniMasaHarianNifas(
             // dihukumi Nifas meskipun darah berikutnya adalah darah lemah.
             if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
               hukum = "nifas";
-              keterangan = `Darah kuat (${faseDarah.warna}) — Nifas`;
+              if (skorFase >= kuatSkor) {
+                keterangan = `Darah kuat (${faseDarah.warna}) — Nifas`;
+              } else {
+                keterangan = `Darah lemah (${faseDarah.warna}) — Nifas (berada di sela-sela dua darah kuat, dihukumi Nifas sesuai kaidah Mumayyizah)`;
+              }
             } else {
               hukum = "istihadloh";
               keterangan = `Darah (${faseDarah.warna}) — Istihadloh (di luar batas nifas Mumayyizah)`;
@@ -1290,12 +1318,25 @@ function analyzeSiklusNifas(
         .reduce((s, f) => s + jamKeFaseItem(f), 0);
       if (kuatJam >= 24 && kuatJam <= NIFAS_MAX_JAM) {
         isTamyiz = true;
-        // Hitung batas nifas mumayyizah: jumlah semua fase SEBELUM darah lemah pertama.
-        // Ini mencakup darah kuat + jeda bersih yang mengiringinya (Kaidah Sahbi).
+        // Hitung batas nifas mumayyizah menggunakan dua metode, ambil yang terbesar:
+        // (A) Kaidah Sahbi: semua fase hingga sebelum darah lemah pertama (kuat + bersih sesudahnya).
+        // (B) Kaidah Taqothu' Mumayyizah: semua fase dari awal s/d akhir darah kuat terakhir
+        //     (mencakup darah lemah dan bersih yang berada di sela-sela darah kuat).
+        let kaidahSahbiJam = 0;
         for (const fase of nifasItems) {
           if (fase.tipe === "darah" && skorWarnaSifat(fase as FaseDarahItem) < kuatSkor) break;
-          totalNifasMumayyizahJam += jamKeFaseItem(fase);
+          kaidahSahbiJam += jamKeFaseItem(fase);
         }
+        let lastKuatEndJam = 0;
+        let cumNifas = 0;
+        for (const fase of nifasItems) {
+          const j = jamKeFaseItem(fase);
+          cumNifas += j;
+          if (fase.tipe === "darah" && skorWarnaSifat(fase as FaseDarahItem) >= kuatSkor) {
+            lastKuatEndJam = cumNifas;
+          }
+        }
+        totalNifasMumayyizahJam = Math.max(kaidahSahbiJam, lastKuatEndJam);
       }
     }
   }
