@@ -908,50 +908,10 @@ function tentukanKategoriNifasIstihadloh(
             ],
           },
         };
-      } else if (ingatKebiasaan === "ingat_durasi") {
+      } else if (ingatKebiasaan === "lupa_semua") {
+        // N5 — Nasiyah Qodron wa Waktan (Mutahayyiroh Mutlaqoh): lupa lama DAN waktu nifas
         return {
-          kategori: "Mutahayyiroh Zakiroh Qodron La Waqtan Finnifas (Golongan 5)",
-          hukum: `Ingat durasi nifas (${kebiasaanNifasHari} hari), namun lupa kapan tepatnya mulai. Nifas ditetapkan ${kebiasaanNifasHari} hari pada waktu yang paling diyakini.`,
-          nifasJamSebenarnya: kebiasaanNifasHari * 24,
-          isLahzhotan: false,
-          aturanIbadah: {
-            judul: "Aturan Ibadah (Ingat Durasi, Lupa Waktu Mulai)",
-            wajib: [
-              "Pada hari-hari yang diragukan (mungkin nifas atau suci): wajib sholat dan puasa.",
-              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
-            ],
-            haram: [
-              "Bersetubuh (jima') pada hari-hari yang diragukan.",
-              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
-              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
-              "Berdiam di masjid pada hari-hari yang diragukan.",
-            ],
-          },
-        };
-      } else if (ingatKebiasaan === "ingat_waktu") {
-        return {
-          kategori: "Mutahayyiroh Zakiroh Waqtan La Qodron Finnifas (Golongan 6)",
-          hukum: "Ingat kapan mulai nifas, namun lupa durasi. Nifas ditetapkan hanya sekejap (lahzhotan) di awal yang diyakini. Selebihnya adalah masa Ihtiyath.",
-          nifasJamSebenarnya: 24,
-          isLahzhotan: true,
-          aturanIbadah: {
-            judul: "Aturan Ibadah (Ingat Waktu Mulai, Lupa Durasi)",
-            wajib: [
-              "Hari pertama (sekejap lahzhotan yang diyakini awal nifas): berlaku hukum nifas penuh.",
-              "Hari-hari setelahnya yang diragukan: wajib sholat dan puasa.",
-              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
-            ],
-            haram: [
-              "Bersetubuh (jima') pada hari-hari yang diragukan.",
-              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
-              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
-              "Berdiam di masjid pada hari-hari yang diragukan.",
-            ],
-          },
-        };
-      } else {
-        return {
-          kategori: "Mutahayyiroh Mutlaqoh Finnifas (Golongan 7)",
+          kategori: "Mu'tadah Ghoiru Mumayyizah Finnifas — Mutahayyiroh Mutlaqoh (N5)",
           hukum: "Lupa total kapan mulai dan berapa lama nifas. Nifas ditetapkan hanya sekejap (lahzhotan) di awal melahirkan. Seluruh sisanya adalah masa Ihtiyath.",
           nifasJamSebenarnya: 24,
           isLahzhotan: true,
@@ -966,6 +926,49 @@ function tentukanKategoriNifasIstihadloh(
               "Membaca Al-Qur'an di luar sholat.",
               "Menyentuh atau membawa mushaf.",
               "Berdiam di masjid (i'tikaf).",
+            ],
+          },
+        };
+      } else if (ingatKebiasaan === "ingat_durasi") {
+        // N6 — Dzakiroh Qodron la Waktan: ingat LAMA nifas, lupa WAKTU mulai
+        return {
+          kategori: "Mu'tadah Ghoiru Mumayyizah Finnifas — Dzakiroh Qodron la Waktan (N6)",
+          hukum: `Ingat durasi nifas (${kebiasaanNifasHari} hari), namun lupa kapan tepatnya mulai. Nifas ditetapkan ${kebiasaanNifasHari} hari pada waktu yang paling diyakini.`,
+          nifasJamSebenarnya: kebiasaanNifasHari * 24,
+          isLahzhotan: false,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (N6 — Ingat Durasi Nifas, Lupa Waktu Mulai)",
+            wajib: [
+              "Pada hari-hari yang diragukan (mungkin nifas atau suci): wajib sholat dan puasa.",
+              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
+            ],
+            haram: [
+              "Bersetubuh (jima') pada hari-hari yang diragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
+              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
+              "Berdiam di masjid pada hari-hari yang diragukan.",
+            ],
+          },
+        };
+      } else {
+        // N7 — Dzakiroh Waktan la Qodron: ingat WAKTU mulai, lupa LAMA nifas
+        return {
+          kategori: "Mu'tadah Ghoiru Mumayyizah Finnifas — Dzakiroh Waktan la Qodron (N7)",
+          hukum: "Ingat kapan mulai nifas, namun lupa durasi. Nifas ditetapkan hanya sekejap (lahzhotan) di awal yang diyakini. Selebihnya adalah masa Ihtiyath.",
+          nifasJamSebenarnya: 24,
+          isLahzhotan: true,
+          aturanIbadah: {
+            judul: "Aturan Ibadah (N7 — Ingat Waktu Mulai Nifas, Lupa Durasi)",
+            wajib: [
+              "Hari pertama (sekejap lahzhotan yang diyakini awal nifas): berlaku hukum nifas penuh.",
+              "Hari-hari setelahnya yang diragukan: wajib sholat dan puasa.",
+              "Wajib mandi besar setiap akan sholat fardlu pada hari-hari yang diragukan.",
+            ],
+            haram: [
+              "Bersetubuh (jima') pada hari-hari yang diragukan.",
+              "Membaca Al-Qur'an di luar sholat pada hari-hari yang diragukan.",
+              "Menyentuh atau membawa mushaf pada hari-hari yang diragukan.",
+              "Berdiam di masjid pada hari-hari yang diragukan.",
             ],
           },
         };
@@ -1039,16 +1042,16 @@ function buatLiniMasaHarianNifas(
               keterangan = `Darah (${faseDarah.warna}) — Istihadloh (di luar batas nifas Mumayyizah)`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
-            // Golongan 7: nifas hanya sekejap (24 jam pertama), setelahnya Ihtiyath
+            // N5 (Mutahayyiroh Mutlaqoh): nifas hanya sekejap (24 jam pertama), setelahnya Ihtiyath
             if (jamMulaiSeg < 24) {
               hukum = "nifas";
               keterangan = `Darah — Nifas (sekejap/lahzhotan di awal melahirkan)`;
             } else {
               hukum = "ihtiyath";
-              keterangan = `Darah — Masa Ihtiyath (Mutahayyiroh Mutlaqoh Nifas)`;
+              keterangan = `Darah — Masa Ihtiyath (Mutahayyiroh Mutlaqoh Nifas — N5)`;
             }
           } else {
-            // Golongan 2, 4, 5, 6: dalam jendela nifasJamSebenarnya = nifas
+            // N2, N4, N6, N7: dalam jendela nifasJamSebenarnya = nifas
             if (nifasJamSebenarnya !== null && jamMulaiSeg < nifasJamSebenarnya) {
               hukum = "nifas";
               keterangan = `Darah — Nifas (dalam masa nifas hari ke-${Math.floor(jamMulaiSeg / 24) + 1})`;

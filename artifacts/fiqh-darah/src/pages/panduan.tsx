@@ -391,7 +391,7 @@ export default function Panduan() {
         {/* 02 */}
         <GolonganCard nomor="02" judul="Mubtadi'ah Ghoiru Mumayyizah" subJudul="Baru pertama haidl · Tidak bisa membedakan darah" color="amber">
           <p className="text-sm text-muted-foreground pt-4 leading-relaxed">
-            Wanita yang baru pertama kali mengalami haidl, darah melebihi 15 hari, namun darahnya <strong>satu warna/sifat</strong> (tidak dapat dibedakan kuat-lemah), atau bisa dibedakan tetapi tidak memenuhi 3 syarat mumayyizah. Dan ia <strong>ingat betul kapan mulai keluar darah</strong>.
+            Wanita yang baru pertama kali mengalami haidl, darah melebihi 15 hari, namun darahnya <strong>satu warna/sifat</strong> (tidak dapat dibedakan kuat-lemah), atau bisa dibedakan tetapi tidak memenuhi seluruh 4 syarat mumayyizah. Dan ia <strong>ingat betul kapan mulai keluar darah</strong>.
           </p>
 
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-sm">
