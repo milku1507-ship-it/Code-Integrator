@@ -17,6 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Plus,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,6 +136,43 @@ function hitungTotalJamDarahDenganWaktu(
   const lastDayHours = berhentiJam;
   const middleHours = (darahKeys.length - 2) * 24;
   return Math.max(0, firstDayHours + middleHours + lastDayHours);
+}
+
+// ─── Adat pattern detection ──────────────────────────────────────────────────
+function deteksiPolaDanAmbilNilai(riwayat: number[]): {
+  nilai: number;
+  polaDitemukan: boolean;
+  polaPanjang: number;
+  pesan: string;
+} {
+  if (riwayat.length === 0) return { nilai: 7, polaDitemukan: false, polaPanjang: 0, pesan: "Belum ada data bulan." };
+  if (riwayat.length === 1)
+    return { nilai: riwayat[0], polaDitemukan: false, polaPanjang: 1, pesan: `Menggunakan data Bulan 1: ${riwayat[0]} hari.` };
+  const n = riwayat.length;
+  const maxLen = Math.floor(n / 2);
+  for (let len = 1; len <= maxLen; len++) {
+    const candidate = riwayat.slice(0, len);
+    let isPattern = true;
+    for (let i = len; i < n; i++) {
+      if (riwayat[i] !== candidate[i % len]) { isPattern = false; break; }
+    }
+    if (isPattern) {
+      const nextVal = candidate[n % len];
+      return {
+        nilai: nextVal,
+        polaDitemukan: true,
+        polaPanjang: len,
+        pesan: `Pola berulang [${candidate.join(", ")}] ditemukan. Nilai siklus ini: ${nextVal} hari.`,
+      };
+    }
+  }
+  const lastVal = riwayat[n - 1];
+  return {
+    nilai: lastVal,
+    polaDitemukan: false,
+    polaPanjang: n,
+    pesan: `Tidak ada pola berulang. Menggunakan bulan terakhir: ${lastVal} hari (kaidah Mu'tadah Ghairu Mumayyizah).`,
+  };
 }
 
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
@@ -1057,6 +1097,8 @@ export default function Kalkulator() {
   const [waktuMulaiJam, setWaktuMulaiJam] = useState<number>(12);
   const [waktuBerhentiJam, setWaktuBerhentiJam] = useState<number>(12);
   const [totalJamDarah, setTotalJamDarah] = useState<number>(0);
+  const [adatMode, setAdatMode] = useState<"tetap" | "berubah">("tetap");
+  const [riwayatBulan, setRiwayatBulan] = useState<number[]>([7, 7]);
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -1116,7 +1158,11 @@ export default function Kalkulator() {
   };
 
   const onStep3Submit = (data: z.infer<typeof step3Schema>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
+    let finalKebiasaan = parseFloat(String(data.kebiasaanHaidHari ?? 7)) || 7;
+    if (adatMode === "berubah" && riwayatBulan.length > 0) {
+      finalKebiasaan = deteksiPolaDanAmbilNilai(riwayatBulan).nilai;
+    }
+    setFormData((prev) => ({ ...prev, ...data, kebiasaanHaidHari: finalKebiasaan }));
     setStep(4);
   };
 
@@ -1164,6 +1210,8 @@ export default function Kalkulator() {
     setWaktuMulaiJam(12);
     setWaktuBerhentiJam(12);
     setTotalJamDarah(0);
+    setAdatMode("tetap");
+    setRiwayatBulan([7, 7]);
     form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
     form4.reset({ isBulanPertamaIstihadloh: true, sudahSholatSebelumDarah: false });
@@ -1662,27 +1710,149 @@ export default function Kalkulator() {
 
                 {(form3.watch("ingatKebiasaan") === "ingat_semua" ||
                   form3.watch("ingatKebiasaan") === "ingat_durasi") && (
-                  <FormField
-                    control={form3.control}
-                    name="kebiasaanHaidHari"
-                    render={({ field }) => (
-                      <FormItem className="animate-in fade-in zoom-in-95 duration-300">
-                        <FormLabel>
-                          {formData.kondisiAwal === "nifas"
-                            ? "Berapa hari biasanya nifas Anda? (maks. 60 hari)"
-                            : "Berapa hari biasanya haid Anda? (maks. 15 hari)"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            data-testid="input-kebiasaan-hari"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
+
+                    {/* ── Adat Mode Toggle ── */}
+                    {formData.kondisiAwal !== "nifas" && (
+                      <div className="rounded-2xl border bg-pink-50/60 dark:bg-pink-950/20 border-pink-200 dark:border-pink-800 p-4 space-y-3">
+                        <p className="text-sm font-semibold text-pink-800 dark:text-pink-300">Tipe Adat / Kebiasaan Haid</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAdatMode("tetap")}
+                            className={cn(
+                              "rounded-xl border-2 p-3 text-left transition-all",
+                              adatMode === "tetap"
+                                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                                : "border-border bg-background hover:border-primary/40"
+                            )}
+                          >
+                            <p className={cn("text-sm font-semibold", adatMode === "tetap" ? "text-primary" : "text-foreground")}>
+                              Adat Tetap
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              Haid selalu sama tiap bulan (misal: selalu 7 hari)
+                            </p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAdatMode("berubah")}
+                            className={cn(
+                              "rounded-xl border-2 p-3 text-left transition-all",
+                              adatMode === "berubah"
+                                ? "border-primary bg-primary/10 dark:bg-primary/20"
+                                : "border-border bg-background hover:border-primary/40"
+                            )}
+                          >
+                            <p className={cn("text-sm font-semibold", adatMode === "berubah" ? "text-primary" : "text-foreground")}>
+                              Adat Berubah
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              Haid tidak menentu tiap bulan (kasus Intiqolul 'Adah)
+                            </p>
+                          </button>
+                        </div>
+                      </div>
                     )}
-                  />
+
+                    {/* ── Adat Tetap: single input ── */}
+                    {adatMode === "tetap" && (
+                      <FormField
+                        control={form3.control}
+                        name="kebiasaanHaidHari"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {formData.kondisiAwal === "nifas"
+                                ? "Berapa hari biasanya nifas Anda? (maks. 60 hari)"
+                                : "Berapa hari biasanya haid Anda? (maks. 15 hari)"}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                data-testid="input-kebiasaan-hari"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* ── Adat Berubah: dynamic list ── */}
+                    {adatMode === "berubah" && (() => {
+                      const hasilDeteksi = deteksiPolaDanAmbilNilai(riwayatBulan);
+                      return (
+                        <div className="space-y-4 animate-in fade-in duration-200">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-foreground">
+                              Riwayat Durasi Haid per Bulan
+                              <span className="ml-1 text-xs text-muted-foreground font-normal">(dari yang paling lama hingga terbaru)</span>
+                            </p>
+                            <div className="space-y-2">
+                              {riwayatBulan.map((val, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground w-16 flex-shrink-0">Bulan {idx + 1}</span>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={15}
+                                    value={val}
+                                    onChange={(e) => {
+                                      const v = Math.min(15, Math.max(1, parseInt(e.target.value) || 1));
+                                      setRiwayatBulan((prev) => prev.map((x, i) => i === idx ? v : x));
+                                    }}
+                                    className="w-28 h-8 text-sm"
+                                  />
+                                  <span className="text-xs text-muted-foreground">hari</span>
+                                  {riwayatBulan.length > 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setRiwayatBulan((prev) => prev.filter((_, i) => i !== idx))}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs mt-1"
+                              onClick={() => setRiwayatBulan((prev) => [...prev, prev[prev.length - 1] ?? 7])}
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Tambah Data Bulan
+                            </Button>
+                          </div>
+
+                          {/* Pattern analysis result */}
+                          <div className={cn(
+                            "rounded-xl px-4 py-3 flex items-start gap-3 text-sm border",
+                            hasilDeteksi.polaDitemukan
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700"
+                              : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700"
+                          )}>
+                            <RefreshCw className={cn("w-4 h-4 flex-shrink-0 mt-0.5", hasilDeteksi.polaDitemukan ? "text-emerald-600" : "text-amber-600")} />
+                            <div className="space-y-0.5">
+                              <p className={cn("font-semibold", hasilDeteksi.polaDitemukan ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300")}>
+                                {hasilDeteksi.polaDitemukan ? "Pola Berulang Terdeteksi" : "Tidak Ada Pola Berulang"}
+                              </p>
+                              <p className="text-xs text-muted-foreground leading-relaxed">{hasilDeteksi.pesan}</p>
+                              <p className={cn("text-xs font-semibold mt-1", hasilDeteksi.polaDitemukan ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>
+                                Nilai adat yang akan digunakan: <span className="text-base">{hasilDeteksi.nilai} hari</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
 
                 <div className="flex justify-between pt-4 border-t">

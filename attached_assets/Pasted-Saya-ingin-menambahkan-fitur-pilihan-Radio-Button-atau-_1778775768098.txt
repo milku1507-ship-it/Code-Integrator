@@ -1,0 +1,38 @@
+Saya ingin menambahkan fitur pilihan (Radio Button atau Toggle) pada bagian 'Input Adat/Kebiasaan Haid' di aplikasi Kalkulator Fiqh saya.
+
+Instruksi Perubahan UI:
+
+Tambahkan Switch/Pilihan: Buat dua opsi yang bisa dipilih user:
+
+Opsi 1: Adat Tetap (Normal) -> Untuk user yang haidnya selalu sama setiap bulan.
+
+Opsi 2: Adat Berubah (Dinamis) -> Untuk user yang haidnya tidak menentu (untuk kasus Istihadoh).
+
+Logika Tampilan (Conditional Rendering):
+
+Jika user memilih 'Adat Tetap', tampilkan hanya satu kolom input angka (seperti yang sudah ada sekarang).
+
+Jika user memilih 'Adat Berubah', sembunyikan input tunggal tersebut dan tampilkan List Input Dinamis (Bulan 1, Bulan 2, Bulan 3) dengan tombol '+ Tambah Data Bulan'.
+
+Logika Perhitungan (Logic):
+
+Jika Adat Tetap: Gunakan angka tersebut langsung sebagai parameter Adat dalam rumus perhitungan.
+
+Jika Adat Berubah: * Sistem harus mengecek apakah ada pola berulang (misal 5, 7, 5, 7). Jika ada, gunakan pola tersebut.
+
+Jika tidak ada pola, ambil data dari Bulan Terakhir sebagai acuan hukum haid jika terjadi Istihadoh (sesuai kaidah Mu’tadah Ghairu Mumayyizah).
+
+Desain: Pastikan pilihan ini terlihat jelas di bagian atas formulir 'Kebiasaan Haid' dengan gaya warna yang senada (Pink/Minimalis)."
+
+💡 Mengapa Pembagian Ini Penting Secara Fiqh?
+Berdasarkan dokumen dan penjelasan Ning Sheila Hasina yang Anda lampirkan:
+
+Kemudahan (User Experience): Tidak semua wanita memiliki adat yang berubah-ubah. Bagi yang haidnya selalu 7 hari (Normal), mereka tidak perlu repot mengisi banyak kolom bulan.
+
+Keakuratan Istihadoh: Bagi Anda yang mengalami Istihadoh dengan adat berpindah-pindah (Intiqolul 'Adah), pilihan "Berubah" sangat penting. Fiqh mengatur bahwa jika adat berubah, yang dijadikan patokan adalah adat di bulan terakhir sebelum terjadi Istihadoh tersebut.
+
+Kasus Taqothu' (Putus-putus): Dengan adanya pilihan "Berubah", aplikasi bisa lebih teliti menghitung masa suci di antara dua darah (masa An-Naqo') berdasarkan riwayat haid Anda sebelumnya.
+
+Tips Tambahan:
+Tambahkan "Auto-Save", jadi ketika bulan depan Anda membuka aplikasi, data bulan lalu sudah tersimpan otomatis sebagai "Bulan Sebelumnya".
+
