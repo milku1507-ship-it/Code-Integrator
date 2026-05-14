@@ -16,6 +16,7 @@ import {
   TriangleAlert,
   ChevronLeft,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,14 +96,44 @@ const step3Schema = z
     },
   );
 
-const WAKTU_ENUM = ["subuh", "dzuhur", "ashar", "maghrib", "isya", "tidak_tahu", ""] as const;
-
 const step4Schema = z.object({
   isBulanPertamaIstihadloh: z.boolean().default(true),
-  waktuMulaiDarah: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu mulai darah" }),
   sudahSholatSebelumDarah: z.boolean().default(false),
-  waktuBerhentiTotal: z.enum(WAKTU_ENUM, { required_error: "Pilih waktu berhenti" }),
 });
+
+const SHALAT_LABEL: Record<string, string> = {
+  subuh: "Subuh",
+  dzuhur: "Dzuhur",
+  ashar: "Ashar",
+  maghrib: "Maghrib",
+  isya: "Isya'",
+  "": "Di luar waktu shalat",
+};
+
+function jamKeShalat(jam: number): string {
+  if (jam >= 4 && jam <= 5) return "subuh";
+  if (jam >= 12 && jam <= 14) return "dzuhur";
+  if (jam >= 15 && jam <= 17) return "ashar";
+  if (jam === 18) return "maghrib";
+  if (jam >= 19 || jam <= 3) return "isya";
+  return "";
+}
+
+function hitungTotalJamDarahDenganWaktu(
+  harian: Record<string, StatusHariInput>,
+  mulaiJam: number,
+  berhentiJam: number,
+): number {
+  const darahKeys = Object.keys(harian)
+    .filter((k) => harian[k] === "kuat" || harian[k] === "lemah")
+    .sort();
+  if (darahKeys.length === 0) return 0;
+  if (darahKeys.length === 1) return Math.max(0, berhentiJam - mulaiJam);
+  const firstDayHours = 24 - mulaiJam;
+  const lastDayHours = berhentiJam;
+  const middleHours = (darahKeys.length - 2) * 24;
+  return Math.max(0, firstDayHours + middleHours + lastDayHours);
+}
 
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
 type InputMode = StatusHariInput | "hapus";
@@ -132,7 +163,11 @@ function formatDateId(key: string): string {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-function kalenderKePhase(harian: Record<string, StatusHariInput>): FaseItem[] {
+function kalenderKePhase(
+  harian: Record<string, StatusHariInput>,
+  mulaiJam = 0,
+  berhentiJam = 24,
+): FaseItem[] {
   const keys = Object.keys(harian).sort();
   if (keys.length === 0) return [];
 
@@ -168,6 +203,45 @@ function kalenderKePhase(harian: Record<string, StatusHariInput>): FaseItem[] {
       phases.push({ tipe: "darah", warna: currentStatus === "kuat" ? "hitam" : "kuning", kental: false, bau: false, hari: currentCount, jam: 0 });
     }
   }
+
+  // Apply partial start/end hours to first and last blood phases
+  let firstDarahIdx = -1;
+  let lastDarahIdx = -1;
+  for (let i = 0; i < phases.length; i++) {
+    if (phases[i].tipe === "darah") {
+      if (firstDarahIdx === -1) firstDarahIdx = i;
+      lastDarahIdx = i;
+    }
+  }
+
+  if (firstDarahIdx === -1) return phases;
+
+  const applyHours = (phase: FaseItem, newTotalJam: number): FaseItem => {
+    const total = Math.max(1, newTotalJam);
+    return { ...phase, hari: Math.floor(total / 24), jam: total % 24 };
+  };
+
+  if (firstDarahIdx === lastDarahIdx) {
+    const phase = phases[firstDarahIdx];
+    const days = phase.hari;
+    let newTotal: number;
+    if (days <= 1) {
+      newTotal = Math.max(1, berhentiJam - mulaiJam);
+    } else {
+      newTotal = Math.max(1, days * 24 - mulaiJam - (24 - berhentiJam));
+    }
+    phases[firstDarahIdx] = applyHours(phase, newTotal);
+  } else {
+    if (mulaiJam > 0) {
+      const sp = phases[firstDarahIdx];
+      phases[firstDarahIdx] = applyHours(sp, Math.max(1, sp.hari * 24 - mulaiJam));
+    }
+    if (berhentiJam < 24) {
+      const ep = phases[lastDarahIdx];
+      phases[lastDarahIdx] = applyHours(ep, Math.max(1, (ep.hari - 1) * 24 + berhentiJam));
+    }
+  }
+
   return phases;
 }
 
@@ -980,6 +1054,9 @@ export default function Kalkulator() {
   const [hasil, setHasil] = useState<HasilAnalisis | null>(null);
   const [harianInput, setHarianInput] = useState<Record<string, StatusHariInput>>({});
   const [step2Error, setStep2Error] = useState<string | null>(null);
+  const [waktuMulaiJam, setWaktuMulaiJam] = useState<number>(12);
+  const [waktuBerhentiJam, setWaktuBerhentiJam] = useState<number>(12);
+  const [totalJamDarah, setTotalJamDarah] = useState<number>(0);
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -1002,9 +1079,7 @@ export default function Kalkulator() {
     resolver: zodResolver(step4Schema),
     defaultValues: {
       isBulanPertamaIstihadloh: formData.isBulanPertamaIstihadloh ?? true,
-      waktuMulaiDarah: formData.waktuMulaiDarah || "",
       sudahSholatSebelumDarah: formData.sudahSholatSebelumDarah ?? false,
-      waktuBerhentiTotal: formData.waktuBerhentiTotal || "",
     },
   });
 
@@ -1022,8 +1097,17 @@ export default function Kalkulator() {
       setStep2Error("Tandai minimal 1 hari darah (Kuat atau Lemah) pada kalender.");
       return;
     }
-    const converted = kalenderKePhase(harianInput);
-    setFormData((prev) => ({ ...prev, daftarFase: converted }));
+    const converted = kalenderKePhase(harianInput, waktuMulaiJam, waktuBerhentiJam);
+    const shalatMulai = jamKeShalat(waktuMulaiJam) as InputUser["waktuMulaiDarah"];
+    const shalatBerhenti = jamKeShalat(waktuBerhentiJam) as InputUser["waktuBerhentiTotal"];
+    const total = hitungTotalJamDarahDenganWaktu(harianInput, waktuMulaiJam, waktuBerhentiJam);
+    setTotalJamDarah(total);
+    setFormData((prev) => ({
+      ...prev,
+      daftarFase: converted,
+      waktuMulaiDarah: shalatMulai,
+      waktuBerhentiTotal: shalatBerhenti,
+    }));
     if (formData.statusPengalaman === "mubtadiah") {
       setStep(4);
     } else {
@@ -1038,9 +1122,6 @@ export default function Kalkulator() {
 
   const onStep4Submit = (data: z.infer<typeof step4Schema>) => {
     try {
-      const toWaktu = (v: string): InputUser["waktuBerhentiTotal"] =>
-        (v === "tidak_tahu" ? "" : v) as InputUser["waktuBerhentiTotal"];
-
       const finalData: InputUser = {
         usiaTahun: formData.usiaTahun ?? 9,
         kondisiAwal: formData.kondisiAwal ?? "haidl",
@@ -1049,9 +1130,9 @@ export default function Kalkulator() {
         kebiasaanHaidHari: parseFloat(String(formData.kebiasaanHaidHari ?? 0)) || 0,
         daftarFase: formData.daftarFase ?? [],
         isBulanPertamaIstihadloh: data.isBulanPertamaIstihadloh ?? true,
-        waktuMulaiDarah: toWaktu(data.waktuMulaiDarah),
+        waktuMulaiDarah: (formData.waktuMulaiDarah ?? "") as InputUser["waktuMulaiDarah"],
         sudahSholatSebelumDarah: data.sudahSholatSebelumDarah ?? false,
-        waktuBerhentiTotal: toWaktu(data.waktuBerhentiTotal),
+        waktuBerhentiTotal: (formData.waktuBerhentiTotal ?? "") as InputUser["waktuBerhentiTotal"],
       };
       setFormData(finalData);
       const result = jalankanMesinFiqh(finalData);
@@ -1080,9 +1161,12 @@ export default function Kalkulator() {
     setHasil(null);
     setHarianInput({});
     setStep2Error(null);
+    setWaktuMulaiJam(12);
+    setWaktuBerhentiJam(12);
+    setTotalJamDarah(0);
     form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
-    form4.reset({ isBulanPertamaIstihadloh: true, waktuMulaiDarah: "", sudahSholatSebelumDarah: false, waktuBerhentiTotal: "" });
+    form4.reset({ isBulanPertamaIstihadloh: true, sudahSholatSebelumDarah: false });
   };
 
   return (
@@ -1328,6 +1412,120 @@ export default function Kalkulator() {
               onChange={setHarianInput}
               kondisiAwal={formData.kondisiAwal}
             />
+
+            {/* ── Waktu Mulai & Berhenti ── */}
+            {(() => {
+              const darahKeys = Object.keys(harianInput).filter(k => harianInput[k] === "kuat" || harianInput[k] === "lemah").sort();
+              if (darahKeys.length === 0) return null;
+              const firstBloodKey = darahKeys[0];
+              const lastBloodKey = darahKeys[darahKeys.length - 1];
+              const shalatMulai = jamKeShalat(waktuMulaiJam);
+              const shalatBerhenti = jamKeShalat(waktuBerhentiJam);
+              const totalJam = hitungTotalJamDarahDenganWaktu(harianInput, waktuMulaiJam, waktuBerhentiJam);
+              const kurang24 = totalJam > 0 && totalJam < 24;
+              return (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="rounded-2xl border bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-rose-600" />
+                      <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">Waktu Mulai & Berhenti Darah</span>
+                      <span className="text-xs text-muted-foreground ml-1">(untuk deteksi waktu shalat otomatis)</span>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {/* Mulai */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Mulai Haid</label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-rose-700 dark:text-rose-400 min-w-fit">
+                            {formatDateId(firstBloodKey)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">jam</span>
+                          <Select value={String(waktuMulaiJam)} onValueChange={(v) => setWaktuMulaiJam(Number(v))}>
+                            <SelectTrigger className="w-[100px] h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>
+                                  {String(i).padStart(2, "0")}:00
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {shalatMulai ? (
+                          <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                            <span>⟶</span>
+                            <span className="font-semibold">Waktu {SHALAT_LABEL[shalatMulai]}</span>
+                            <span className="text-muted-foreground">(otomatis terdeteksi)</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">⟶ Di luar waktu shalat (06:00–11:59)</p>
+                        )}
+                      </div>
+
+                      {/* Berhenti */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Berhenti Haid</label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 min-w-fit">
+                            {formatDateId(lastBloodKey)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">jam</span>
+                          <Select value={String(waktuBerhentiJam)} onValueChange={(v) => setWaktuBerhentiJam(Number(v))}>
+                            <SelectTrigger className="w-[100px] h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>
+                                  {String(i).padStart(2, "0")}:00
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {shalatBerhenti ? (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <span>⟶</span>
+                            <span className="font-semibold">Waktu {SHALAT_LABEL[shalatBerhenti]}</span>
+                            <span className="text-muted-foreground">(otomatis terdeteksi)</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">⟶ Di luar waktu shalat (06:00–11:59)</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Duration summary */}
+                    <div className={cn(
+                      "rounded-xl px-4 py-3 flex items-start gap-3 text-sm",
+                      kurang24
+                        ? "bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700"
+                        : "bg-background border border-border",
+                    )}>
+                      {kurang24 ? (
+                        <TriangleAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="space-y-0.5">
+                        <p className={cn("font-semibold", kurang24 ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
+                          Total akumulasi darah: <span className="font-bold">{totalJam} jam</span>
+                          {kurang24 && " — kurang dari 24 jam"}
+                        </p>
+                        {kurang24 && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                            Darah yang totalnya kurang dari 24 jam belum memenuhi syarat minimal haid. Sistem akan menganalisis kasus ini sebagai <strong>Istihadah (darah penyakit)</strong>. Kewajiban shalat dan puasa tetap berlaku. Lihat penjelasan lengkap di hasil analisis.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {step2Error && (
               <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
@@ -1628,31 +1826,20 @@ export default function Kalkulator() {
                     </span>
                   </div>
 
-                  <FormField
-                    control={form4.control}
-                    name="waktuMulaiDarah"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Darah pertama keluar pada waktu sholat apa?</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-waktu-mulai">
-                              <SelectValue placeholder="Pilih waktu" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="subuh">Subuh</SelectItem>
-                            <SelectItem value="dzuhur">Dzuhur</SelectItem>
-                            <SelectItem value="ashar">Ashar</SelectItem>
-                            <SelectItem value="maghrib">Maghrib</SelectItem>
-                            <SelectItem value="isya">Isya'</SelectItem>
-                            <SelectItem value="tidak_tahu">Tidak tahu / Tidak pasti</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Auto-detected prayer time (read-only) */}
+                  <div className="rounded-xl bg-background border px-4 py-3 space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat terdeteksi otomatis</p>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-rose-500" />
+                      <span className="font-semibold text-rose-700 dark:text-rose-300">
+                        {String(waktuMulaiJam).padStart(2, "0")}:00 —{" "}
+                        {formData.waktuMulaiDarah
+                          ? SHALAT_LABEL[formData.waktuMulaiDarah]
+                          : "Di luar waktu shalat"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">(dari input kalender)</span>
+                    </div>
+                  </div>
 
                   <FormField
                     control={form4.control}
@@ -1686,36 +1873,23 @@ export default function Kalkulator() {
                     </span>
                   </div>
 
-                  <FormField
-                    control={form4.control}
-                    name="waktuBerhentiTotal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Darah dipastikan berhenti total (bersih) pada waktu sholat apa?
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-waktu-berhenti">
-                              <SelectValue placeholder="Pilih waktu" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="subuh">Subuh</SelectItem>
-                            <SelectItem value="dzuhur">Dzuhur</SelectItem>
-                            <SelectItem value="ashar">Ashar</SelectItem>
-                            <SelectItem value="maghrib">Maghrib</SelectItem>
-                            <SelectItem value="isya">Isya'</SelectItem>
-                            <SelectItem value="tidak_tahu">Tidak tahu / Tidak pasti</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Pilih waktu saat kapas/pembalut sudah bersih tanpa noda. Jika berhenti di Ashar atau Isya', sholat sebelumnya (Dzuhur/Maghrib) ikut wajib diqodlo.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Auto-detected prayer time (read-only) */}
+                  <div className="rounded-xl bg-background border px-4 py-3 space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat terdeteksi otomatis</p>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-emerald-500" />
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                        {String(waktuBerhentiJam).padStart(2, "0")}:00 —{" "}
+                        {formData.waktuBerhentiTotal
+                          ? SHALAT_LABEL[formData.waktuBerhentiTotal]
+                          : "Di luar waktu shalat"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">(dari input kalender)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Jika berhenti di waktu Ashar atau Isya', sholat sebelumnya (Dzuhur/Maghrib) ikut wajib diqodlo.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex justify-between pt-4 border-t">
@@ -1745,6 +1919,35 @@ export default function Kalkulator() {
 
       {step === 5 && hasil && (
         <div className="space-y-6 step-enter">
+
+          {/* ── Peringatan Khusus: Total Darah < 24 Jam ── */}
+          {totalJamDarah > 0 && totalJamDarah < 24 && (
+            <div className="rounded-2xl border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 p-5 space-y-3 animate-in fade-in duration-300">
+              <div className="flex items-start gap-3">
+                <TriangleAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-800 dark:text-amber-300 text-sm uppercase tracking-wide">
+                    Kasus Haid Kurang dari 24 Jam
+                  </p>
+                  <p className="font-semibold text-amber-900 dark:text-amber-200 mt-0.5">
+                    Total akumulasi darah: <span className="text-amber-700 dark:text-amber-300">{totalJamDarah} jam</span> — Belum memenuhi syarat minimal haid
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-amber-800 dark:text-amber-300 leading-relaxed pl-8">
+                <p>
+                  <strong>Status hukum:</strong> Darah yang keluar secara terputus-putus dan totalnya kurang dari 24 jam (sehari semalam) <strong>tidak dihukumi sebagai haid</strong>, melainkan sebagai <strong>Istihadah (darah penyakit)</strong>.
+                </p>
+                <p>
+                  <strong>Kewajiban ibadah:</strong> Tetap wajib melaksanakan shalat lima waktu dan puasa. Caranya: bersihkan darah, pasang pembalut/kapas, lalu berwudu setiap kali masuk waktu shalat wajib.
+                </p>
+                <p>
+                  <strong>Masa penantian:</strong> Saat darah pertama keluar, boleh meninggalkan shalat karena ada kemungkinan darah akan berlanjut. Namun jika setelah 15 hari total darah tetap di bawah 24 jam, wajib <strong>mengqodlo seluruh shalat yang ditinggalkan</strong> selama masa keluarnya darah.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Hero icon */}
           <div className="flex justify-center mb-2">
             <div className="relative">
