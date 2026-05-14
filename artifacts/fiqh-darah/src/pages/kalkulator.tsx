@@ -57,6 +57,7 @@ import {
   EntriHarian,
   HukumHari,
   FaseItem,
+  FaseDarahItem,
   formatDurasi,
 } from "@/lib/fiqhEngine";
 import { cn } from "@/lib/utils";
@@ -177,6 +178,64 @@ function deteksiPolaDanAmbilNilai(riwayat: number[]): {
 
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
 type InputMode = StatusHariInput | "hapus";
+
+// ─── Segmen Waktu (intra-day time segments) ───────────────────────────────────
+export type SegmenWaktu = {
+  id: string;
+  tanggal: string; // "YYYY-MM-DD"
+  jamMulai: number; // 0–23
+  jamSelesai: number; // 1–24
+  status: "kuat" | "lemah" | "bersih";
+};
+
+function segmenKePhase(segmenList: SegmenWaktu[]): FaseItem[] {
+  if (segmenList.length === 0) return [];
+  const sorted = [...segmenList].sort((a, b) => {
+    const d = a.tanggal.localeCompare(b.tanggal);
+    return d !== 0 ? d : a.jamMulai - b.jamMulai;
+  });
+  const firstDate = parseKey(sorted[0].tanggal);
+  type Span = { start: number; end: number; status: "kuat" | "lemah" | "bersih" };
+  const spans: Span[] = [];
+  for (const seg of sorted) {
+    const dayOffset = diffDaysCalc(firstDate, parseKey(seg.tanggal));
+    const start = dayOffset * 24 + seg.jamMulai;
+    const end = dayOffset * 24 + seg.jamSelesai;
+    if (end <= start) continue;
+    const prev = spans[spans.length - 1];
+    if (prev && prev.end < start) {
+      spans.push({ start: prev.end, end: start, status: "bersih" });
+    }
+    const prevAfter = spans[spans.length - 1];
+    if (prevAfter && prevAfter.status === seg.status && prevAfter.end === start) {
+      prevAfter.end = end;
+    } else {
+      spans.push({ start, end, status: seg.status });
+    }
+  }
+  return spans
+    .filter((s) => s.end > s.start)
+    .map((s) => {
+      const durationJam = s.end - s.start;
+      if (s.status === "bersih") {
+        return { tipe: "bersih" as const, hari: Math.floor(durationJam / 24), jam: durationJam % 24 };
+      }
+      return {
+        tipe: "darah" as const,
+        warna: s.status === "kuat" ? ("hitam" as const) : ("kuning" as const),
+        kental: s.status === "kuat",
+        bau: s.status === "kuat",
+        hari: Math.floor(durationJam / 24),
+        jam: durationJam % 24,
+      } satisfies FaseDarahItem;
+    });
+}
+
+function hitungTotalJamSegmen(segmenList: SegmenWaktu[]): number {
+  return segmenList
+    .filter((s) => s.status === "kuat" || s.status === "lemah")
+    .reduce((sum, s) => sum + Math.max(0, s.jamSelesai - s.jamMulai), 0);
+}
 
 // ─── Date utilities ─────────────────────────────────────────────────────────
 function dateKey(d: Date): string {
@@ -1099,6 +1158,10 @@ export default function Kalkulator() {
   const [totalJamDarah, setTotalJamDarah] = useState<number>(0);
   const [adatMode, setAdatMode] = useState<"tetap" | "berubah">("tetap");
   const [riwayatBulan, setRiwayatBulan] = useState<number[]>([7, 7]);
+  const [inputMode2, setInputMode2] = useState<"hari" | "segmen">("hari");
+  const [segmenList, setSegmenList] = useState<SegmenWaktu[]>([]);
+  const todayKey = dateKey(new Date());
+  const [segmenDraft, setSegmenDraft] = useState<{ tanggal: string; jamMulai: number; jamSelesai: number; status: "kuat" | "lemah" | "bersih" }>({ tanggal: todayKey, jamMulai: 0, jamSelesai: 1, status: "kuat" });
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -1134,6 +1197,28 @@ export default function Kalkulator() {
 
   const onStep2Submit = () => {
     setStep2Error(null);
+    if (inputMode2 === "segmen") {
+      const hasDarah = segmenList.some((s) => s.status === "kuat" || s.status === "lemah");
+      if (!hasDarah) {
+        setStep2Error("Tambahkan minimal 1 segmen darah (Kuat atau Lemah).");
+        return;
+      }
+      const converted = segmenKePhase(segmenList);
+      const total = hitungTotalJamSegmen(segmenList);
+      setTotalJamDarah(total);
+      // Detect prayer time from first blood start and last blood end
+      const darahSorted = segmenList.filter((s) => s.status !== "bersih").sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jamMulai - b.jamMulai);
+      const firstBloodJam = darahSorted[0]?.jamMulai ?? 12;
+      const lastBloodJam = darahSorted[darahSorted.length - 1]?.jamSelesai ?? 12;
+      setFormData((prev) => ({
+        ...prev,
+        daftarFase: converted,
+        waktuMulaiDarah: jamKeShalat(firstBloodJam) as InputUser["waktuMulaiDarah"],
+        waktuBerhentiTotal: jamKeShalat(lastBloodJam) as InputUser["waktuBerhentiTotal"],
+      }));
+      if (formData.statusPengalaman === "mubtadiah") { setStep(4); } else { setStep(3); }
+      return;
+    }
     const hasDarah = Object.values(harianInput).some((v) => v === "kuat" || v === "lemah");
     if (!hasDarah) {
       setStep2Error("Tandai minimal 1 hari darah (Kuat atau Lemah) pada kalender.");
@@ -1212,6 +1297,9 @@ export default function Kalkulator() {
     setTotalJamDarah(0);
     setAdatMode("tetap");
     setRiwayatBulan([7, 7]);
+    setInputMode2("hari");
+    setSegmenList([]);
+    setSegmenDraft({ tanggal: todayKey, jamMulai: 0, jamSelesai: 1, status: "kuat" });
     form1.reset({ usiaTahun: 9, kondisiAwal: "haidl", statusPengalaman: "mubtadiah" });
     form3.reset({ ingatKebiasaan: "ingat_semua", kebiasaanHaidHari: 7 });
     form4.reset({ isBulanPertamaIstihadloh: true, sudahSholatSebelumDarah: false });
@@ -1455,14 +1543,211 @@ export default function Kalkulator() {
               )}
             </div>
 
-            <KalenderInputTanggal
-              harian={harianInput}
-              onChange={setHarianInput}
-              kondisiAwal={formData.kondisiAwal}
-            />
+            {/* ── Mode toggle: Per Hari / Per Jam ── */}
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { id: "hari", label: "Per Hari (Kalender)", desc: "Tandai seluruh hari darah/bersih" },
+                { id: "segmen", label: "Per Jam (Segmen Detail)", desc: "Input jam mulai & selesai per segmen — cocok untuk darah putus-putus dalam sehari" },
+              ] as const).map(({ id, label, desc }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { setInputMode2(id); setStep2Error(null); }}
+                  className={cn(
+                    "rounded-xl border-2 p-3 text-left transition-all",
+                    inputMode2 === id
+                      ? "border-rose-400 bg-rose-50/80 dark:bg-rose-950/30"
+                      : "border-border bg-background hover:border-rose-300"
+                  )}
+                >
+                  <p className={cn("text-sm font-semibold", inputMode2 === id ? "text-rose-700 dark:text-rose-300" : "text-foreground")}>
+                    {label}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{desc}</p>
+                </button>
+              ))}
+            </div>
 
-            {/* ── Waktu Mulai & Berhenti ── */}
-            {(() => {
+            {inputMode2 === "hari" && (
+              <KalenderInputTanggal
+                harian={harianInput}
+                onChange={setHarianInput}
+                kondisiAwal={formData.kondisiAwal}
+              />
+            )}
+
+            {/* ── Segmen Waktu Input ── */}
+            {inputMode2 === "segmen" && (() => {
+              const STATUS_OPTS = [
+                { v: "kuat", label: "Darah Kuat (Hitam/Merah Tua)" },
+                { v: "lemah", label: "Darah Lemah (Kuning/Keruh)" },
+                { v: "bersih", label: "Bersih" },
+              ] as const;
+              const totalDarahJam = hitungTotalJamSegmen(segmenList);
+              const kurang24 = totalDarahJam > 0 && totalDarahJam < 24;
+
+              const addSegmen = () => {
+                if (segmenDraft.jamSelesai <= segmenDraft.jamMulai) return;
+                setSegmenList((prev) => [
+                  ...prev,
+                  { ...segmenDraft, id: `${Date.now()}-${Math.random()}` },
+                ]);
+              };
+
+              return (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Added segments list */}
+                  {segmenList.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Segmen yang ditambahkan</p>
+                      <div className="divide-y divide-border rounded-xl border bg-background overflow-hidden">
+                        {[...segmenList]
+                          .sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jamMulai - b.jamMulai)
+                          .map((seg) => (
+                            <div key={seg.id} className="flex items-center gap-3 px-4 py-2.5">
+                              <div className={cn(
+                                "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                                seg.status === "kuat" ? "bg-rose-600" : seg.status === "lemah" ? "bg-amber-400" : "bg-emerald-400"
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium">
+                                  {formatDateId(seg.tanggal)}{" "}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {String(seg.jamMulai).padStart(2, "0")}:00 – {String(seg.jamSelesai).padStart(2, "0")}:00
+                                </span>
+                                <span className={cn(
+                                  "ml-2 text-xs font-semibold",
+                                  seg.status === "kuat" ? "text-rose-600" : seg.status === "lemah" ? "text-amber-600" : "text-emerald-600"
+                                )}>
+                                  {seg.status === "kuat" ? "Darah Kuat" : seg.status === "lemah" ? "Darah Lemah" : "Bersih"}
+                                  {" "}({seg.jamSelesai - seg.jamMulai} jam)
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+                                onClick={() => setSegmenList((prev) => prev.filter((s) => s.id !== seg.id))}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add segment form */}
+                  <div className="rounded-2xl border bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-4 space-y-3">
+                    <p className="text-sm font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+                      <Plus className="w-4 h-4" /> Tambah Segmen Waktu
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Tanggal</label>
+                        <Input
+                          type="date"
+                          value={segmenDraft.tanggal}
+                          onChange={(e) => setSegmenDraft((d) => ({ ...d, tanggal: e.target.value }))}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Status</label>
+                        <Select
+                          value={segmenDraft.status}
+                          onValueChange={(v: "kuat" | "lemah" | "bersih") => setSegmenDraft((d) => ({ ...d, status: v }))}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUS_OPTS.map((o) => (
+                              <SelectItem key={o.v} value={o.v}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Jam Mulai</label>
+                        <Select
+                          value={String(segmenDraft.jamMulai)}
+                          onValueChange={(v) => setSegmenDraft((d) => ({ ...d, jamMulai: Number(v), jamSelesai: Math.max(d.jamSelesai, Number(v) + 1) }))}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}:00</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Jam Selesai</label>
+                        <Select
+                          value={String(segmenDraft.jamSelesai)}
+                          onValueChange={(v) => setSegmenDraft((d) => ({ ...d, jamSelesai: Number(v) }))}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i + 1).filter((i) => i > segmenDraft.jamMulai).map((i) => (
+                              <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}:00</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="w-full gap-2 bg-rose-600 hover:bg-rose-700 text-white"
+                      onClick={addSegmen}
+                      disabled={segmenDraft.jamSelesai <= segmenDraft.jamMulai}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Tambah Segmen ({String(segmenDraft.jamMulai).padStart(2,"0")}:00 – {String(segmenDraft.jamSelesai).padStart(2,"0")}:00, {segmenDraft.jamSelesai - segmenDraft.jamMulai} jam)
+                    </Button>
+                  </div>
+
+                  {/* Duration summary */}
+                  {totalDarahJam > 0 && (
+                    <div className={cn(
+                      "rounded-xl px-4 py-3 flex items-start gap-3 text-sm border",
+                      kurang24
+                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700"
+                        : "bg-background border-border",
+                    )}>
+                      {kurang24 ? (
+                        <TriangleAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="space-y-0.5">
+                        <p className={cn("font-semibold", kurang24 ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
+                          Total akumulasi darah: <span className="font-bold">{totalDarahJam} jam</span>
+                          {kurang24 && " — kurang dari 24 jam"}
+                        </p>
+                        {kurang24 && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                            Darah yang totalnya kurang dari 24 jam belum memenuhi syarat minimal haid — akan dianalisis sebagai <strong>Istihadah</strong>.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Waktu Mulai & Berhenti (hari mode only) ── */}
+            {inputMode2 === "hari" && (() => {
               const darahKeys = Object.keys(harianInput).filter(k => harianInput[k] === "kuat" || harianInput[k] === "lemah").sort();
               if (darahKeys.length === 0) return null;
               const firstBloodKey = darahKeys[0];

@@ -453,13 +453,17 @@ function buatLiniMasaHarian(
               keterangan = `Darah lemah (${faseDarah.warna}) — Istihadloh`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
-            // Golongan 5 (Mutahayyiroh Mutlaqoh): haid hanya 24 jam pertama, setelahnya Ihtiyath
+            // Golongan 2 (Mubtadi'ah Ghoiru Mumayyizah): 24 jam pertama = haid, sisanya = ISTIHADLOH (pasti)
+            // Golongan 5 (Mu'tadah Mutahayyiroh / Nasiyah): 24 jam pertama = haid, sisanya = IHTIYATH (ragukan)
             if (jamMulaiSeg < 24) {
               hukum = "haid";
               keterangan = `Darah — Haid (24 jam pertama sebagai batas minimal mutlak)`;
+            } else if (statusPengalaman === "mubtadiah") {
+              hukum = "istihadloh";
+              keterangan = `Darah — Istihadloh (Mubtadi'ah Ghoiru Mumayyizah: setelah 24 jam pertama pasti Istihadloh)`;
             } else {
               hukum = "ihtiyath";
-              keterangan = `Darah — Masa Ihtiyath (lupa total adat, status diragukan)`;
+              keterangan = `Darah — Masa Ihtiyath (Mu'tadah lupa total adat, status diragukan)`;
             }
           } else {
             // Golongan 2, 4, 6, 7: Haid = dalam jendela haidJamSebenarnya
@@ -511,10 +515,15 @@ function buatLiniMasaHarian(
               keterangan = `${profilTeks}: Jeda bersih ini tidak diapit dua Darah Kuat (berada di sela darah lemah atau setelah darah kuat berakhir). Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH. Semua ibadah sah.`;
             }
           } else if (ingatKebiasaan === "lupa_semua") {
-            // Golongan 5 (Mutahayyiroh Mutlaqoh / Nasiyah):
-            // Seluruh masa bersih dianggap masa keraguan → IHTIYATH penuh
-            hukum = "ihtiyath";
-            keterangan = `${profilTeks}: Anda lupa total adat haid (Mutahayyiroh Mutlaqoh). Seluruh masa bersih di sela-sela darah tetap dianggap masa keraguan — IHTIYATH. Wajib sholat dan puasa, namun wajib mandi besar setiap akan sholat fardlu. Haram berhubungan suami-istri.`;
+            // Golongan 2 (Mubtadi'ah Ghoiru Mumayyizah): bersih setelah 24 jam = ISTIHADLOH (pasti suci)
+            // Golongan 5 (Mu'tadah Mutahayyiroh / Nasiyah): seluruh bersih = IHTIYATH (masa keraguan)
+            if (statusPengalaman === "mubtadiah") {
+              hukum = "istihadloh";
+              keterangan = `${profilTeks}: Jeda bersih ini berada setelah 24 jam pertama haid (Mubtadi'ah Ghoiru Mumayyizah). Dihukumi SUCI/ISTIHADLOH. Sholat SAH. Puasa SAH. Semua ibadah sah.`;
+            } else {
+              hukum = "ihtiyath";
+              keterangan = `${profilTeks}: Anda lupa total adat haid (Mu'tadah Mutahayyiroh Mutlaqoh). Seluruh masa bersih di sela-sela darah tetap dianggap masa keraguan — IHTIYATH. Wajib sholat dan puasa, namun wajib mandi besar setiap akan sholat fardlu. Haram berhubungan suami-istri.`;
+            }
           } else if (haidJamSebenarnya !== null && jamMulaiSeg < haidJamSebenarnya) {
             // Bersih masih dalam jendela haid (sesuai adat/tamyiz/24 jam pertama):
             // Golongan 2, 4, 6, 7 — bersih di dalam rentang jatah haid → HAID
