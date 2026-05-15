@@ -1,0 +1,29 @@
+Aplikasi web "Kalkulator Fiqh Darah Wanita" ini sudah selesai secara logika, perhitungan, dan state management. TUGAS ANDA HANYA MEROMBAK TAMPILAN VISUAL (UI/UX) tanpa mengubah logika atau fungsi yang sudah berjalan.
+
+Terapkan tema "Sakura Serenity" dengan panduan gaya berikut menggunakan Tailwind CSS:
+
+**1. Panduan Visual & Tipografi:**
+- Desain harus "Simple, Seamless, Minimalist" (terinspirasi dari aplikasi Clover/Flo).
+- Palet Warna Utama: Pastel Pink (#FFD1DC), Cream (#FFFDD0), Rose Gold (#B76E79).
+- Warna Latar: Gunakan putih murni atau sangat terang dengan banyak white space agar terlihat bersih.
+- Font: Gunakan 'Comfortaa' untuk judul/Logo dan 'Inter' atau 'Nunito' untuk teks paragraf/body.
+- Bentuk Komponen: Ubah semua border-radius menjadi minimal 24px (extra-rounded).
+- Efek Bayangan: Gunakan soft shadow (bayangan lembut yang menyebar) untuk memberikan kedalaman pada card, hilangkan garis border yang terlalu tegas.
+
+**2. Perombakan Layout Per Halaman:**
+
+- **Navigasi Utama:** Ubah navigasi menjadi Bottom Navigation Bar dengan 4 ikon (Beranda, Kalender, Riwayat, Hasil) menggunakan Lucide React. Pastikan transisi antar halamannya mulus (smooth).
+
+- **Halaman Beranda:** Buat tanggal hari ini tampil dengan tipografi besar dan bersih di tengah. Tambahkan ilustrasi/ikon bunga Sakura. Ubah tombol "Mulai Perhitungan" menjadi tombol pill (bulat penuh di ujung) yang mencolok. Buat bagian "Panduan" menjadi Horizontal Card Slider (bisa di-scroll ke samping).
+
+- **Pengisian Data Diri:** Ubah pilihan kondisi menjadi tombol card besar (Haidl warna Pink, Nifas warna Biru muda) yang akan berubah warna (active state) saat diklik. 
+
+- **Kalender & Input:** 
+  - Percantik tampilan grid kalender agar lebih lega dan estetik.
+  - Saat tanggal diklik, ubah desain Modal/Dialog input menjadi "Bottom Sheet" (pop-up yang muncul dari bawah layar dengan ujung atas sangat melengkung).
+  - Di dalam modal, ubah dropdown pemilihan warna darah menjadi 6 tombol bulat (color swatches) yang bisa langsung diklik (One-Click Selection).
+
+- **Halaman Hasil:** Tampilkan status utama (Haid/Nifas/Istihadloh) dalam bentuk Banner Card besar di bagian atas. Rincian qodlo sholat dan rincian hari dibuat dalam bentuk Accordion (bisa di-expand/collapse). Ubah status per hari menjadi bentuk badge warna-warni yang estetik (misal: badge merah lembut untuk Haid).
+
+**ATURAN PENTING:** 
+Pertahankan semua variabel, hooks, function, logika prioritas warna, perhitungan poin sifat, dan state yang ada. Cukup bungkus data dan state tersebut dengan kelas CSS/Tailwind dan struktur komponen visual yang baru ini.
