@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +21,7 @@ import {
   Plus,
   Trash2,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,7 +164,7 @@ function deteksiPolaDanAmbilNilai(riwayat: number[]): {
 }
 
 // ─── 12-Tier Blood Hierarchy Types ───────────────────────────────────────────
-export type WarnaDarahInput = "hitam" | "merah" | "saja" | "kuning" | "keruh";
+export type WarnaDarahInput = "hitam" | "merah" | "saja" | "kuning" | "keruh" | "bersih";
 export type TeksturDarah = "kental" | "cair";
 export type AromaDarah = "berbau" | "tidak_berbau";
 
@@ -187,6 +189,7 @@ export type StatusHariInput = "kuat" | "lemah" | "bersih";
 // Kuning: Salah satunya / Keduanya=9, Cair+TdkBerbau=10
 // Keruh:  Salah satunya / Keduanya=11, Cair+TdkBerbau=12
 function hitungPeringkat(k: KarakteristikHari): number {
+  if (k.warna === "bersih") return 0; // Bersih tidak termasuk dalam hierarki darah
   const kental = k.tekstur === "kental";
   const berbau = k.aroma === "berbau";
   const keduanya = kental && berbau;
@@ -210,19 +213,28 @@ function tentukanStatusKuatLemah(
   harianKarakteristik: Record<string, KarakteristikHari>,
 ): Record<string, StatusHariInput> {
   if (darahKeys.length === 0) return {};
+  // Exclude bersih days from ranking comparison
+  const bersihSet = new Set(
+    darahKeys.filter((k) => harianKarakteristik[k]?.warna === "bersih"),
+  );
   const ranks: Record<string, number> = {};
   for (const k of darahKeys) {
+    if (bersihSet.has(k)) continue;
     const kar = harianKarakteristik[k];
     ranks[k] = kar ? hitungPeringkat(kar) : 12;
   }
-  const minRank = Math.min(...Object.values(ranks));
-  const maxRank = Math.max(...Object.values(ranks));
+  const rankedKeys = Object.keys(ranks);
+  const minRank = rankedKeys.length > 0 ? Math.min(...rankedKeys.map((k) => ranks[k])) : 12;
+  const maxRank = rankedKeys.length > 0 ? Math.max(...rankedKeys.map((k) => ranks[k])) : 12;
   const result: Record<string, StatusHariInput> = {};
-  if (minRank === maxRank) {
-    // All same rank → all kuat (single blood type, no comparison possible)
-    for (const k of darahKeys) result[k] = "kuat";
-  } else {
-    for (const k of darahKeys) {
+  for (const k of darahKeys) {
+    if (bersihSet.has(k)) {
+      result[k] = "bersih";
+    } else if (ranks[k] === undefined) {
+      result[k] = "kuat";
+    } else if (minRank === maxRank) {
+      result[k] = "kuat";
+    } else {
       result[k] = ranks[k] === minRank ? "kuat" : "lemah";
     }
   }
@@ -260,14 +272,19 @@ function kalenderKePhaseDenganDurasi(
     const durasiHari = Math.floor(totalJam / 24);
     const durasiJamSisa = totalJam % 24;
 
-    phases.push({
-      tipe: "darah",
-      warna: kar ? warnaDarahInputToEngine(kar.warna) : "merah",
-      kental: kar ? kar.tekstur === "kental" : false,
-      bau: kar ? kar.aroma === "berbau" : false,
-      hari: durasiHari,
-      jam: durasiJamSisa,
-    } satisfies FaseDarahItem);
+    if (kar?.warna === "bersih") {
+      // User-marked clean day → emit as bersih phase (An-Naqo')
+      phases.push({ tipe: "bersih", hari: durasiHari || 1, jam: durasiJamSisa });
+    } else {
+      phases.push({
+        tipe: "darah",
+        warna: kar ? warnaDarahInputToEngine(kar.warna) : "merah",
+        kental: kar ? kar.tekstur === "kental" : false,
+        bau: kar ? kar.aroma === "berbau" : false,
+        hari: durasiHari,
+        jam: durasiJamSisa,
+      } satisfies FaseDarahItem);
+    }
   }
 
   return phases;
@@ -318,11 +335,12 @@ function formatDateId(key: string): string {
 
 // ─── Warna options for dropdown ──────────────────────────────────────────────
 const WARNA_OPTIONS: { value: WarnaDarahInput; label: string; dotClass: string }[] = [
-  { value: "hitam",  label: "Hitam",          dotClass: "bg-gray-900" },
-  { value: "merah",  label: "Merah",           dotClass: "bg-red-500" },
-  { value: "saja",   label: "Saja' (Pirang/Coklat)", dotClass: "bg-amber-700" },
-  { value: "kuning", label: "Kuning",          dotClass: "bg-yellow-400" },
-  { value: "keruh",  label: "Keruh",           dotClass: "bg-gray-400" },
+  { value: "hitam",  label: "Hitam",                  dotClass: "bg-gray-900" },
+  { value: "merah",  label: "Merah",                   dotClass: "bg-red-500" },
+  { value: "saja",   label: "Saja' (Pirang/Coklat)",  dotClass: "bg-amber-700" },
+  { value: "kuning", label: "Kuning",                  dotClass: "bg-yellow-400" },
+  { value: "keruh",  label: "Keruh",                   dotClass: "bg-gray-400" },
+  { value: "bersih", label: "Bersih/Bening (An-Naqo')", dotClass: "bg-emerald-100 border-2 border-emerald-400" },
 ];
 
 // ─── Simplified Calendar (darah / hapus only) ────────────────────────────────
@@ -650,8 +668,48 @@ function KalenderInputTanggal({
   );
 }
 
-// ─── Karakteristik & Durasi Panel ────────────────────────────────────────────
-function KarakteristikPanel({
+// ─── Bottom Sheet ────────────────────────────────────────────────────────────
+function BottomSheet({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end">
+      <div
+        className="absolute inset-0 bg-black/50 animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      <div className="relative w-full bg-background rounded-t-3xl shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/20" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b">
+          <span className="font-semibold text-base">{title}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-5 py-5">{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ─── Date List Panel (replaces inline form) ───────────────────────────────────
+function DateListPanel({
   darahKeys,
   harianKarakteristik,
   harianDurasi,
@@ -668,221 +726,298 @@ function KarakteristikPanel({
   onKarChange: (key: string, kar: KarakteristikHari) => void;
   onDurChange: (key: string, dur: DurasiHari) => void;
 }) {
+  const [sheetKey, setSheetKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ kar: KarakteristikHari | null; dur: DurasiHari }>({
+    kar: null,
+    dur: { jam: 0, menit: 0 },
+  });
+
   if (darahKeys.length === 0) return null;
 
   const defaultKar: KarakteristikHari = { warna: "merah", tekstur: "cair", aroma: "tidak_berbau" };
 
+  const openSheet = (key: string) => {
+    setSheetKey(key);
+    setDraft({
+      kar: harianKarakteristik[key] ?? null,
+      dur: harianDurasi[key] ?? { jam: 0, menit: 0 },
+    });
+  };
+
+  const closeSheet = () => setSheetKey(null);
+
+  const saveSheet = () => {
+    if (!sheetKey) return;
+    if (draft.kar) onKarChange(sheetKey, draft.kar);
+    onDurChange(sheetKey, draft.dur);
+    setSheetKey(null);
+  };
+
+  const draftKar = draft.kar ?? defaultKar;
+  const isBersihDraft = draftKar.warna === "bersih";
+
+  // Summary counts for the header
+  const kuatCount = darahKeys.filter((k) => harianStatus[k] === "kuat" && harianKarakteristik[k]?.warna !== "bersih" && harianKarakteristik[k]).length;
+  const lemahCount = darahKeys.filter((k) => harianStatus[k] === "lemah" && harianKarakteristik[k]).length;
+  const bersihCount = darahKeys.filter((k) => harianStatus[k] === "bersih").length;
+
   return (
-    <div className="space-y-3 animate-in fade-in duration-300">
-      <div className="flex items-center gap-2">
-        <Droplets className="w-4 h-4 text-rose-600" />
-        <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
-          Karakteristik &amp; Durasi per Tanggal
-        </span>
-        <span className="text-xs text-muted-foreground">(isi untuk setiap hari darah)</span>
-      </div>
+    <>
+      <div className="space-y-3 animate-in fade-in duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Droplets className="w-4 h-4 text-rose-600" />
+            <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
+              Karakteristik per Tanggal
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {kuatCount > 0 && <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-medium">{kuatCount} Kuat</span>}
+            {lemahCount > 0 && <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">{lemahCount} Lemah</span>}
+            {bersihCount > 0 && <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">{bersihCount} Bersih</span>}
+          </div>
+        </div>
 
-      <div className="rounded-2xl border border-rose-200 dark:border-rose-800 overflow-hidden divide-y divide-rose-100 dark:divide-rose-900">
-        {darahKeys.map((k, idx) => {
-          const status = harianStatus[k] ?? "kuat";
-          const rank = harianRank[k];
-          const kar = harianKarakteristik[k];
-          const durasi = harianDurasi[k] ?? { jam: 0, menit: 0 };
-          const isKuat = status === "kuat";
-          const hasKar = !!kar;
-          const totalMenit = durasi.jam * 60 + durasi.menit;
+        {/* Date list */}
+        <div className="rounded-2xl border overflow-hidden divide-y">
+          {darahKeys.map((k, idx) => {
+            const status = harianStatus[k] ?? "kuat";
+            const rank = harianRank[k];
+            const kar = harianKarakteristik[k];
+            const durasi = harianDurasi[k] ?? { jam: 0, menit: 0 };
+            const totalMenit = durasi.jam * 60 + durasi.menit;
+            const isBersihDay = kar?.warna === "bersih";
+            const isKuat = status === "kuat";
 
-          return (
-            <div key={k} className="bg-rose-50/40 dark:bg-rose-950/10 px-4 py-4 space-y-3">
-              {/* Header row */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className={cn(
-                    "w-2.5 h-2.5 rounded-full flex-shrink-0",
-                    isKuat ? "bg-rose-600" : "bg-amber-400",
-                  )} />
-                  <span className="text-sm font-semibold text-foreground">
-                    {formatDateId(k)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    (ke-{idx + 1})
-                  </span>
-                </div>
-
-                {hasKar && rank !== undefined && (
-                  <div className={cn(
-                    "flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border",
-                    isKuat
-                      ? "bg-rose-100 dark:bg-rose-900/40 border-rose-400 dark:border-rose-600 text-rose-700 dark:text-rose-300"
-                      : "bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-300",
-                  )}>
-                    <span>Peringkat #{rank}</span>
-                    <span>—</span>
-                    <span>{isKuat ? "Darah Kuat ❤️" : "Darah Lemah 🩸"}</span>
-                  </div>
-                )}
-                {!hasKar && (
-                  <span className="text-xs text-muted-foreground italic">Pilih karakteristik untuk melihat status</span>
-                )}
-              </div>
-
-              {/* Durasi input */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Durasi keluar:</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={24}
-                    value={durasi.jam === 0 && durasi.menit === 0 ? "" : durasi.jam}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const val = Math.min(24, Math.max(0, parseInt(e.target.value) || 0));
-                      onDurChange(k, { ...durasi, jam: val });
-                    }}
-                    className="w-16 h-8 text-sm text-center"
-                  />
-                  <span className="text-xs text-muted-foreground">jam</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={durasi.jam === 0 && durasi.menit === 0 ? "" : durasi.menit}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
-                      onDurChange(k, { ...durasi, menit: val });
-                    }}
-                    className="w-16 h-8 text-sm text-center"
-                  />
-                  <span className="text-xs text-muted-foreground">menit</span>
-                </div>
-                {totalMenit > 0 && (
-                  <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                    = {totalMenit} menit
-                  </span>
-                )}
-                {totalMenit === 0 && (
-                  <span className="text-xs text-muted-foreground italic">
-                    (default: seharian penuh = 1440 menit)
-                  </span>
-                )}
-              </div>
-
-              {/* 3 dropdowns */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {/* Warna */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Warna</label>
-                  <Select
-                    value={kar?.warna ?? ""}
-                    onValueChange={(v) =>
-                      onKarChange(k, { ...(kar ?? defaultKar), warna: v as WarnaDarahInput })
-                    }
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Pilih warna..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WARNA_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <div className="flex items-center gap-2">
-                            <div className={cn("w-3 h-3 rounded-full flex-shrink-0 border border-border/40", opt.dotClass)} />
-                            {opt.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tekstur */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Tekstur</label>
-                  <Select
-                    value={kar?.tekstur ?? ""}
-                    onValueChange={(v) =>
-                      onKarChange(k, { ...(kar ?? defaultKar), tekstur: v as TeksturDarah })
-                    }
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Pilih tekstur..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kental">Kental</SelectItem>
-                      <SelectItem value="cair">Cair</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Aroma */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Aroma</label>
-                  <Select
-                    value={kar?.aroma ?? ""}
-                    onValueChange={(v) =>
-                      onKarChange(k, { ...(kar ?? defaultKar), aroma: v as AromaDarah })
-                    }
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Pilih aroma..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="berbau">Berbau</SelectItem>
-                      <SelectItem value="tidak_berbau">Tidak Berbau</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Rank info tooltip */}
-              {hasKar && rank !== undefined && (
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => openSheet(k)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 active:bg-muted/70 transition-colors text-left"
+              >
+                {/* Day number circle */}
                 <div className={cn(
-                  "rounded-lg px-3 py-2 text-xs leading-relaxed border",
-                  isKuat
-                    ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                    : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300",
+                  "w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white",
+                  isBersihDay
+                    ? "bg-emerald-500"
+                    : !kar
+                    ? "bg-muted-foreground/40"
+                    : isKuat
+                    ? "bg-rose-500"
+                    : "bg-amber-400",
                 )}>
-                  <span className="font-semibold">Status: {isKuat ? "Darah Kuat" : "Darah Lemah"}</span>
-                  {" "}&mdash; Warna <strong>{WARNA_OPTIONS.find(o => o.value === kar.warna)?.label}</strong>,{" "}
-                  <strong>{kar.tekstur === "kental" ? "Kental" : "Cair"}</strong>,{" "}
-                  <strong>{kar.aroma === "berbau" ? "Berbau" : "Tidak Berbau"}</strong>
-                  {" "}(Peringkat #{rank} dari 12)
+                  {idx + 1}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
 
-      {/* Summary comparison table if multiple types */}
-      {darahKeys.length > 1 && darahKeys.some((k) => harianKarakteristik[k]) && (() => {
-        const kuatDays = darahKeys.filter((k) => harianStatus[k] === "kuat" && harianKarakteristik[k]);
-        const lemahDays = darahKeys.filter((k) => harianStatus[k] === "lemah" && harianKarakteristik[k]);
-        if (lemahDays.length === 0) return null;
-        return (
-          <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-4 py-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
-            <p className="font-semibold text-sm">Hasil Perbandingan Otomatis:</p>
-            <p>
-              <span className="font-bold text-rose-700 dark:text-rose-400">Darah Kuat</span>{" "}
-              ({kuatDays.map(formatDateId).join(", ")}) — peringkat lebih kecil (lebih kuat)
-            </p>
-            <p>
-              <span className="font-bold text-amber-700 dark:text-amber-400">Darah Lemah</span>{" "}
-              ({lemahDays.map(formatDateId).join(", ")}) — peringkat lebih besar (lebih lemah)
-            </p>
-            <p className="text-muted-foreground">
-              Aturan: Warna mengalahkan sifat fisik. Peringkat angka lebih kecil = lebih kuat.
+                {/* Date & status summary */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{formatDateId(k)}</span>
+                    {isBersihDay ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-medium">
+                        Bersih (An-Naqo')
+                      </span>
+                    ) : kar ? (
+                      <span className={cn(
+                        "text-xs px-2 py-0.5 rounded-full border font-medium",
+                        isKuat
+                          ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700"
+                          : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+                      )}>
+                        {isKuat ? "Kuat" : "Lemah"}{rank !== undefined ? ` #${rank}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Tap untuk mengisi →</span>
+                    )}
+                  </div>
+                  {kar && !isBersihDay && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {WARNA_OPTIONS.find(o => o.value === kar.warna)?.label}
+                      {" · "}{kar.tekstur === "kental" ? "Kental" : "Cair"}
+                      {" · "}{kar.aroma === "berbau" ? "Berbau" : "Tidak Berbau"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Duration + chevron */}
+                <div className="flex-shrink-0 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {totalMenit === 0 ? "24 jam" : `${durasi.jam}j ${durasi.menit > 0 ? `${durasi.menit}m` : ""}`}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Kuat/Lemah comparison note */}
+        {lemahCount > 0 && kuatCount > 0 && (
+          <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
+            <p className="font-semibold">Perbandingan Otomatis:</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Darah dengan peringkat terkecil = <span className="text-rose-600 font-medium">Kuat</span>. Peringkat lebih besar = <span className="text-amber-600 font-medium">Lemah</span>. Warna mengalahkan sifat fisik.
             </p>
           </div>
-        );
-      })()}
-    </div>
+        )}
+      </div>
+
+      {/* ── Bottom Sheet ── */}
+      <BottomSheet
+        open={sheetKey !== null}
+        onClose={closeSheet}
+        title={
+          sheetKey
+            ? <span>Edit <span className="text-primary">{formatDateId(sheetKey)}</span></span>
+            : ""
+        }
+      >
+        <div className="space-y-5">
+          {/* Warna — shown first so bersih can hide the rest */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Warna Darah</label>
+            <Select
+              value={draftKar.warna}
+              onValueChange={(v) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  kar: { ...(prev.kar ?? defaultKar), warna: v as WarnaDarahInput },
+                }))
+              }
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WARNA_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("w-3.5 h-3.5 rounded-full flex-shrink-0", opt.dotClass)} />
+                      {opt.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Bersih notice */}
+          {isBersihDraft && (
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3.5">
+              <p className="font-semibold text-sm text-emerald-800 dark:text-emerald-200">Masa Suci / An-Naqo'</p>
+              <p className="text-xs mt-1 text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                Hari ini dihukumi bersih — tidak ada darah yang keluar. Tekstur dan aroma tidak perlu diisi.
+                Sistem akan mencatat hari ini sebagai jeda suci di antara masa darah.
+              </p>
+            </div>
+          )}
+
+          {/* Tekstur (hidden if bersih) */}
+          {!isBersihDraft && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Tekstur</label>
+              <Select
+                value={draftKar.tekstur}
+                onValueChange={(v) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    kar: { ...(prev.kar ?? defaultKar), tekstur: v as TeksturDarah },
+                  }))
+                }
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="kental">Kental</SelectItem>
+                  <SelectItem value="cair">Cair</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Aroma (hidden if bersih) */}
+          {!isBersihDraft && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Aroma</label>
+              <Select
+                value={draftKar.aroma}
+                onValueChange={(v) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    kar: { ...(prev.kar ?? defaultKar), aroma: v as AromaDarah },
+                  }))
+                }
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="berbau">Berbau</SelectItem>
+                  <SelectItem value="tidak_berbau">Tidak Berbau</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Durasi */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">
+              {isBersihDraft ? "Durasi Bersih" : "Durasi Keluar Darah"}
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  type="number"
+                  min={0}
+                  max={24}
+                  value={draft.dur.jam === 0 && draft.dur.menit === 0 ? "" : draft.dur.jam}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const val = Math.min(24, Math.max(0, parseInt(e.target.value) || 0));
+                    setDraft((prev) => ({ ...prev, dur: { ...prev.dur, jam: val } }));
+                  }}
+                  className="text-center h-11"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">jam</span>
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={draft.dur.jam === 0 && draft.dur.menit === 0 ? "" : draft.dur.menit}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+                    setDraft((prev) => ({ ...prev, dur: { ...prev.dur, menit: val } }));
+                  }}
+                  className="text-center h-11"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">menit</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {draft.dur.jam === 0 && draft.dur.menit === 0
+                ? "Kosong = otomatis 24 jam (seharian penuh)"
+                : `Total: ${draft.dur.jam * 60 + draft.dur.menit} menit`}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1 pb-2">
+            <Button variant="outline" className="flex-1 h-11" onClick={closeSheet}>
+              Batal
+            </Button>
+            <Button className="flex-1 h-11" onClick={saveSheet}>
+              Simpan
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -1693,16 +1828,16 @@ export default function Kalkulator() {
 
             {/* Karakteristik & Durasi Panel */}
             {darahKeys.length > 0 && (
-              <KarakteristikPanel
+              <DateListPanel
                 darahKeys={darahKeys}
                 harianKarakteristik={harianKarakteristik}
                 harianDurasi={harianDurasi}
                 harianStatus={harianStatus}
                 harianRank={harianRank}
-                onKarChange={(key, kar) =>
+                onKarChange={(key: string, kar: KarakteristikHari) =>
                   setHarianKarakteristik((prev) => ({ ...prev, [key]: kar }))
                 }
-                onDurChange={(key, dur) =>
+                onDurChange={(key: string, dur: DurasiHari) =>
                   setHarianDurasi((prev) => ({ ...prev, [key]: dur }))
                 }
               />
