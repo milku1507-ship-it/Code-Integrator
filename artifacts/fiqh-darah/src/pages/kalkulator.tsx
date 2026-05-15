@@ -181,33 +181,41 @@ export interface DurasiHari {
 
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
 
-// ─── 12-level ranking matrix ──────────────────────────────────────────────────
-// Rank 1 = terkuat, Rank 12 = terlemah
-// Hitam: Kental+Berbau=1, Salah satunya=2, Cair+TdkBerbau=3
-// Merah: Kental+Berbau=4, Salah satunya=5, Cair+TdkBerbau=6
-// Saja': Salah satunya / Keduanya=7, Cair+TdkBerbau=8
-// Kuning: Salah satunya / Keduanya=9, Cair+TdkBerbau=10
-// Keruh:  Salah satunya / Keduanya=11, Cair+TdkBerbau=12
+// ─── 15-level ranking matrix (Uyunul Masa-il Linnisa) ────────────────────────
+// Rank 1 = terkuat, Rank 15 = terlemah
+// Urutan warna (primer): Hitam > Merah > Saja' > Kuning > Keruh
+// Sifat fisik (sekunder, hanya berlaku jika WARNA SAMA):
+//   Kental+Berbau (2 poin) = terkuat, Salah satunya (1 poin), Cair+TdkBerbau (0 poin) = terlemah
+// Hitam:  Kental+Berbau=1, Salah satunya=2, Cair+TdkBerbau=3
+// Merah:  Kental+Berbau=4, Salah satunya=5, Cair+TdkBerbau=6
+// Saja':  Kental+Berbau=7, Salah satunya=8, Cair+TdkBerbau=9
+// Kuning: Kental+Berbau=10, Salah satunya=11, Cair+TdkBerbau=12
+// Keruh:  Kental+Berbau=13, Salah satunya=14, Cair+TdkBerbau=15
 function hitungPeringkat(k: KarakteristikHari): number {
   if (k.warna === "bersih") return 0; // Bersih tidak termasuk dalam hierarki darah
-  const kental = k.tekstur === "kental";
-  const berbau = k.aroma === "berbau";
-  const keduanya = kental && berbau;
-  const salahSatu = kental || berbau;
-  switch (k.warna) {
-    case "hitam":  return keduanya ? 1 : salahSatu ? 2 : 3;
-    case "merah":  return keduanya ? 4 : salahSatu ? 5 : 6;
-    case "saja":   return salahSatu ? 7 : 8;
-    case "kuning": return salahSatu ? 9 : 10;
-    case "keruh":  return salahSatu ? 11 : 12;
-  }
+  // Warna adalah faktor primer — menentukan blok ranking utama
+  const colorBase: Record<string, number> = {
+    hitam:  0,
+    merah:  1,
+    saja:   2,
+    kuning: 3,
+    keruh:  4,
+  };
+  const base = colorBase[k.warna];
+  if (base === undefined) return 99;
+  // Sifat fisik adalah faktor sekunder — hanya membedakan dalam warna yang sama
+  // Skor sifat: kental=1 poin, berbau=1 poin (maks 2 poin)
+  const skorSifat = (k.tekstur === "kental" ? 1 : 0) + (k.aroma === "berbau" ? 1 : 0);
+  // Konversi ke rank (lebih rendah = lebih kuat): 2 poin→0, 1 poin→1, 0 poin→2
+  const sifatRank = 2 - skorSifat;
+  return base * 3 + sifatRank + 1;
 }
 
 function warnaDarahInputToEngine(w: WarnaDarahInput): WarnaDarah {
   return w === "saja" ? "merah kekuningan" : (w as WarnaDarah);
 }
 
-// Determine kuat/lemah for each darah day based on 12-rank comparison
+// Determine kuat/lemah for each darah day based on 15-rank comparison (Uyunul Masa-il Linnisa)
 function tentukanStatusKuatLemah(
   darahKeys: string[],
   harianKarakteristik: Record<string, KarakteristikHari>,
@@ -221,11 +229,11 @@ function tentukanStatusKuatLemah(
   for (const k of darahKeys) {
     if (bersihSet.has(k)) continue;
     const kar = harianKarakteristik[k];
-    ranks[k] = kar ? hitungPeringkat(kar) : 12;
+    ranks[k] = kar ? hitungPeringkat(kar) : 15;
   }
   const rankedKeys = Object.keys(ranks);
-  const minRank = rankedKeys.length > 0 ? Math.min(...rankedKeys.map((k) => ranks[k])) : 12;
-  const maxRank = rankedKeys.length > 0 ? Math.max(...rankedKeys.map((k) => ranks[k])) : 12;
+  const minRank = rankedKeys.length > 0 ? Math.min(...rankedKeys.map((k) => ranks[k])) : 15;
+  const maxRank = rankedKeys.length > 0 ? Math.max(...rankedKeys.map((k) => ranks[k])) : 15;
   const result: Record<string, StatusHariInput> = {};
   for (const k of darahKeys) {
     if (bersihSet.has(k)) {
@@ -1791,7 +1799,7 @@ export default function Kalkulator() {
                 </p>
               ) : (
                 <p>
-                  Tandai hari-hari darah pada kalender lalu isi karakteristik tiap hari. Sistem akan menentukan status <strong>Darah Kuat/Lemah</strong> otomatis berdasarkan 12 hierarki kekuatan darah.
+                  Tandai hari-hari darah pada kalender lalu isi karakteristik tiap hari. Sistem akan menentukan status <strong>Darah Kuat/Lemah</strong> otomatis berdasarkan 15 hierarki kekuatan darah.
                 </p>
               )}
             </div>
@@ -1881,7 +1889,7 @@ export default function Kalkulator() {
             <details className="rounded-2xl border border-muted overflow-hidden">
               <summary className="flex items-center gap-2 px-4 py-3 bg-muted/20 cursor-pointer text-sm font-semibold select-none">
                 <Info className="w-4 h-4 text-muted-foreground" />
-                Tabel Referensi 12 Hierarki Kekuatan Darah
+                Tabel Referensi 15 Hierarki Kekuatan Darah (Uyunul Masa-il)
               </summary>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs border-t">
@@ -1900,12 +1908,15 @@ export default function Kalkulator() {
                       { r: 4,  w: "Merah",  s: "Kental & Berbau" },
                       { r: 5,  w: "Merah",  s: "Kental saja ATAU Berbau saja" },
                       { r: 6,  w: "Merah",  s: "Cair & Tidak Berbau" },
-                      { r: 7,  w: "Saja'",  s: "Kental & Berbau / Salah satunya" },
-                      { r: 8,  w: "Saja'",  s: "Cair & Tidak Berbau" },
-                      { r: 9,  w: "Kuning", s: "Kental & Berbau / Salah satunya" },
-                      { r: 10, w: "Kuning", s: "Cair & Tidak Berbau" },
-                      { r: 11, w: "Keruh",  s: "Kental & Berbau / Salah satunya" },
-                      { r: 12, w: "Keruh",  s: "Cair & Tidak Berbau" },
+                      { r: 7,  w: "Saja' (Merah Kekuningan)", s: "Kental & Berbau" },
+                      { r: 8,  w: "Saja' (Merah Kekuningan)", s: "Kental saja ATAU Berbau saja" },
+                      { r: 9,  w: "Saja' (Merah Kekuningan)", s: "Cair & Tidak Berbau" },
+                      { r: 10, w: "Kuning", s: "Kental & Berbau" },
+                      { r: 11, w: "Kuning", s: "Kental saja ATAU Berbau saja" },
+                      { r: 12, w: "Kuning", s: "Cair & Tidak Berbau" },
+                      { r: 13, w: "Keruh",  s: "Kental & Berbau" },
+                      { r: 14, w: "Keruh",  s: "Kental saja ATAU Berbau saja" },
+                      { r: 15, w: "Keruh",  s: "Cair & Tidak Berbau" },
                     ].map(({ r, w, s }) => (
                       <tr key={r} className={r <= 3 ? "bg-rose-50/40 dark:bg-rose-950/10" : r <= 6 ? "bg-orange-50/40 dark:bg-orange-950/10" : "bg-background"}>
                         <td className="px-3 py-1.5 font-bold text-center">{r}</td>
