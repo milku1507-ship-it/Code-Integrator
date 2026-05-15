@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
@@ -357,11 +357,13 @@ function KalenderInputTanggal({
   harianStatus,
   onChange,
   kondisiAwal,
+  onEditDay,
 }: {
   harianDarah: Record<string, boolean>;
   harianStatus: Record<string, StatusHariInput>;
   onChange: (h: Record<string, boolean>, autoFill?: { sourceKey: string; newKeys: string[] }) => void;
   kondisiAwal?: "haidl" | "nifas";
+  onEditDay?: (key: string) => void;
 }) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
     const now = new Date();
@@ -409,27 +411,26 @@ function KalenderInputTanggal({
       setHoverDate(null);
       return;
     }
-    if (!anchor) {
-      // First click: immediately mark day as darah AND set as anchor
-      // so user can edit characteristics in the panel right away
-      const updated = { ...harianDarah };
-      updated[key] = true;
-      onChange(updated);
-      setAnchor(key);
-    } else if (anchor === key) {
-      // Click same day again: cancel anchor (day stays marked)
-      setAnchor(null);
-      setHoverDate(null);
-    } else {
+    if (anchor && anchor !== key) {
       // Second click on different day: fill range + auto-copy anchor's characteristics
       const startKey = anchor < key ? anchor : key;
       const endKey = anchor < key ? key : anchor;
       const newMap = fillRange(startKey, endKey, true);
-      // Collect keys that were NOT already darah (newly added)
       const newKeys = Object.keys(newMap).filter((k) => !harianDarah[k]);
       onChange(newMap, { sourceKey: anchor, newKeys });
       setAnchor(null);
       setHoverDate(null);
+    } else if (!harianDarah[key]) {
+      // New unmarked day: mark it, set as anchor, open modal immediately
+      const updated = { ...harianDarah };
+      updated[key] = true;
+      onChange(updated);
+      setAnchor(key);
+      onEditDay?.(key);
+    } else {
+      // Already marked day: open modal (clear anchor if same)
+      if (anchor === key) setAnchor(null);
+      onEditDay?.(key);
     }
   };
 
@@ -499,7 +500,7 @@ function KalenderInputTanggal({
               Titik awal: {formatDateId(anchor)}
             </span>
             <span className="text-emerald-700 dark:text-emerald-400 ml-2 text-xs">
-              — isi karakteristiknya di panel bawah, lalu klik tanggal akhir untuk <strong>mengisi rentang otomatis</strong>
+              — sudah terisi, klik tanggal lain untuk <strong>mengisi rentang otomatis</strong>
             </span>
           </div>
           <button
@@ -695,7 +696,7 @@ function BottomSheet({
         className="absolute inset-0 bg-black/50 animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="relative w-full bg-background rounded-t-3xl shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full bg-background rounded-t-[44px] shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1.5 rounded-full bg-muted-foreground/20" />
         </div>
@@ -725,6 +726,7 @@ function DateListPanel({
   harianRank,
   onKarChange,
   onDurChange,
+  triggerOpen,
 }: {
   darahKeys: string[];
   harianKarakteristik: Record<string, KarakteristikHari>;
@@ -733,12 +735,23 @@ function DateListPanel({
   harianRank: Record<string, number>;
   onKarChange: (key: string, kar: KarakteristikHari) => void;
   onDurChange: (key: string, dur: DurasiHari) => void;
+  triggerOpen?: { key: string; v: number } | null;
 }) {
   const [sheetKey, setSheetKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ kar: KarakteristikHari | null; dur: DurasiHari }>({
     kar: null,
     dur: { jam: 0, menit: 0 },
   });
+
+  useEffect(() => {
+    if (!triggerOpen || !darahKeys.includes(triggerOpen.key)) return;
+    setSheetKey(triggerOpen.key);
+    setDraft({
+      kar: harianKarakteristik[triggerOpen.key] ?? null,
+      dur: harianDurasi[triggerOpen.key] ?? { jam: 0, menit: 0 },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerOpen]);
 
   if (darahKeys.length === 0) return null;
 
@@ -1290,19 +1303,19 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
       })()}
 
       {jumlahQodlo > 0 && (
-        <div className="rounded-2xl border-2 border-green-400 dark:border-green-600 overflow-hidden">
-          <div className="flex items-center gap-4 bg-green-600 dark:bg-green-700 px-5 py-4">
+        <details className="rounded-2xl border-2 border-green-400 dark:border-green-600 overflow-hidden" open>
+          <summary className="flex items-center gap-4 bg-green-600 dark:bg-green-700 px-5 py-4 cursor-pointer list-none select-none">
             <div className="text-center flex-shrink-0">
               <p className="text-3xl font-extrabold text-white leading-none">{jumlahQodlo}</p>
               <p className="text-xs font-semibold text-green-100 mt-0.5">hari</p>
             </div>
-            <div>
-              <p className="text-base font-bold text-white">Kumpulan Qodlo Puasa</p>
+            <div className="flex-1">
+              <p className="text-base font-bold text-white">Qodlo Puasa — Hari Bersih dihukumi Haid/Nifas</p>
               <p className="text-xs text-green-100 mt-0.5 leading-snug">
-                Hari-hari bersih yang secara hukum dihukumi Haid/Nifas — puasa wajib diqodlo
+                Puasa wajib diqodlo — ketuk untuk lihat detail ▾
               </p>
             </div>
-          </div>
+          </summary>
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-b border-green-200 dark:border-green-800">
             <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
               {kategoriStr
@@ -1340,21 +1353,21 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               <strong>Catatan:</strong> Sholat yang Anda kerjakan di hari-hari tersebut wajib dilakukan (karena tampak suci secara dzahir) namun <strong>TIDAK SAH</strong> secara hukum — tidak perlu diqodlo. Yang wajib diqodlo adalah <strong>puasanya</strong> (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
             </p>
           </div>
-        </div>
+        </details>
       )}
 
       {bersihSuciDays.length > 0 && (
-        <div className="rounded-2xl border-2 border-sky-400 dark:border-sky-600 overflow-hidden">
-          <div className="flex items-center gap-4 bg-sky-500 dark:bg-sky-700 px-5 py-4">
+        <details className="rounded-2xl border-2 border-sky-400 dark:border-sky-600 overflow-hidden">
+          <summary className="flex items-center gap-4 bg-sky-500 dark:bg-sky-700 px-5 py-4 cursor-pointer list-none select-none">
             <div className="text-center flex-shrink-0">
               <p className="text-3xl font-extrabold text-white leading-none">{bersihSuciDays.length}</p>
               <p className="text-xs font-semibold text-sky-100 mt-0.5">hari</p>
             </div>
-            <div>
-              <p className="text-base font-bold text-white">Hari Bersih Dihukumi Suci / Istihadloh</p>
-              <p className="text-xs text-sky-100 mt-0.5 leading-snug">Ibadah SAH — tidak ada kewajiban qodlo</p>
+            <div className="flex-1">
+              <p className="text-base font-bold text-white">Hari Bersih — Suci / Istihadloh</p>
+              <p className="text-xs text-sky-100 mt-0.5 leading-snug">Ibadah SAH — ketuk untuk lihat detail ▾</p>
             </div>
-          </div>
+          </summary>
           <div className="bg-sky-50 dark:bg-sky-950/40 px-5 py-3 border-b border-sky-200 dark:border-sky-800">
             <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
               {kategoriStr
@@ -1390,21 +1403,21 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               <strong>Catatan:</strong> Pada hari-hari ini Anda dihukumi <strong>Suci</strong>. Sholat dan puasa yang Anda kerjakan <strong>SAH</strong> secara hukum. Jika Anda Mustahadloh, gunakan tata cara bersuci Mustahadloh (wudhu tiap waktu sholat).
             </p>
           </div>
-        </div>
+        </details>
       )}
 
       {ihtiyathDays.length > 0 && (
-        <div className="rounded-2xl border-2 border-violet-400 dark:border-violet-600 overflow-hidden">
-          <div className="flex items-center gap-4 bg-violet-600 dark:bg-violet-800 px-5 py-4">
+        <details className="rounded-2xl border-2 border-violet-400 dark:border-violet-600 overflow-hidden">
+          <summary className="flex items-center gap-4 bg-violet-600 dark:bg-violet-800 px-5 py-4 cursor-pointer list-none select-none">
             <div className="text-center flex-shrink-0">
               <p className="text-3xl font-extrabold text-white leading-none">{ihtiyathDays.length}</p>
               <p className="text-xs font-semibold text-violet-100 mt-0.5">hari</p>
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-base font-bold text-white">Hari Ihtiyath (Masa Keraguan)</p>
-              <p className="text-xs text-violet-100 mt-0.5 leading-snug">Wajib sholat & puasa, mandi besar tiap waktu sholat</p>
+              <p className="text-xs text-violet-100 mt-0.5 leading-snug">Wajib sholat & puasa — ketuk untuk lihat detail ▾</p>
             </div>
-          </div>
+          </summary>
           <div className="bg-violet-50 dark:bg-violet-950/40 px-5 py-3 border-b border-violet-200 dark:border-violet-800">
             <p className="text-xs text-violet-800 dark:text-violet-300 leading-relaxed">
               Hari-hari ini berlaku hukum <strong>Ihtiyath</strong> — status haid tidak pasti. Anda <strong>wajib sholat dan puasa</strong> sebagai tindakan kehati-hatian, namun juga wajib mandi besar setiap menjelang sholat fardlu.
@@ -1437,7 +1450,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               <strong>Catatan:</strong> Hukum ihtiyath berlaku pada wanita Mutahayyiroh (lupa adat haid). Ibadah sholat & puasa yang dikerjakan di hari-hari ini <strong>sah</strong>, namun perlu mandi wajib setiap kali akan sholat fardlu sebagai kehati-hatian.
             </p>
           </div>
-        </div>
+        </details>
       )}
     </div>
   );
@@ -1452,6 +1465,7 @@ export default function Kalkulator() {
   const [harianDarah, setHarianDarah] = useState<Record<string, boolean>>({});
   const [harianKarakteristik, setHarianKarakteristik] = useState<Record<string, KarakteristikHari>>({});
   const [harianDurasi, setHarianDurasi] = useState<Record<string, DurasiHari>>({});
+  const [editTrigger, setEditTrigger] = useState<{ key: string; v: number } | null>(null);
 
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [totalJamDarah, setTotalJamDarah] = useState<number>(0);
@@ -1675,7 +1689,7 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>Kondisi Saat Darah Keluar</FormLabel>
-                      <div className="grid sm:grid-cols-2 gap-4" data-testid="radio-kondisi">
+                      <div className="flex rounded-2xl border border-muted bg-muted/30 p-1.5 gap-1.5" data-testid="radio-kondisi">
                         {(["haidl", "nifas"] as const).map((val) => (
                           <button
                             key={val}
@@ -1683,21 +1697,14 @@ export default function Kalkulator() {
                             onClick={() => field.onChange(val)}
                             data-testid={`radio-kondisi-${val}`}
                             className={cn(
-                              "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all text-left w-full",
+                              "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
                               field.value === val
-                                ? "border-primary bg-primary/5"
-                                : "border-muted hover:border-primary/50",
+                                ? "bg-primary text-white shadow-md scale-[1.02]"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                             )}
                           >
-                            <div className={cn(
-                              "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-                              field.value === val ? "border-primary" : "border-muted-foreground",
-                            )}>
-                              {field.value === val && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                            </div>
-                            <span className="font-medium">
-                              {val === "haidl" ? "Haidl (Biasa)" : "Nifas (Setelah Melahirkan)"}
-                            </span>
+                            <span className="text-base">{val === "haidl" ? "🌸" : "💙"}</span>
+                            {val === "haidl" ? "Haidl" : "Nifas"}
                           </button>
                         ))}
                       </div>
@@ -1808,6 +1815,7 @@ export default function Kalkulator() {
             <KalenderInputTanggal
               harianDarah={harianDarah}
               harianStatus={harianStatus}
+              onEditDay={(key) => setEditTrigger((prev) => ({ key, v: (prev?.v ?? 0) + 1 }))}
               onChange={(next, autoFill) => {
                 setHarianDarah(next);
                 // Clean up karakteristik for removed days; auto-fill for new range days
@@ -1846,6 +1854,7 @@ export default function Kalkulator() {
                 harianDurasi={harianDurasi}
                 harianStatus={harianStatus}
                 harianRank={harianRank}
+                triggerOpen={editTrigger}
                 onKarChange={(key: string, kar: KarakteristikHari) =>
                   setHarianKarakteristik((prev) => ({ ...prev, [key]: kar }))
                 }
