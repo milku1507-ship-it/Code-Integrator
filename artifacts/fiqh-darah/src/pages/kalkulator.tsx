@@ -58,6 +58,7 @@ import {
   HukumHari,
   FaseItem,
   FaseDarahItem,
+  WarnaDarah,
   formatDurasi,
 } from "@/lib/fiqhEngine";
 import { cn } from "@/lib/utils";
@@ -123,22 +124,6 @@ function jamKeShalat(jam: number): string {
   return "";
 }
 
-function hitungTotalJamDarahDenganWaktu(
-  harian: Record<string, StatusHariInput>,
-  mulaiJam: number,
-  berhentiJam: number,
-): number {
-  const darahKeys = Object.keys(harian)
-    .filter((k) => harian[k] === "kuat" || harian[k] === "lemah")
-    .sort();
-  if (darahKeys.length === 0) return 0;
-  if (darahKeys.length === 1) return Math.max(0, berhentiJam - mulaiJam);
-  const firstDayHours = 24 - mulaiJam;
-  const lastDayHours = berhentiJam;
-  const middleHours = (darahKeys.length - 2) * 24;
-  return Math.max(0, firstDayHours + middleHours + lastDayHours);
-}
-
 // ─── Adat pattern detection ──────────────────────────────────────────────────
 function deteksiPolaDanAmbilNilai(riwayat: number[]): {
   nilai: number;
@@ -176,97 +161,132 @@ function deteksiPolaDanAmbilNilai(riwayat: number[]): {
   };
 }
 
+// ─── 12-Tier Blood Hierarchy Types ───────────────────────────────────────────
+export type WarnaDarahInput = "hitam" | "merah" | "saja" | "kuning" | "keruh";
+export type TeksturDarah = "kental" | "cair";
+export type AromaDarah = "berbau" | "tidak_berbau";
+
+export interface KarakteristikHari {
+  warna: WarnaDarahInput;
+  tekstur: TeksturDarah;
+  aroma: AromaDarah;
+}
+
+export interface DurasiHari {
+  jam: number;
+  menit: number;
+}
+
 export type StatusHariInput = "kuat" | "lemah" | "bersih";
-type InputMode = StatusHariInput | "hapus";
 
-// ─── Per-day jam input type ───────────────────────────────────────────────────
-// mulai: 0-23 (hour blood starts), selesai: 1-24 same day OR 0-(mulai-1) = wraps to next day
-export type JamHari = { mulai: number; selesai: number };
-
-function _pushFaseItem(phases: FaseItem[], status: "kuat" | "lemah" | "bersih", totalJam: number) {
-  if (totalJam <= 0) return;
-  if (status === "bersih") {
-    phases.push({ tipe: "bersih", hari: Math.floor(totalJam / 24), jam: totalJam % 24 });
-  } else {
-    phases.push({
-      tipe: "darah",
-      warna: status === "kuat" ? "hitam" : "kuning",
-      kental: status === "kuat",
-      bau: status === "kuat",
-      hari: Math.floor(totalJam / 24),
-      jam: totalJam % 24,
-    } satisfies FaseDarahItem);
+// ─── 12-level ranking matrix ──────────────────────────────────────────────────
+// Rank 1 = terkuat, Rank 12 = terlemah
+// Hitam: Kental+Berbau=1, Salah satunya=2, Cair+TdkBerbau=3
+// Merah: Kental+Berbau=4, Salah satunya=5, Cair+TdkBerbau=6
+// Saja': Salah satunya / Keduanya=7, Cair+TdkBerbau=8
+// Kuning: Salah satunya / Keduanya=9, Cair+TdkBerbau=10
+// Keruh:  Salah satunya / Keduanya=11, Cair+TdkBerbau=12
+function hitungPeringkat(k: KarakteristikHari): number {
+  const kental = k.tekstur === "kental";
+  const berbau = k.aroma === "berbau";
+  const keduanya = kental && berbau;
+  const salahSatu = kental || berbau;
+  switch (k.warna) {
+    case "hitam":  return keduanya ? 1 : salahSatu ? 2 : 3;
+    case "merah":  return keduanya ? 4 : salahSatu ? 5 : 6;
+    case "saja":   return salahSatu ? 7 : 8;
+    case "kuning": return salahSatu ? 9 : 10;
+    case "keruh":  return salahSatu ? 11 : 12;
   }
 }
 
-function kalenderKePhaseDenganJam(
-  harian: Record<string, StatusHariInput>,
-  harianJam: Record<string, JamHari>,
-): FaseItem[] {
-  const keys = Object.keys(harian).sort();
-  if (keys.length === 0) return [];
-  const firstKey = keys[0];
-  const lastKey = keys[keys.length - 1];
-  const firstDate = parseKey(firstKey);
-  // +1 extra day to capture wrap-around blood that bleeds into next day
-  const totalSlots = (diffDaysCalc(firstDate, parseKey(lastKey)) + 2) * 24;
+function warnaDarahInputToEngine(w: WarnaDarahInput): WarnaDarah {
+  return w === "saja" ? "merah kekuningan" : (w as WarnaDarah);
+}
 
-  const hourMap: ("kuat" | "lemah" | "bersih")[] = new Array(totalSlots).fill("bersih");
-
-  let d = parseKey(firstKey);
-  while (dateKey(d) <= lastKey) {
-    const k = dateKey(d);
-    const dayOff = diffDaysCalc(firstDate, d);
-    const base = dayOff * 24;
-    const status = harian[k] ?? "bersih";
-    if (status !== "bersih") {
-      const jam = harianJam[k];
-      const mulai = jam?.mulai ?? 0;
-      const selesai = jam?.selesai ?? 24;
-      if (mulai === 0 && selesai === 24) {
-        for (let h = base; h < base + 24 && h < totalSlots; h++) hourMap[h] = status;
-      } else if (selesai > mulai) {
-        for (let h = base + mulai; h < base + selesai && h < totalSlots; h++) hourMap[h] = status;
-      } else {
-        // wrap-around: e.g. mulai=23, selesai=1 → 23:00 to 01:00 next day
-        for (let h = base + mulai; h < base + 24 && h < totalSlots; h++) hourMap[h] = status;
-        for (let h = base + 24; h < base + 24 + selesai && h < totalSlots; h++) hourMap[h] = status;
-      }
-    }
-    d = addDaysToDate(d, 1);
+// Determine kuat/lemah for each darah day based on 12-rank comparison
+function tentukanStatusKuatLemah(
+  darahKeys: string[],
+  harianKarakteristik: Record<string, KarakteristikHari>,
+): Record<string, StatusHariInput> {
+  if (darahKeys.length === 0) return {};
+  const ranks: Record<string, number> = {};
+  for (const k of darahKeys) {
+    const kar = harianKarakteristik[k];
+    ranks[k] = kar ? hitungPeringkat(kar) : 12;
   }
+  const minRank = Math.min(...Object.values(ranks));
+  const maxRank = Math.max(...Object.values(ranks));
+  const result: Record<string, StatusHariInput> = {};
+  if (minRank === maxRank) {
+    // All same rank → all kuat (single blood type, no comparison possible)
+    for (const k of darahKeys) result[k] = "kuat";
+  } else {
+    for (const k of darahKeys) {
+      result[k] = ranks[k] === minRank ? "kuat" : "lemah";
+    }
+  }
+  return result;
+}
 
-  // Trim leading and trailing bersih
-  const firstBlood = hourMap.findIndex((s) => s !== "bersih");
-  if (firstBlood === -1) return [];
-  let lastBlood = -1;
-  for (let i = hourMap.length - 1; i >= 0; i--) { if (hourMap[i] !== "bersih") { lastBlood = i; break; } }
-  const relevant = hourMap.slice(firstBlood, lastBlood + 1);
+// ─── Phase conversion: calendar → FaseItem[] ─────────────────────────────────
+function kalenderKePhaseDenganDurasi(
+  harianDarah: Record<string, boolean>,
+  harianKarakteristik: Record<string, KarakteristikHari>,
+  harianDurasi: Record<string, DurasiHari>,
+): FaseItem[] {
+  const darahKeys = Object.keys(harianDarah).filter((k) => harianDarah[k]).sort();
+  if (darahKeys.length === 0) return [];
 
   const phases: FaseItem[] = [];
-  let curStatus = relevant[0];
-  let curCount = 1;
-  for (let i = 1; i < relevant.length; i++) {
-    if (relevant[i] === curStatus) { curCount++; }
-    else { _pushFaseItem(phases, curStatus, curCount); curStatus = relevant[i]; curCount = 1; }
+
+  for (let i = 0; i < darahKeys.length; i++) {
+    const key = darahKeys[i];
+
+    // Insert bersih gap between non-consecutive darah days
+    if (i > 0) {
+      const prevKey = darahKeys[i - 1];
+      const gapDays = diffDaysCalc(parseKey(prevKey), parseKey(key)) - 1;
+      if (gapDays > 0) {
+        phases.push({ tipe: "bersih", hari: gapDays, jam: 0 });
+      }
+    }
+
+    const kar = harianKarakteristik[key];
+    const durasi = harianDurasi[key];
+    const totalMenit = durasi ? (durasi.jam * 60 + durasi.menit) : 24 * 60;
+    const effectiveMenit = totalMenit === 0 ? 24 * 60 : totalMenit;
+    const totalJam = Math.ceil(effectiveMenit / 60);
+    const durasiHari = Math.floor(totalJam / 24);
+    const durasiJamSisa = totalJam % 24;
+
+    phases.push({
+      tipe: "darah",
+      warna: kar ? warnaDarahInputToEngine(kar.warna) : "merah",
+      kental: kar ? kar.tekstur === "kental" : false,
+      bau: kar ? kar.aroma === "berbau" : false,
+      hari: durasiHari,
+      jam: durasiJamSisa,
+    } satisfies FaseDarahItem);
   }
-  _pushFaseItem(phases, curStatus, curCount);
+
   return phases;
 }
 
-function hitungTotalJamDarahDenganJam(
-  harian: Record<string, StatusHariInput>,
-  harianJam: Record<string, JamHari>,
+function hitungTotalMenitDarah(
+  harianDarah: Record<string, boolean>,
+  harianDurasi: Record<string, DurasiHari>,
 ): number {
   let total = 0;
-  for (const [key, status] of Object.entries(harian)) {
-    if (status !== "kuat" && status !== "lemah") continue;
-    const jam = harianJam[key];
-    const mulai = jam?.mulai ?? 0;
-    const selesai = jam?.selesai ?? 24;
-    if (mulai === 0 && selesai === 24) total += 24;
-    else if (selesai > mulai) total += selesai - mulai;
-    else total += (24 - mulai) + selesai; // wrap
+  for (const [key, isDarah] of Object.entries(harianDarah)) {
+    if (!isDarah) continue;
+    const durasi = harianDurasi[key];
+    if (!durasi) {
+      total += 24 * 60;
+    } else {
+      const m = durasi.jam * 60 + durasi.menit;
+      total += m === 0 ? 24 * 60 : m;
+    }
   }
   return total;
 }
@@ -296,162 +316,59 @@ function formatDateId(key: string): string {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-function kalenderKePhase(
-  harian: Record<string, StatusHariInput>,
-  mulaiJam = 0,
-  berhentiJam = 24,
-): FaseItem[] {
-  const keys = Object.keys(harian).sort();
-  if (keys.length === 0) return [];
+// ─── Warna options for dropdown ──────────────────────────────────────────────
+const WARNA_OPTIONS: { value: WarnaDarahInput; label: string; dotClass: string }[] = [
+  { value: "hitam",  label: "Hitam",          dotClass: "bg-gray-900" },
+  { value: "merah",  label: "Merah",           dotClass: "bg-red-500" },
+  { value: "saja",   label: "Saja' (Pirang/Coklat)", dotClass: "bg-amber-700" },
+  { value: "kuning", label: "Kuning",          dotClass: "bg-yellow-400" },
+  { value: "keruh",  label: "Keruh",           dotClass: "bg-gray-400" },
+];
 
-  const firstKey = keys[0];
-  const lastKey = keys[keys.length - 1];
-  const phases: FaseItem[] = [];
-  let currentStatus: StatusHariInput | null = null;
-  let currentCount = 0;
-
-  let d = parseKey(firstKey);
-  while (dateKey(d) <= lastKey) {
-    const k = dateKey(d);
-    const status: StatusHariInput = harian[k] ?? "bersih";
-    if (status === currentStatus) {
-      currentCount++;
-    } else {
-      if (currentStatus !== null && currentCount > 0) {
-        if (currentStatus === "bersih") {
-          phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
-        } else {
-          phases.push({ tipe: "darah", warna: currentStatus === "kuat" ? "hitam" : "kuning", kental: false, bau: false, hari: currentCount, jam: 0 });
-        }
-      }
-      currentStatus = status;
-      currentCount = 1;
-    }
-    d = addDaysToDate(d, 1);
-  }
-  if (currentStatus !== null && currentCount > 0) {
-    if (currentStatus === "bersih") {
-      phases.push({ tipe: "bersih", hari: currentCount, jam: 0 });
-    } else {
-      phases.push({ tipe: "darah", warna: currentStatus === "kuat" ? "hitam" : "kuning", kental: false, bau: false, hari: currentCount, jam: 0 });
-    }
-  }
-
-  // Apply partial start/end hours to first and last blood phases
-  let firstDarahIdx = -1;
-  let lastDarahIdx = -1;
-  for (let i = 0; i < phases.length; i++) {
-    if (phases[i].tipe === "darah") {
-      if (firstDarahIdx === -1) firstDarahIdx = i;
-      lastDarahIdx = i;
-    }
-  }
-
-  if (firstDarahIdx === -1) return phases;
-
-  const applyHours = (phase: FaseItem, newTotalJam: number): FaseItem => {
-    const total = Math.max(1, newTotalJam);
-    return { ...phase, hari: Math.floor(total / 24), jam: total % 24 };
-  };
-
-  if (firstDarahIdx === lastDarahIdx) {
-    const phase = phases[firstDarahIdx];
-    const days = phase.hari;
-    let newTotal: number;
-    if (days <= 1) {
-      newTotal = Math.max(1, berhentiJam - mulaiJam);
-    } else {
-      newTotal = Math.max(1, days * 24 - mulaiJam - (24 - berhentiJam));
-    }
-    phases[firstDarahIdx] = applyHours(phase, newTotal);
-  } else {
-    if (mulaiJam > 0) {
-      const sp = phases[firstDarahIdx];
-      phases[firstDarahIdx] = applyHours(sp, Math.max(1, sp.hari * 24 - mulaiJam));
-    }
-    if (berhentiJam < 24) {
-      const ep = phases[lastDarahIdx];
-      phases[lastDarahIdx] = applyHours(ep, Math.max(1, (ep.hari - 1) * 24 + berhentiJam));
-    }
-  }
-
-  return phases;
-}
-
-const STATUS_INPUT_CONFIG: Record<StatusHariInput, {
-  label: string;
-  singkat: string;
-  bg: string;
-  border: string;
-  text: string;
-  dot: string;
-}> = {
-  kuat: {
-    label: "Darah Kuat ❤️",
-    singkat: "❤️",
-    bg: "bg-rose-100 dark:bg-rose-900/50",
-    border: "border-rose-400 dark:border-rose-600",
-    text: "text-rose-900 dark:text-rose-100",
-    dot: "bg-rose-500",
-  },
-  lemah: {
-    label: "Darah Lemah 🩸",
-    singkat: "🩸",
-    bg: "bg-amber-100 dark:bg-amber-900/50",
-    border: "border-amber-400 dark:border-amber-600",
-    text: "text-amber-900 dark:text-amber-100",
-    dot: "bg-amber-500",
-  },
-  bersih: {
-    label: "Bersih / Suci ✨",
-    singkat: "✨",
-    bg: "bg-emerald-100 dark:bg-emerald-900/50",
-    border: "border-emerald-400 dark:border-emerald-600",
-    text: "text-emerald-900 dark:text-emerald-100",
-    dot: "bg-emerald-500",
-  },
-};
-
+// ─── Simplified Calendar (darah / hapus only) ────────────────────────────────
 function KalenderInputTanggal({
-  harian,
+  harianDarah,
+  harianStatus,
   onChange,
   kondisiAwal,
 }: {
-  harian: Record<string, StatusHariInput>;
-  onChange: (h: Record<string, StatusHariInput>) => void;
+  harianDarah: Record<string, boolean>;
+  harianStatus: Record<string, StatusHariInput>;
+  onChange: (h: Record<string, boolean>) => void;
   kondisiAwal?: "haidl" | "nifas";
 }) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [mode, setMode] = useState<InputMode>("kuat");
+  const [mode, setMode] = useState<"darah" | "hapus">("darah");
   const [anchor, setAnchor] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
 
-  const allDates = Object.keys(harian).sort();
+  const allDates = Object.keys(harianDarah).filter((k) => harianDarah[k]).sort();
   const firstDate = allDates.length > 0 ? allDates[0] : null;
   const lastDate = allDates.length > 0 ? allDates[allDates.length - 1] : null;
   const totalDays = firstDate && lastDate ? diffDaysCalc(parseKey(firstDate), parseKey(lastDate)) + 1 : 0;
-  const totalDarah = Object.values(harian).filter((v) => v === "kuat" || v === "lemah").length;
-  const totalBersih = Object.values(harian).filter((v) => v === "bersih").length;
+  const totalDarah = allDates.length;
 
-  // 60-day nifas zone boundary
   const nifasEndKey = firstDate && kondisiAwal === "nifas"
     ? dateKey(addDaysToDate(parseKey(firstDate), 59))
     : null;
 
-  // Range preview
   const previewRange = anchor && hoverDate ? {
     start: anchor < hoverDate ? anchor : hoverDate,
     end: anchor < hoverDate ? hoverDate : anchor,
   } : null;
 
-  const fillRange = (startKey: string, endKey: string, status: StatusHariInput) => {
-    const updated = { ...harian };
+  const fillRange = (startKey: string, endKey: string, value: boolean) => {
+    const updated = { ...harianDarah };
     let d = parseKey(startKey);
     while (dateKey(d) <= endKey) {
-      updated[dateKey(d)] = status;
+      if (value) {
+        updated[dateKey(d)] = true;
+      } else {
+        delete updated[dateKey(d)];
+      }
       d = addDaysToDate(d, 1);
     }
     return updated;
@@ -459,7 +376,7 @@ function KalenderInputTanggal({
 
   const handleDayClick = (key: string) => {
     if (mode === "hapus") {
-      const updated = { ...harian };
+      const updated = { ...harianDarah };
       delete updated[key];
       onChange(updated);
       return;
@@ -467,23 +384,20 @@ function KalenderInputTanggal({
     if (!anchor) {
       setAnchor(key);
     } else if (anchor === key) {
-      // Same day → mark just that day
-      const updated = { ...harian };
-      updated[key] = mode;
+      const updated = { ...harianDarah };
+      updated[key] = true;
       onChange(updated);
       setAnchor(null);
       setHoverDate(null);
     } else {
-      // Different day → fill range
       const startKey = anchor < key ? anchor : key;
       const endKey = anchor < key ? key : anchor;
-      onChange(fillRange(startKey, endKey, mode));
+      onChange(fillRange(startKey, endKey, true));
       setAnchor(null);
       setHoverDate(null);
     }
   };
 
-  // Build month grid
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -507,25 +421,22 @@ function KalenderInputTanggal({
 
   return (
     <div className="space-y-4">
-      {/* ── Status / Mode toolbar ── */}
+      {/* ── Mode toolbar ── */}
       <div className="flex flex-wrap gap-2 items-center">
-        {(Object.entries(STATUS_INPUT_CONFIG) as [StatusHariInput, (typeof STATUS_INPUT_CONFIG)[StatusHariInput]][]).map(([s, cfg]) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => { setMode(s); }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border-2 transition-all select-none",
-              cfg.bg, cfg.border, cfg.text,
-              mode === s
-                ? "shadow-md scale-105 ring-2 ring-offset-1 ring-primary/50"
-                : "opacity-60 hover:opacity-90",
-            )}
-          >
-            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", cfg.dot)} />
-            {cfg.label}
-          </button>
-        ))}
+        <button
+          type="button"
+          onClick={() => { setMode("darah"); }}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border-2 transition-all select-none",
+            "bg-rose-100 dark:bg-rose-900/50 border-rose-400 dark:border-rose-600 text-rose-900 dark:text-rose-100",
+            mode === "darah"
+              ? "shadow-md scale-105 ring-2 ring-offset-1 ring-primary/50"
+              : "opacity-60 hover:opacity-90",
+          )}
+        >
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-rose-500" />
+          Tandai Darah ❤️
+        </button>
         <button
           type="button"
           onClick={() => { setMode("hapus"); setAnchor(null); setHoverDate(null); }}
@@ -539,6 +450,9 @@ function KalenderInputTanggal({
           <span className="text-sm leading-none">✕</span>
           Hapus
         </button>
+        <span className="text-xs text-muted-foreground ml-1">
+          Klik tanggal awal, lalu klik tanggal akhir untuk rentang
+        </span>
       </div>
 
       {/* ── Anchor indicator ── */}
@@ -614,19 +528,22 @@ function KalenderInputTanggal({
             if (!key) {
               return <div key={`pad-${idx}`} className="bg-background min-h-[40px]" />;
             }
-            const status = harian[key];
-            const cfg = status ? STATUS_INPUT_CONFIG[status] : null;
+            const isDarah = harianDarah[key] === true;
+            const status = isDarah ? (harianStatus[key] ?? "kuat") : null;
             const isAnchor = anchor === key;
             const inPreview = previewRange && key >= previewRange.start && key <= previewRange.end;
             const dayNum = parseInt(key.split("-")[2]);
 
-            // Fiqh zone logic
             const isInNifasZone = nifasEndKey && firstDate && key >= firstDate && key <= nifasEndKey;
             const isAfterNifasZone = nifasEndKey && key > nifasEndKey;
             const dayFromStart = firstDate ? diffDaysCalc(parseKey(firstDate), parseKey(key)) + 1 : 0;
-
-            // Detect potential 15-day clean separator for haid
             const isToday = key === dateKey(new Date());
+
+            const bgClass = status === "kuat"
+              ? "bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100 font-semibold"
+              : status === "lemah"
+                ? "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100 font-semibold"
+                : "";
 
             return (
               <button
@@ -637,41 +554,42 @@ function KalenderInputTanggal({
                 onMouseLeave={() => setHoverDate(null)}
                 className={cn(
                   "relative bg-background min-h-[40px] flex flex-col items-center justify-center py-1 transition-all select-none",
-                  status
-                    ? cn(cfg!.bg, cfg!.text, "font-semibold")
-                    : mode === "hapus"
+                  bgClass || (
+                    mode === "hapus"
                       ? "hover:bg-destructive/10 hover:text-destructive"
                       : anchor
                         ? "hover:bg-primary/8"
-                        : "hover:bg-muted/50",
-                  inPreview && !status && "bg-primary/8",
-                  inPreview && status && "ring-1 ring-inset ring-primary",
+                        : "hover:bg-muted/50"
+                  ),
+                  inPreview && !isDarah && "bg-primary/8",
+                  inPreview && isDarah && "ring-1 ring-inset ring-primary",
                   isAnchor && "ring-2 ring-inset ring-primary z-10",
-                  !status && isAfterNifasZone && kondisiAwal === "nifas" && "bg-muted/40 text-muted-foreground/40",
-                  isToday && !status && !isAfterNifasZone && "bg-primary/4",
+                  !isDarah && isAfterNifasZone && kondisiAwal === "nifas" && "bg-muted/40 text-muted-foreground/40",
+                  isToday && !isDarah && !isAfterNifasZone && "bg-primary/4",
                 )}
               >
-                {/* Today indicator */}
                 {isToday && (
                   <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary/50" />
                 )}
                 <span className={cn(
                   "text-[11px] leading-none font-medium",
-                  status ? cfg!.text : isAfterNifasZone ? "text-muted-foreground/40" : "text-muted-foreground",
+                  isDarah
+                    ? status === "kuat" ? "text-rose-900 dark:text-rose-100" : "text-amber-900 dark:text-amber-100"
+                    : isAfterNifasZone ? "text-muted-foreground/40" : "text-muted-foreground",
                 )}>
                   {dayNum}
                 </span>
-                {status && (
-                  <span className="text-sm leading-none mt-0.5">{STATUS_INPUT_CONFIG[status].singkat}</span>
+                {isDarah && (
+                  <span className="text-sm leading-none mt-0.5">
+                    {status === "kuat" ? "❤️" : "🩸"}
+                  </span>
                 )}
-                {!status && isAfterNifasZone && kondisiAwal === "nifas" && (
+                {!isDarah && isAfterNifasZone && kondisiAwal === "nifas" && (
                   <span className="text-[8px] text-muted-foreground/40 leading-none mt-0.5">≥61</span>
                 )}
-                {/* Nifas zone subtle overlay */}
-                {isInNifasZone && !isAnchor && !status && (
+                {isInNifasZone && !isAnchor && !isDarah && (
                   <div className="absolute inset-0 border border-teal-300/30 dark:border-teal-600/20 pointer-events-none" />
                 )}
-                {/* Day counter from start */}
                 {firstDate && dayFromStart > 0 && (
                   <span className={cn(
                     "absolute bottom-0.5 right-0.5 text-[7px] leading-none",
@@ -698,10 +616,6 @@ function KalenderInputTanggal({
             <span className="font-medium text-rose-700 dark:text-rose-400">Darah:</span>
             <span className="font-bold text-rose-700 dark:text-rose-400">{totalDarah} hari</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5">
-            <span className="font-medium text-emerald-700 dark:text-emerald-400">Bersih:</span>
-            <span className="font-bold text-emerald-700 dark:text-emerald-400">{totalBersih} hari</span>
-          </div>
           {exceedsLimit && (
             <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
               <TriangleAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -715,10 +629,246 @@ function KalenderInputTanggal({
         </div>
       ) : (
         <div className="rounded-xl bg-muted/30 border border-dashed p-4 text-center text-sm text-muted-foreground space-y-1">
-          <p className="font-medium">Pilih status di atas, lalu klik tanggal awal.</p>
-          <p className="text-xs opacity-70">Klik tanggal berbeda untuk mengisi seluruh range sekaligus. Klik tanggal yang sama dua kali untuk menandai satu hari.</p>
+          <p className="font-medium">Pilih mode "Tandai Darah" lalu klik tanggal awal.</p>
+          <p className="text-xs opacity-70">Klik tanggal berbeda untuk mengisi seluruh rentang sekaligus. Klik tanggal yang sama dua kali untuk menandai satu hari.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Karakteristik & Durasi Panel ────────────────────────────────────────────
+function KarakteristikPanel({
+  darahKeys,
+  harianKarakteristik,
+  harianDurasi,
+  harianStatus,
+  harianRank,
+  onKarChange,
+  onDurChange,
+}: {
+  darahKeys: string[];
+  harianKarakteristik: Record<string, KarakteristikHari>;
+  harianDurasi: Record<string, DurasiHari>;
+  harianStatus: Record<string, StatusHariInput>;
+  harianRank: Record<string, number>;
+  onKarChange: (key: string, kar: KarakteristikHari) => void;
+  onDurChange: (key: string, dur: DurasiHari) => void;
+}) {
+  if (darahKeys.length === 0) return null;
+
+  const defaultKar: KarakteristikHari = { warna: "merah", tekstur: "cair", aroma: "tidak_berbau" };
+
+  return (
+    <div className="space-y-3 animate-in fade-in duration-300">
+      <div className="flex items-center gap-2">
+        <Droplets className="w-4 h-4 text-rose-600" />
+        <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
+          Karakteristik &amp; Durasi per Tanggal
+        </span>
+        <span className="text-xs text-muted-foreground">(isi untuk setiap hari darah)</span>
+      </div>
+
+      <div className="rounded-2xl border border-rose-200 dark:border-rose-800 overflow-hidden divide-y divide-rose-100 dark:divide-rose-900">
+        {darahKeys.map((k, idx) => {
+          const status = harianStatus[k] ?? "kuat";
+          const rank = harianRank[k];
+          const kar = harianKarakteristik[k];
+          const durasi = harianDurasi[k] ?? { jam: 0, menit: 0 };
+          const isKuat = status === "kuat";
+          const hasKar = !!kar;
+          const totalMenit = durasi.jam * 60 + durasi.menit;
+
+          return (
+            <div key={k} className="bg-rose-50/40 dark:bg-rose-950/10 px-4 py-4 space-y-3">
+              {/* Header row */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                    isKuat ? "bg-rose-600" : "bg-amber-400",
+                  )} />
+                  <span className="text-sm font-semibold text-foreground">
+                    {formatDateId(k)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    (ke-{idx + 1})
+                  </span>
+                </div>
+
+                {hasKar && rank !== undefined && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border",
+                    isKuat
+                      ? "bg-rose-100 dark:bg-rose-900/40 border-rose-400 dark:border-rose-600 text-rose-700 dark:text-rose-300"
+                      : "bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-300",
+                  )}>
+                    <span>Peringkat #{rank}</span>
+                    <span>—</span>
+                    <span>{isKuat ? "Darah Kuat ❤️" : "Darah Lemah 🩸"}</span>
+                  </div>
+                )}
+                {!hasKar && (
+                  <span className="text-xs text-muted-foreground italic">Pilih karakteristik untuk melihat status</span>
+                )}
+              </div>
+
+              {/* Durasi input */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Durasi keluar:</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={24}
+                    value={durasi.jam === 0 && durasi.menit === 0 ? "" : durasi.jam}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const val = Math.min(24, Math.max(0, parseInt(e.target.value) || 0));
+                      onDurChange(k, { ...durasi, jam: val });
+                    }}
+                    className="w-16 h-8 text-sm text-center"
+                  />
+                  <span className="text-xs text-muted-foreground">jam</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={durasi.jam === 0 && durasi.menit === 0 ? "" : durasi.menit}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+                      onDurChange(k, { ...durasi, menit: val });
+                    }}
+                    className="w-16 h-8 text-sm text-center"
+                  />
+                  <span className="text-xs text-muted-foreground">menit</span>
+                </div>
+                {totalMenit > 0 && (
+                  <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    = {totalMenit} menit
+                  </span>
+                )}
+                {totalMenit === 0 && (
+                  <span className="text-xs text-muted-foreground italic">
+                    (default: seharian penuh = 1440 menit)
+                  </span>
+                )}
+              </div>
+
+              {/* 3 dropdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {/* Warna */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Warna</label>
+                  <Select
+                    value={kar?.warna ?? ""}
+                    onValueChange={(v) =>
+                      onKarChange(k, { ...(kar ?? defaultKar), warna: v as WarnaDarahInput })
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Pilih warna..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WARNA_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-3 h-3 rounded-full flex-shrink-0 border border-border/40", opt.dotClass)} />
+                            {opt.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Tekstur */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Tekstur</label>
+                  <Select
+                    value={kar?.tekstur ?? ""}
+                    onValueChange={(v) =>
+                      onKarChange(k, { ...(kar ?? defaultKar), tekstur: v as TeksturDarah })
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Pilih tekstur..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kental">Kental</SelectItem>
+                      <SelectItem value="cair">Cair</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Aroma */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Aroma</label>
+                  <Select
+                    value={kar?.aroma ?? ""}
+                    onValueChange={(v) =>
+                      onKarChange(k, { ...(kar ?? defaultKar), aroma: v as AromaDarah })
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Pilih aroma..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="berbau">Berbau</SelectItem>
+                      <SelectItem value="tidak_berbau">Tidak Berbau</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Rank info tooltip */}
+              {hasKar && rank !== undefined && (
+                <div className={cn(
+                  "rounded-lg px-3 py-2 text-xs leading-relaxed border",
+                  isKuat
+                    ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                    : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300",
+                )}>
+                  <span className="font-semibold">Status: {isKuat ? "Darah Kuat" : "Darah Lemah"}</span>
+                  {" "}&mdash; Warna <strong>{WARNA_OPTIONS.find(o => o.value === kar.warna)?.label}</strong>,{" "}
+                  <strong>{kar.tekstur === "kental" ? "Kental" : "Cair"}</strong>,{" "}
+                  <strong>{kar.aroma === "berbau" ? "Berbau" : "Tidak Berbau"}</strong>
+                  {" "}(Peringkat #{rank} dari 12)
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary comparison table if multiple types */}
+      {darahKeys.length > 1 && darahKeys.some((k) => harianKarakteristik[k]) && (() => {
+        const kuatDays = darahKeys.filter((k) => harianStatus[k] === "kuat" && harianKarakteristik[k]);
+        const lemahDays = darahKeys.filter((k) => harianStatus[k] === "lemah" && harianKarakteristik[k]);
+        if (lemahDays.length === 0) return null;
+        return (
+          <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-4 py-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+            <p className="font-semibold text-sm">Hasil Perbandingan Otomatis:</p>
+            <p>
+              <span className="font-bold text-rose-700 dark:text-rose-400">Darah Kuat</span>{" "}
+              ({kuatDays.map(formatDateId).join(", ")}) — peringkat lebih kecil (lebih kuat)
+            </p>
+            <p>
+              <span className="font-bold text-amber-700 dark:text-amber-400">Darah Lemah</span>{" "}
+              ({lemahDays.map(formatDateId).join(", ")}) — peringkat lebih besar (lebih lemah)
+            </p>
+            <p className="text-muted-foreground">
+              Aturan: Warna mengalahkan sifat fisik. Peringkat angka lebih kecil = lebih kuat.
+            </p>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -781,14 +931,12 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
   const bersihSuciDays = entri.filter((e) => e.tipe === "bersih" && e.hukum !== "haid" && e.hukum !== "nifas" && e.hukum !== "ihtiyath");
   const ihtiyathDays = entri.filter((e) => e.hukum === "ihtiyath");
 
-  // Compute actual calendar date for a given engine day number (1-indexed)
   const entryDateKey = (hari: number): string | null =>
     startDate ? dateKey(addDaysToDate(parseKey(startDate), hari - 1)) : null;
   const entryDateLabel = (hari: number): string | null => {
     const k = entryDateKey(hari);
     return k ? formatDateId(k) : null;
   };
-  // Short DD/MM label for grid cells
   const entryDateShort = (hari: number): string | null => {
     const k = entryDateKey(hari);
     if (!k) return null;
@@ -808,41 +956,33 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
         </p>
       </div>
 
-      {/* Legenda */}
       <div className="flex flex-wrap gap-2">
-        {/* ❤️ Merah — Darah Haid */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 shadow-sm">
           <span className="text-sm leading-none select-none">❤️</span>
           Darah Haid
         </div>
-        {/* 💙 Teal — Nifas (darah & jeda bersih dalam nifas) */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 border-teal-300 dark:border-teal-700 shadow-sm">
           <span className="text-sm leading-none select-none">💙</span>
           Nifas / Jeda Bersih Nifas
         </div>
-        {/* 🌸 Kuning — Darah Istihadloh */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-sm">
           <span className="text-sm leading-none select-none">🌸</span>
           Darah Istihadloh — ibadah tetap wajib
         </div>
-        {/* 💚 Hijau — Jeda Bersih dihukumi Haid */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-400 dark:border-green-600 shadow-sm">
           <span className="text-sm leading-none select-none">💚</span>
           Jeda Bersih = Haid — puasanya perlu diganti ya ✨
         </div>
-        {/* ✨ Biru — Jeda Bersih dihukumi Suci */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200 border-sky-400 dark:border-sky-600 shadow-sm">
           <span className="text-sm leading-none select-none">✨</span>
           Alhamdulillah, sholat &amp; puasa sah 🌸
         </div>
-        {/* 💜 Ungu — Ihtiyath */}
         <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700 shadow-sm">
           <span className="text-sm leading-none select-none">💜</span>
           Ihtiyath — masa keraguan, wajib hati-hati
         </div>
       </div>
 
-      {/* Grid hari */}
       <div className="grid grid-cols-7 gap-1.5">
         {entri.map((e) => {
           const cfg = HUKUM_CONFIG[e.hukum];
@@ -873,14 +1013,12 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               title={`${entryDateLabel(e.hari) ?? `Hari ke-${e.hari}`} — ${e.keterangan}`}
               data-testid={`hari-${e.hari}`}
             >
-              {/* Date or day number at top */}
               <span className="text-[9px] font-semibold leading-none opacity-70 mb-0.5">
                 {shortDate ?? e.hari}
               </span>
               <span className="text-sm leading-none select-none">
                 {isIhtiyath ? "💜" : isBersihHaid ? "💚" : isNifas ? "💙" : isBersihSuci ? "✨" : e.hukum === "haid" ? "❤️" : "🌸"}
               </span>
-              {/* Day-number-from-start in corner when date is shown */}
               {shortDate && (
                 <span className="absolute bottom-0.5 right-0.5 text-[7px] leading-none opacity-35">
                   {e.hari}
@@ -899,7 +1037,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
         })}
       </div>
 
-      {/* Detail hari yang dipilih */}
       {selected && (() => {
         const selIsIhtiyath = selected.hukum === "ihtiyath";
         const selIsBersihHaid = selected.tipe === "bersih" && selected.hukum === "haid";
@@ -958,7 +1095,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
             {selected.warnaAsli && (
               <p className="text-xs mt-1 opacity-70">Warna darah: {selected.warnaAsli}</p>
             )}
-            {/* Status ibadah ringkas — hanya untuk hari bersih */}
             {selected.tipe === "bersih" && (
               <div className={cn(
                 "mt-3 rounded-lg px-3 py-2 text-xs font-medium flex items-start gap-2",
@@ -997,10 +1133,8 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
         );
       })()}
 
-      {/* ═══════════════ KUMPULAN QODLO PUASA ═══════════════ */}
       {jumlahQodlo > 0 && (
         <div className="rounded-2xl border-2 border-green-400 dark:border-green-600 overflow-hidden">
-          {/* Header badge */}
           <div className="flex items-center gap-4 bg-green-600 dark:bg-green-700 px-5 py-4">
             <div className="text-center flex-shrink-0">
               <p className="text-3xl font-extrabold text-white leading-none">{jumlahQodlo}</p>
@@ -1013,8 +1147,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               </p>
             </div>
           </div>
-
-          {/* Penjelasan konteks */}
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-b border-green-200 dark:border-green-800">
             <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
               {kategoriStr
@@ -1025,14 +1157,9 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               <strong>Puasa TIDAK SAH dan wajib diqodlo.</strong>
             </p>
           </div>
-
-          {/* Daftar hari */}
           <div className="divide-y divide-green-100 dark:divide-green-900/50 bg-white dark:bg-green-950/20">
             {qodloDays.map((e) => (
-              <div
-                key={e.hari}
-                className="flex gap-4 px-5 py-4"
-              >
+              <div key={e.hari} className="flex gap-4 px-5 py-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center shadow-sm">
                   <span className="text-sm font-extrabold text-white leading-none">{e.hari}</span>
                 </div>
@@ -1043,9 +1170,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
                       : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
                     }{" "}— Bersih dihukumi {e.hukum === "nifas" ? "NIFAS" : "HAID"}
                   </p>
-                  <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
-                    {e.keterangan}
-                  </p>
+                  <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">{e.keterangan}</p>
                   <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-green-700 dark:text-green-400">
                     <span className="inline-block w-2 h-2 rounded-full bg-green-600 dark:bg-green-400" />
                     Puasa hari ini wajib diqodlo
@@ -1054,8 +1179,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               </div>
             ))}
           </div>
-
-          {/* Footer ringkasan */}
           <div className="bg-green-50 dark:bg-green-950/40 px-5 py-3 border-t border-green-200 dark:border-green-800">
             <p className="text-xs text-green-700 dark:text-green-400">
               <strong>Catatan:</strong> Sholat yang Anda kerjakan di hari-hari tersebut wajib dilakukan (karena tampak suci secara dzahir) namun <strong>TIDAK SAH</strong> secara hukum — tidak perlu diqodlo. Yang wajib diqodlo adalah <strong>puasanya</strong> (jika bertepatan dengan bulan Ramadhan atau puasa wajib lainnya).
@@ -1064,10 +1187,8 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
         </div>
       )}
 
-      {/* ═══════════════ HARI BERSIH DIHUKUMI SUCI ═══════════════ */}
       {bersihSuciDays.length > 0 && (
         <div className="rounded-2xl border-2 border-sky-400 dark:border-sky-600 overflow-hidden">
-          {/* Header badge */}
           <div className="flex items-center gap-4 bg-sky-500 dark:bg-sky-700 px-5 py-4">
             <div className="text-center flex-shrink-0">
               <p className="text-3xl font-extrabold text-white leading-none">{bersihSuciDays.length}</p>
@@ -1075,13 +1196,9 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
             </div>
             <div>
               <p className="text-base font-bold text-white">Hari Bersih Dihukumi Suci / Istihadloh</p>
-              <p className="text-xs text-sky-100 mt-0.5 leading-snug">
-                Ibadah SAH — tidak ada kewajiban qodlo
-              </p>
+              <p className="text-xs text-sky-100 mt-0.5 leading-snug">Ibadah SAH — tidak ada kewajiban qodlo</p>
             </div>
           </div>
-
-          {/* Penjelasan konteks */}
           <div className="bg-sky-50 dark:bg-sky-950/40 px-5 py-3 border-b border-sky-200 dark:border-sky-800">
             <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
               {kategoriStr
@@ -1090,8 +1207,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               Di hari-hari tersebut: <strong>sholat SAH</strong> dan <strong>puasa SAH</strong>. Tidak ada kewajiban qodlo.
             </p>
           </div>
-
-          {/* Daftar hari */}
           <div className="divide-y divide-sky-100 dark:divide-sky-900/50 bg-white dark:bg-sky-950/20">
             {bersihSuciDays.map((e) => (
               <div key={e.hari} className="flex gap-4 px-5 py-4">
@@ -1105,9 +1220,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
                       : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
                     }{" "}— Bersih dihukumi {e.hukum === "ihtiyath" ? "Ihtiyath" : "Suci/Istihadloh"}
                   </p>
-                  <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">
-                    {e.keterangan}
-                  </p>
+                  <p className="text-xs text-sky-800 dark:text-sky-300 leading-relaxed">{e.keterangan}</p>
                   <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 dark:text-sky-400">
                     <span className="inline-block w-2 h-2 rounded-full bg-sky-500 dark:bg-sky-400" />
                     Sholat SAH — Puasa SAH — tidak perlu qodlo
@@ -1116,8 +1229,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               </div>
             ))}
           </div>
-
-          {/* Footer */}
           <div className="bg-sky-50 dark:bg-sky-950/40 px-5 py-3 border-t border-sky-200 dark:border-sky-800">
             <p className="text-xs text-sky-700 dark:text-sky-400">
               <strong>Catatan:</strong> Pada hari-hari ini Anda dihukumi <strong>Suci</strong>. Sholat dan puasa yang Anda kerjakan <strong>SAH</strong> secara hukum. Jika Anda Mustahadloh, gunakan tata cara bersuci Mustahadloh (wudhu tiap waktu sholat).
@@ -1126,7 +1237,6 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
         </div>
       )}
 
-      {/* ═══════════════ HARI IHTIYATH ═══════════════ */}
       {ihtiyathDays.length > 0 && (
         <div className="rounded-2xl border-2 border-violet-400 dark:border-violet-600 overflow-hidden">
           <div className="flex items-center gap-4 bg-violet-600 dark:bg-violet-800 px-5 py-4">
@@ -1136,9 +1246,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
             </div>
             <div>
               <p className="text-base font-bold text-white">Hari Ihtiyath (Masa Keraguan)</p>
-              <p className="text-xs text-violet-100 mt-0.5 leading-snug">
-                Wajib sholat & puasa, mandi besar tiap waktu sholat
-              </p>
+              <p className="text-xs text-violet-100 mt-0.5 leading-snug">Wajib sholat & puasa, mandi besar tiap waktu sholat</p>
             </div>
           </div>
           <div className="bg-violet-50 dark:bg-violet-950/40 px-5 py-3 border-b border-violet-200 dark:border-violet-800">
@@ -1159,9 +1267,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
                       : <>Hari ke-{e.hari}{e.jamDiHari < 24 ? ` (${e.jamDiHari} jam)` : ""}</>
                     }{" "}— {e.tipe === "bersih" ? "Bersih" : "Darah"} Ihtiyath
                   </p>
-                  <p className="text-xs text-violet-800 dark:text-violet-300 leading-relaxed">
-                    {e.keterangan}
-                  </p>
+                  <p className="text-xs text-violet-800 dark:text-violet-300 leading-relaxed">{e.keterangan}</p>
                   <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-violet-700 dark:text-violet-400">
                     <span className="inline-block w-2 h-2 rounded-full bg-violet-500 dark:bg-violet-400" />
                     Sholat & puasa wajib — mandi besar tiap waktu sholat
@@ -1185,12 +1291,25 @@ export default function Kalkulator() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Partial<InputUser>>({});
   const [hasil, setHasil] = useState<HasilAnalisis | null>(null);
-  const [harianInput, setHarianInput] = useState<Record<string, StatusHariInput>>({});
-  const [harianJam, setHarianJam] = useState<Record<string, JamHari>>({});
+
+  // ── New state: darah/karakteristik/durasi per day ──
+  const [harianDarah, setHarianDarah] = useState<Record<string, boolean>>({});
+  const [harianKarakteristik, setHarianKarakteristik] = useState<Record<string, KarakteristikHari>>({});
+  const [harianDurasi, setHarianDurasi] = useState<Record<string, DurasiHari>>({});
+
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [totalJamDarah, setTotalJamDarah] = useState<number>(0);
   const [adatMode, setAdatMode] = useState<"tetap" | "berubah">("tetap");
   const [riwayatBulan, setRiwayatBulan] = useState<number[]>([7, 7]);
+
+  // ── Computed: sorted darah keys + status per day ──
+  const darahKeys = Object.keys(harianDarah).filter((k) => harianDarah[k]).sort();
+  const harianStatus = tentukanStatusKuatLemah(darahKeys, harianKarakteristik);
+  const harianRank: Record<string, number> = {};
+  for (const k of darahKeys) {
+    const kar = harianKarakteristik[k];
+    if (kar) harianRank[k] = hitungPeringkat(kar);
+  }
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -1226,22 +1345,23 @@ export default function Kalkulator() {
 
   const onStep2Submit = () => {
     setStep2Error(null);
-    const hasDarah = Object.values(harianInput).some((v) => v === "kuat" || v === "lemah");
-    if (!hasDarah) {
-      setStep2Error("Tandai minimal 1 hari darah (Kuat atau Lemah) pada kalender.");
+    if (darahKeys.length === 0) {
+      setStep2Error("Tandai minimal 1 hari darah pada kalender.");
       return;
     }
-    const converted = kalenderKePhaseDenganJam(harianInput, harianJam);
-    const total = hitungTotalJamDarahDenganJam(harianInput, harianJam);
-    setTotalJamDarah(total);
-    // Detect prayer times from first and last blood day's jam settings
-    const darahKeys = Object.keys(harianInput).filter((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah").sort();
+    const converted = kalenderKePhaseDenganDurasi(harianDarah, harianKarakteristik, harianDurasi);
+    const totalMenit = hitungTotalMenitDarah(harianDarah, harianDurasi);
+    const totalJam = totalMenit / 60;
+    setTotalJamDarah(totalJam);
+
+    // Detect prayer times from first/last blood day
     const firstKey = darahKeys[0];
     const lastKey = darahKeys[darahKeys.length - 1];
-    const firstMulai = harianJam[firstKey]?.mulai ?? 0;
-    const lastSelesai = harianJam[lastKey]?.selesai ?? 24;
-    const shalatMulai = jamKeShalat(firstMulai) as InputUser["waktuMulaiDarah"];
-    const shalatBerhenti = jamKeShalat(lastSelesai === 24 ? 0 : lastSelesai) as InputUser["waktuBerhentiTotal"];
+    const lastDurasi = harianDurasi[lastKey] ?? { jam: 24, menit: 0 };
+    const lastEndJam = Math.min(24, lastDurasi.jam + (lastDurasi.menit > 0 ? 1 : 0));
+    const shalatMulai = jamKeShalat(0) as InputUser["waktuMulaiDarah"];
+    const shalatBerhenti = jamKeShalat(lastEndJam === 24 ? 0 : lastEndJam) as InputUser["waktuBerhentiTotal"];
+
     setFormData((prev) => ({
       ...prev,
       daftarFase: converted,
@@ -1303,9 +1423,10 @@ export default function Kalkulator() {
     setStep(1);
     setFormData({});
     setHasil(null);
-    setHarianInput({});
+    setHarianDarah({});
+    setHarianKarakteristik({});
+    setHarianDurasi({});
     setStep2Error(null);
-    setHarianJam({});
     setTotalJamDarah(0);
     setAdatMode("tetap");
     setRiwayatBulan([7, 7]);
@@ -1314,11 +1435,15 @@ export default function Kalkulator() {
     form4.reset({ isBulanPertamaIstihadloh: true, sudahSholatSebelumDarah: false });
   };
 
+  // ── Total duration for validation display ──
+  const totalMenitDarah = hitungTotalMenitDarah(harianDarah, harianDurasi);
+  const totalJamDarahLive = totalMenitDarah / 60;
+  const kurang24 = totalMenitDarah > 0 && totalMenitDarah < 1440;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 w-full">
       {step < 5 && (
         <div className="mb-8">
-          {/* Step dots */}
           <div className="flex items-center justify-between mb-3">
             {[
               { n: 1, label: "Data Diri", emoji: "🌸" },
@@ -1344,7 +1469,6 @@ export default function Kalkulator() {
               </div>
             ))}
           </div>
-          {/* Progress bar */}
           <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500 ease-out rounded-full"
@@ -1379,15 +1503,9 @@ export default function Kalkulator() {
                     <FormItem>
                       <FormLabel>Usia (Tahun Qomariyah)</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          data-testid="input-usia"
-                        />
+                        <Input type="number" {...field} data-testid="input-usia" />
                       </FormControl>
-                      <FormDescription>
-                        Menurut penanggalan Hijriyah.
-                      </FormDescription>
+                      <FormDescription>Menurut penanggalan Hijriyah.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1399,10 +1517,7 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>Kondisi Saat Darah Keluar</FormLabel>
-                      <div
-                        className="grid sm:grid-cols-2 gap-4"
-                        data-testid="radio-kondisi"
-                      >
+                      <div className="grid sm:grid-cols-2 gap-4" data-testid="radio-kondisi">
                         {(["haidl", "nifas"] as const).map((val) => (
                           <button
                             key={val}
@@ -1416,22 +1531,14 @@ export default function Kalkulator() {
                                 : "border-muted hover:border-primary/50",
                             )}
                           >
-                            <div
-                              className={cn(
-                                "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-                                field.value === val
-                                  ? "border-primary"
-                                  : "border-muted-foreground",
-                              )}
-                            >
-                              {field.value === val && (
-                                <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                              )}
+                            <div className={cn(
+                              "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+                              field.value === val ? "border-primary" : "border-muted-foreground",
+                            )}>
+                              {field.value === val && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                             </div>
                             <span className="font-medium">
-                              {val === "haidl"
-                                ? "Haidl (Biasa)"
-                                : "Nifas (Setelah Melahirkan)"}
+                              {val === "haidl" ? "Haidl (Biasa)" : "Nifas (Setelah Melahirkan)"}
                             </span>
                           </button>
                         ))}
@@ -1449,10 +1556,7 @@ export default function Kalkulator() {
                       <FormLabel>
                         {isNifasMode ? "Status Pengalaman Nifas" : "Status Pengalaman Haid"}
                       </FormLabel>
-                      <div
-                        className="grid sm:grid-cols-2 gap-4"
-                        data-testid="radio-pengalaman"
-                      >
+                      <div className="grid sm:grid-cols-2 gap-4" data-testid="radio-pengalaman">
                         {(isNifasMode
                           ? [
                               { val: "mubtadiah" as const, label: "Mubtadi'ah Finnifas", desc: "Baru pertama kali mengalami nifas (melahirkan)." },
@@ -1476,23 +1580,15 @@ export default function Kalkulator() {
                             )}
                           >
                             <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
-                                  field.value === val
-                                    ? "border-primary"
-                                    : "border-muted-foreground",
-                                )}
-                              >
-                                {field.value === val && (
-                                  <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                                )}
+                              <div className={cn(
+                                "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center",
+                                field.value === val ? "border-primary" : "border-muted-foreground",
+                              )}>
+                                {field.value === val && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                               </div>
                               <span className="font-medium">{label}</span>
                             </div>
-                            <span className="text-sm text-muted-foreground pl-8">
-                              {desc}
-                            </span>
+                            <span className="text-sm text-muted-foreground pl-8">{desc}</span>
                           </button>
                         ))}
                       </div>
@@ -1502,12 +1598,7 @@ export default function Kalkulator() {
                 />
 
                 <div className="flex justify-end pt-4">
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="rounded-full px-8 gap-2"
-                    data-testid="btn-next-1"
-                  >
+                  <Button type="submit" size="lg" className="rounded-full px-8 gap-2" data-testid="btn-next-1">
                     Selanjutnya <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1529,38 +1620,48 @@ export default function Kalkulator() {
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
             <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl select-none">❤️</span>
-                  <CardTitle className="text-2xl font-bold">Kalender Harianmu</CardTitle>
-                </div>
-                <CardDescription className="mt-1">
-                  Pilih status, klik tanggal awal, lalu klik tanggal akhir untuk mengisi rentang. Navigasi antar bulan dengan tombol panah.
-                </CardDescription>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl select-none">❤️</span>
+                <CardTitle className="text-2xl font-bold">Kalender & Karakteristik Darah</CardTitle>
               </div>
+              <CardDescription className="mt-1">
+                Tandai hari-hari darah pada kalender, lalu isi karakteristik dan durasi untuk setiap harinya.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
+            {/* Info banner */}
             <div className="flex items-start gap-2 rounded-2xl bg-primary/6 border border-primary/15 p-4 text-sm text-foreground/80">
               <span className="text-base select-none flex-shrink-0 mt-0.5">💡</span>
               {formData.kondisiAwal === "nifas" ? (
                 <p>
-                  Tandai setiap hari dari hari pertama setelah melahirkan. Jeda bersih <strong>{"<"} 15 hari</strong> di antara dua hari darah tetap dihukumi nifas (An-naqo'). Jeda bersih <strong>≥ 15 hari</strong> menandakan suci penuh — darah setelahnya dihukumi haid. Batas maksimal nifas adalah <strong>60 hari 60 malam</strong>.
+                  Tandai setiap hari dari hari pertama setelah melahirkan. Jeda bersih <strong>{"<"} 15 hari</strong> di antara dua hari darah tetap dihukumi nifas (An-naqo'). Batas maksimal nifas adalah <strong>60 hari 60 malam</strong>.
                 </p>
               ) : (
                 <p>
-                  Tandai setiap hari dari hari pertama darah keluar. Hari bersih di antara dua hari darah akan dianalisis sesuai hukum yang berlaku. Masa bersih <strong>≥ 15 hari</strong> berturut-turut menandakan suci penuh.
+                  Tandai hari-hari darah pada kalender lalu isi karakteristik tiap hari. Sistem akan menentukan status <strong>Darah Kuat/Lemah</strong> otomatis berdasarkan 12 hierarki kekuatan darah.
                 </p>
               )}
             </div>
 
+            {/* Calendar */}
             <KalenderInputTanggal
-              harian={harianInput}
+              harianDarah={harianDarah}
+              harianStatus={harianStatus}
               onChange={(next) => {
-                setHarianInput(next);
-                // Remove jam overrides for days no longer marked as darah
-                setHarianJam((prev) => {
-                  const cleaned: Record<string, JamHari> = {};
+                setHarianDarah(next);
+                // Clean up karakteristik & durasi for removed days
+                setHarianKarakteristik((prev) => {
+                  const cleaned: Record<string, KarakteristikHari> = {};
                   for (const k of Object.keys(prev)) {
-                    if (next[k] === "kuat" || next[k] === "lemah") cleaned[k] = prev[k];
+                    if (next[k]) cleaned[k] = prev[k];
+                  }
+                  return cleaned;
+                });
+                setHarianDurasi((prev) => {
+                  const cleaned: Record<string, DurasiHari> = {};
+                  for (const k of Object.keys(prev)) {
+                    if (next[k]) cleaned[k] = prev[k];
                   }
                   return cleaned;
                 });
@@ -1568,164 +1669,93 @@ export default function Kalkulator() {
               kondisiAwal={formData.kondisiAwal}
             />
 
-            {/* ── Per-day jam pickers (only for darah days) ── */}
-            {(() => {
-              const darahKeys = Object.keys(harianInput)
-                .filter((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah")
-                .sort();
-              if (darahKeys.length === 0) return null;
+            {/* Karakteristik & Durasi Panel */}
+            {darahKeys.length > 0 && (
+              <KarakteristikPanel
+                darahKeys={darahKeys}
+                harianKarakteristik={harianKarakteristik}
+                harianDurasi={harianDurasi}
+                harianStatus={harianStatus}
+                harianRank={harianRank}
+                onKarChange={(key, kar) =>
+                  setHarianKarakteristik((prev) => ({ ...prev, [key]: kar }))
+                }
+                onDurChange={(key, dur) =>
+                  setHarianDurasi((prev) => ({ ...prev, [key]: dur }))
+                }
+              />
+            )}
 
-              const totalJam = hitungTotalJamDarahDenganJam(harianInput, harianJam);
-              const kurang24 = totalJam > 0 && totalJam < 24;
-
-              return (
-                <div className="space-y-3 animate-in fade-in duration-300">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-rose-600" />
-                    <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">Jam Darah per Tanggal</span>
-                    <span className="text-xs text-muted-foreground">(opsional — default: seharian penuh)</span>
-                  </div>
-
-                  <div className="rounded-2xl border border-rose-200 dark:border-rose-800 overflow-hidden divide-y divide-rose-100 dark:divide-rose-900">
-                    {darahKeys.map((k) => {
-                      const status = harianInput[k];
-                      const jam = harianJam[k] ?? { mulai: 0, selesai: 24 };
-                      const isDefault = jam.mulai === 0 && jam.selesai === 24;
-                      const isWrap = jam.selesai < jam.mulai;
-                      const durasi = isWrap
-                        ? (24 - jam.mulai) + jam.selesai
-                        : jam.selesai - jam.mulai;
-                      const setJam = (patch: Partial<JamHari>) =>
-                        setHarianJam((prev) => ({ ...prev, [k]: { ...jam, ...patch } }));
-                      const resetJam = () =>
-                        setHarianJam((prev) => { const next = { ...prev }; delete next[k]; return next; });
-
-                      return (
-                        <div key={k} className="bg-rose-50/40 dark:bg-rose-950/10 px-4 py-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0", status === "kuat" ? "bg-rose-600" : "bg-amber-400")} />
-                              <span className="text-sm font-semibold text-foreground">{formatDateId(k)}</span>
-                              <span className={cn("text-xs font-medium", status === "kuat" ? "text-rose-600" : "text-amber-600")}>
-                                {status === "kuat" ? "Darah Kuat" : "Darah Lemah"}
-                              </span>
-                            </div>
-                            {!isDefault && (
-                              <button
-                                type="button"
-                                onClick={resetJam}
-                                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                              >
-                                Reset
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-muted-foreground whitespace-nowrap">Mulai</label>
-                              <Select
-                                value={String(jam.mulai)}
-                                onValueChange={(v) => {
-                                  const newMulai = Number(v);
-                                  const newSelesai = harianJam[k]?.selesai ?? 24;
-                                  setJam({ mulai: newMulai, selesai: newSelesai === newMulai ? (newMulai + 1) % 25 : newSelesai });
-                                }}
-                              >
-                                <SelectTrigger className="h-8 w-[90px] text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 24 }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>
-                                      {String(i).padStart(2, "0")}:00
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <span className="text-muted-foreground text-xs">–</span>
-
-                            <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-muted-foreground whitespace-nowrap">Selesai</label>
-                              <Select
-                                value={String(jam.selesai)}
-                                onValueChange={(v) => setJam({ selesai: Number(v) })}
-                              >
-                                <SelectTrigger className="h-8 w-[140px] text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {/* Same day (selesai > mulai): mulai+1 to 24 */}
-                                  {Array.from({ length: 24 - jam.mulai }, (_, i) => jam.mulai + i + 1).map((h) => (
-                                    <SelectItem key={`same-${h}`} value={String(h)}>
-                                      {h === 24 ? "00:00" : String(h).padStart(2, "0") + ":00"}
-                                      {h === 24 ? " (tengah malam)" : " (hari ini)"}
-                                    </SelectItem>
-                                  ))}
-                                  {/* Wrap-around (selesai < mulai): 0 to mulai-1 */}
-                                  {jam.mulai > 0 && Array.from({ length: jam.mulai }, (_, i) => i).map((h) => (
-                                    <SelectItem key={`wrap-${h}`} value={String(h)}>
-                                      {String(h).padStart(2, "0")}:00 (hari berikutnya)
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <span className={cn(
-                              "text-xs font-semibold ml-1",
-                              isDefault ? "text-muted-foreground" : "text-rose-600 dark:text-rose-400",
-                            )}>
-                              {isDefault
-                                ? "Seharian penuh (24 jam)"
-                                : isWrap
-                                  ? `${durasi} jam (melewati tengah malam)`
-                                  : `${durasi} jam`}
-                            </span>
-                          </div>
-
-                          {/* Shalat detection hint */}
-                          {!isDefault && (() => {
-                            const shalat = jamKeShalat(jam.mulai);
-                            return shalat ? (
-                              <p className="text-xs text-rose-500 dark:text-rose-400">
-                                ⟶ Mulai saat waktu <strong>{SHALAT_LABEL[shalat]}</strong> (terdeteksi otomatis)
-                              </p>
-                            ) : null;
-                          })()}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Total duration summary */}
-                  <div className={cn(
-                    "rounded-xl px-4 py-3 flex items-start gap-3 text-sm border",
-                    kurang24
-                      ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700"
-                      : "bg-background border-border",
-                  )}>
-                    {kurang24
-                      ? <TriangleAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                      : <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    }
-                    <div className="space-y-0.5">
-                      <p className={cn("font-semibold", kurang24 ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
-                        Total akumulasi darah: <span className="font-bold">{totalJam} jam</span>
-                        {kurang24 && " — kurang dari 24 jam"}
-                      </p>
-                      {kurang24 && (
-                        <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                          Darah yang totalnya kurang dari 24 jam belum memenuhi syarat minimal haid. Sistem akan menganalisis sebagai <strong>Istihadah (darah penyakit)</strong>.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+            {/* Total duration summary */}
+            {darahKeys.length > 0 && (
+              <div className={cn(
+                "rounded-xl px-4 py-3 flex items-start gap-3 text-sm border",
+                kurang24
+                  ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700"
+                  : "bg-background border-border",
+              )}>
+                {kurang24
+                  ? <TriangleAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  : <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                }
+                <div className="space-y-0.5">
+                  <p className={cn("font-semibold", kurang24 ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
+                    Total akumulasi darah:{" "}
+                    <span className="font-bold">
+                      {Math.floor(totalJamDarahLive)} jam {Math.round((totalJamDarahLive % 1) * 60)} menit
+                      {" "}({totalMenitDarah} menit)
+                    </span>
+                    {kurang24 && " — kurang dari 24 jam"}
+                  </p>
+                  {kurang24 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                      Darah yang totalnya kurang dari 24 jam (1.440 menit) belum memenuhi syarat minimal haid. Sistem akan menganalisis sebagai <strong>Istihadah (darah penyakit)</strong>.
+                    </p>
+                  )}
                 </div>
-              );
-            })()}
+              </div>
+            )}
+
+            {/* 12-Tier reference table */}
+            <details className="rounded-2xl border border-muted overflow-hidden">
+              <summary className="flex items-center gap-2 px-4 py-3 bg-muted/20 cursor-pointer text-sm font-semibold select-none">
+                <Info className="w-4 h-4 text-muted-foreground" />
+                Tabel Referensi 12 Hierarki Kekuatan Darah
+              </summary>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-t">
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th className="px-3 py-2 text-left font-semibold">Peringkat</th>
+                      <th className="px-3 py-2 text-left font-semibold">Warna</th>
+                      <th className="px-3 py-2 text-left font-semibold">Sifat Fisik</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {[
+                      { r: 1,  w: "Hitam",  s: "Kental & Berbau" },
+                      { r: 2,  w: "Hitam",  s: "Kental saja ATAU Berbau saja" },
+                      { r: 3,  w: "Hitam",  s: "Cair & Tidak Berbau" },
+                      { r: 4,  w: "Merah",  s: "Kental & Berbau" },
+                      { r: 5,  w: "Merah",  s: "Kental saja ATAU Berbau saja" },
+                      { r: 6,  w: "Merah",  s: "Cair & Tidak Berbau" },
+                      { r: 7,  w: "Saja'",  s: "Kental & Berbau / Salah satunya" },
+                      { r: 8,  w: "Saja'",  s: "Cair & Tidak Berbau" },
+                      { r: 9,  w: "Kuning", s: "Kental & Berbau / Salah satunya" },
+                      { r: 10, w: "Kuning", s: "Cair & Tidak Berbau" },
+                      { r: 11, w: "Keruh",  s: "Kental & Berbau / Salah satunya" },
+                      { r: 12, w: "Keruh",  s: "Cair & Tidak Berbau" },
+                    ].map(({ r, w, s }) => (
+                      <tr key={r} className={r <= 3 ? "bg-rose-50/40 dark:bg-rose-950/10" : r <= 6 ? "bg-orange-50/40 dark:bg-orange-950/10" : "bg-background"}>
+                        <td className="px-3 py-1.5 font-bold text-center">{r}</td>
+                        <td className="px-3 py-1.5 font-medium">{w}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{s}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
 
             {step2Error && (
               <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
@@ -1734,44 +1764,23 @@ export default function Kalkulator() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-muted bg-muted/20 p-4 text-xs text-muted-foreground space-y-2">
-              <p className="font-semibold text-foreground text-sm">🗒️ Panduan Singkat</p>
-              <div className="grid sm:grid-cols-2 gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-base select-none leading-none">❤️</span>
-                  <span><strong>Darah Kuat</strong> — hitam, kental, berbau</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base select-none leading-none">🩸</span>
-                  <span><strong>Darah Lemah</strong> — kuning, encer, tidak berbau</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base select-none leading-none">✨</span>
-                  <span><strong>Bersih / Suci</strong> — jeda bersih di antara darah</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base select-none leading-none">·</span>
-                  <span><strong>Kosong</strong> — hari di luar rentang (diabaikan)</span>
-                </div>
-              </div>
-            </div>
-
             <div className="flex justify-between pt-2 border-t">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStep(1)}
-              >
+              <Button type="button" variant="ghost" onClick={() => setStep(1)}>
                 Kembali
               </Button>
               <div className="flex items-center gap-3">
-                {Object.keys(harianInput).length > 0 && (
+                {darahKeys.length > 0 && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground gap-1.5"
-                    onClick={() => { setHarianInput({}); setStep2Error(null); }}
+                    onClick={() => {
+                      setHarianDarah({});
+                      setHarianKarakteristik({});
+                      setHarianDurasi({});
+                      setStep2Error(null);
+                    }}
                   >
                     <RotateCcw className="w-3.5 h-3.5" /> Reset
                   </Button>
@@ -1831,28 +1840,17 @@ export default function Kalkulator() {
                           ? "Seberapa baik Anda mengingat kebiasaan nifas sebelumnya?"
                           : "Seberapa baik Anda mengingat kebiasaan haid sebelumnya?"}
                       </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-ingat-kebiasaan">
                             <SelectValue placeholder="Pilih status" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="ingat_semua">
-                            Ingat semua (Tanggal mulai dan Jumlah hari)
-                          </SelectItem>
-                          <SelectItem value="ingat_durasi">
-                            Hanya ingat jumlah hari (Durasi)
-                          </SelectItem>
-                          <SelectItem value="ingat_waktu">
-                            Hanya ingat kapan mulai (Waktu/Tanggal)
-                          </SelectItem>
-                          <SelectItem value="lupa_semua">
-                            Lupa semuanya (Waktu dan Durasi)
-                          </SelectItem>
+                          <SelectItem value="ingat_semua">Ingat semua (Tanggal mulai dan Jumlah hari)</SelectItem>
+                          <SelectItem value="ingat_durasi">Hanya ingat jumlah hari (Durasi)</SelectItem>
+                          <SelectItem value="ingat_waktu">Hanya ingat kapan mulai (Waktu/Tanggal)</SelectItem>
+                          <SelectItem value="lupa_semua">Lupa semuanya (Waktu dan Durasi)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1863,8 +1861,6 @@ export default function Kalkulator() {
                 {(form3.watch("ingatKebiasaan") === "ingat_semua" ||
                   form3.watch("ingatKebiasaan") === "ingat_durasi") && (
                   <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
-
-                    {/* ── Adat Mode Toggle ── */}
                     {formData.kondisiAwal !== "nifas" && (
                       <div className="rounded-2xl border bg-pink-50/60 dark:bg-pink-950/20 border-pink-200 dark:border-pink-800 p-4 space-y-3">
                         <p className="text-sm font-semibold text-pink-800 dark:text-pink-300">Tipe Adat / Kebiasaan Haid</p>
@@ -1907,7 +1903,6 @@ export default function Kalkulator() {
                       </div>
                     )}
 
-                    {/* ── Adat Tetap: single input ── */}
                     {adatMode === "tetap" && (
                       <FormField
                         control={form3.control}
@@ -1920,11 +1915,7 @@ export default function Kalkulator() {
                                 : "Berapa hari biasanya haid Anda? (maks. 15 hari)"}
                             </FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                {...field}
-                                data-testid="input-kebiasaan-hari"
-                              />
+                              <Input type="number" {...field} data-testid="input-kebiasaan-hari" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1932,7 +1923,6 @@ export default function Kalkulator() {
                       />
                     )}
 
-                    {/* ── Adat Berubah: dynamic list ── */}
                     {adatMode === "berubah" && (() => {
                       const hasilDeteksi = deteksiPolaDanAmbilNilai(riwayatBulan);
                       return (
@@ -1982,8 +1972,6 @@ export default function Kalkulator() {
                               <Plus className="w-3.5 h-3.5" /> Tambah Data Bulan
                             </Button>
                           </div>
-
-                          {/* Pattern analysis result */}
                           <div className={cn(
                             "rounded-xl px-4 py-3 flex items-start gap-3 text-sm border",
                             hasilDeteksi.polaDitemukan
@@ -2008,19 +1996,10 @@ export default function Kalkulator() {
                 )}
 
                 <div className="flex justify-between pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setStep(2)}
-                  >
+                  <Button type="button" variant="ghost" onClick={() => setStep(2)}>
                     Kembali
                   </Button>
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="rounded-full px-8 gap-2"
-                    data-testid="btn-next-3"
-                  >
+                  <Button type="submit" size="lg" className="rounded-full px-8 gap-2" data-testid="btn-next-3">
                     Selanjutnya <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -2036,9 +2015,7 @@ export default function Kalkulator() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)
-              }
+              onClick={() => setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)}
               className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
@@ -2058,7 +2035,6 @@ export default function Kalkulator() {
                 className="space-y-8"
                 data-testid="form-step-4"
               >
-                {/* ── Bagian 0: Status Bulan Istihadloh ── */}
                 <FormField
                   control={form4.control}
                   name="isBulanPertamaIstihadloh"
@@ -2084,9 +2060,7 @@ export default function Kalkulator() {
                               : "border-muted bg-muted/30 hover:border-primary/40"
                           }`}
                         >
-                          <div className="text-sm font-semibold mb-1">
-                            Pertama Kali
-                          </div>
+                          <div className="text-sm font-semibold mb-1">Pertama Kali</div>
                           <div className="text-xs text-muted-foreground leading-snug">
                             {formData.kondisiAwal === "nifas"
                               ? "Ini pertama kali nifas saya lebih dari 60 hari — saya belum tahu berapa hari nifas saya yang sebenarnya."
@@ -2102,9 +2076,7 @@ export default function Kalkulator() {
                               : "border-muted bg-muted/30 hover:border-emerald-400"
                           }`}
                         >
-                          <div className="text-sm font-semibold mb-1">
-                            Sudah Pernah
-                          </div>
+                          <div className="text-sm font-semibold mb-1">Sudah Pernah</div>
                           <div className="text-xs text-muted-foreground leading-snug">
                             {formData.kondisiAwal === "nifas"
                               ? "Nifas sebelumnya sudah pernah melebihi 60 hari — saya sudah tahu berapa hari nifas saya yang sebenarnya."
@@ -2139,7 +2111,7 @@ export default function Kalkulator() {
 
                 <hr className="border-muted" />
 
-                {/* ── Bagian 1: Datangnya Haid ── */}
+                {/* Saat Darah Mulai Keluar */}
                 <div className="rounded-2xl border bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-5 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
                     <Droplets className="w-4 h-4 text-rose-600" />
@@ -2147,23 +2119,17 @@ export default function Kalkulator() {
                       Saat Darah Mulai Keluar
                     </span>
                   </div>
-
-                  {/* Auto-detected prayer time (read-only) */}
                   <div className="rounded-xl bg-background border px-4 py-3 space-y-1">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat terdeteksi otomatis</p>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat (berdasarkan tanggal pertama darah)</p>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-rose-500" />
                       <span className="font-semibold text-rose-700 dark:text-rose-300">
-                        {(() => {
-                          const firstDarahKey = Object.keys(harianInput).filter((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah").sort()[0];
-                          const mulai = firstDarahKey ? (harianJam[firstDarahKey]?.mulai ?? 0) : 0;
-                          return `${String(mulai).padStart(2, "0")}:00`;
-                        })()} —{" "}
+                        {darahKeys.length > 0 ? formatDateId(darahKeys[0]) : "—"} —{" "}
                         {formData.waktuMulaiDarah
                           ? SHALAT_LABEL[formData.waktuMulaiDarah]
                           : "Di luar waktu shalat"}
                       </span>
-                      <span className="text-xs text-muted-foreground">(dari input kalender)</span>
+                      <span className="text-xs text-muted-foreground">(dari kalender)</span>
                     </div>
                   </div>
 
@@ -2190,7 +2156,7 @@ export default function Kalkulator() {
                   />
                 </div>
 
-                {/* ── Bagian 2: Berhentinya Haid ── */}
+                {/* Saat Darah Berhenti Total */}
                 <div className="rounded-2xl border bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 p-5 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
                     <Wind className="w-4 h-4 text-emerald-600" />
@@ -2198,24 +2164,17 @@ export default function Kalkulator() {
                       Saat Darah Berhenti Total
                     </span>
                   </div>
-
-                  {/* Auto-detected prayer time (read-only) */}
                   <div className="rounded-xl bg-background border px-4 py-3 space-y-1">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat terdeteksi otomatis</p>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat (berdasarkan tanggal terakhir darah)</p>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-emerald-500" />
                       <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                        {(() => {
-                          const darahKeys = Object.keys(harianInput).filter((k) => harianInput[k] === "kuat" || harianInput[k] === "lemah").sort();
-                          const lastKey = darahKeys[darahKeys.length - 1];
-                          const selesai = lastKey ? (harianJam[lastKey]?.selesai ?? 24) : 24;
-                          return `${String(selesai === 24 ? 0 : selesai).padStart(2, "0")}:00`;
-                        })()} —{" "}
+                        {darahKeys.length > 0 ? formatDateId(darahKeys[darahKeys.length - 1]) : "—"} —{" "}
                         {formData.waktuBerhentiTotal
                           ? SHALAT_LABEL[formData.waktuBerhentiTotal]
                           : "Di luar waktu shalat"}
                       </span>
-                      <span className="text-xs text-muted-foreground">(dari input kalender)</span>
+                      <span className="text-xs text-muted-foreground">(dari kalender)</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Jika berhenti di waktu Ashar atau Isya', sholat sebelumnya (Dzuhur/Maghrib) ikut wajib diqodlo.
@@ -2227,9 +2186,7 @@ export default function Kalkulator() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() =>
-                      setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)
-                    }
+                    onClick={() => setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)}
                   >
                     Kembali
                   </Button>
@@ -2251,7 +2208,6 @@ export default function Kalkulator() {
       {step === 5 && hasil && (
         <div className="space-y-6 step-enter">
 
-          {/* ── Peringatan Khusus: Total Darah < 24 Jam ── */}
           {totalJamDarah > 0 && totalJamDarah < 24 && (
             <div className="rounded-2xl border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 p-5 space-y-3 animate-in fade-in duration-300">
               <div className="flex items-start gap-3">
@@ -2261,7 +2217,7 @@ export default function Kalkulator() {
                     Kasus Haid Kurang dari 24 Jam
                   </p>
                   <p className="font-semibold text-amber-900 dark:text-amber-200 mt-0.5">
-                    Total akumulasi darah: <span className="text-amber-700 dark:text-amber-300">{totalJamDarah} jam</span> — Belum memenuhi syarat minimal haid
+                    Total akumulasi darah: <span className="text-amber-700 dark:text-amber-300">{Math.round(totalJamDarah * 60)} menit</span> — Belum memenuhi syarat minimal haid
                   </p>
                 </div>
               </div>
@@ -2279,21 +2235,18 @@ export default function Kalkulator() {
             </div>
           )}
 
-          {/* Hero icon */}
           <div className="flex justify-center mb-2">
             <div className="relative">
-              <div
-                className={cn(
-                  "w-24 h-24 rounded-3xl flex items-center justify-center shadow-soft ring-1",
-                  hasil.tipeHasil === "haidl_normal"
-                    ? "bg-green-100 dark:bg-green-900/30 ring-green-200 dark:ring-green-800"
-                    : hasil.tipeHasil === "nifas"
-                      ? "bg-teal-100 dark:bg-teal-900/30 ring-teal-200 dark:ring-teal-800"
-                      : hasil.tipeHasil === "istihadloh"
-                        ? "bg-amber-100 dark:bg-amber-900/30 ring-amber-200 dark:ring-amber-800"
-                        : "bg-red-100 dark:bg-red-900/30 ring-red-200 dark:ring-red-800",
-                )}
-              >
+              <div className={cn(
+                "w-24 h-24 rounded-3xl flex items-center justify-center shadow-soft ring-1",
+                hasil.tipeHasil === "haidl_normal"
+                  ? "bg-green-100 dark:bg-green-900/30 ring-green-200 dark:ring-green-800"
+                  : hasil.tipeHasil === "nifas"
+                    ? "bg-teal-100 dark:bg-teal-900/30 ring-teal-200 dark:ring-teal-800"
+                    : hasil.tipeHasil === "istihadloh"
+                      ? "bg-amber-100 dark:bg-amber-900/30 ring-amber-200 dark:ring-amber-800"
+                      : "bg-red-100 dark:bg-red-900/30 ring-red-200 dark:ring-red-800",
+              )}>
                 <span className="text-4xl select-none float-blob">
                   {hasil.tipeHasil === "error" ? "⚠️" : hasil.tipeHasil === "haidl_normal" ? "🌸" : hasil.tipeHasil === "nifas" ? "💗" : "✨"}
                 </span>
@@ -2302,23 +2255,18 @@ export default function Kalkulator() {
             </div>
           </div>
 
-          <Card
-            className={cn(
-              "border-t-4 shadow-soft overflow-hidden",
-              hasil.tipeHasil === "haidl_normal"
-                ? "border-t-green-400"
-                : hasil.tipeHasil === "nifas"
-                  ? "border-t-teal-400"
-                  : hasil.tipeHasil === "istihadloh"
-                    ? "border-t-amber-400"
-                    : "border-t-red-400",
-            )}
-          >
+          <Card className={cn(
+            "border-t-4 shadow-soft overflow-hidden",
+            hasil.tipeHasil === "haidl_normal"
+              ? "border-t-green-400"
+              : hasil.tipeHasil === "nifas"
+                ? "border-t-teal-400"
+                : hasil.tipeHasil === "istihadloh"
+                  ? "border-t-amber-400"
+                  : "border-t-red-400",
+          )}>
             <CardHeader className="text-center pb-8 border-b bg-gradient-to-b from-muted/30 to-background">
-              <CardTitle
-                className="text-2xl sm:text-3xl font-bold leading-tight mb-2"
-                data-testid="hasil-kesimpulan"
-              >
+              <CardTitle className="text-2xl sm:text-3xl font-bold leading-tight mb-2" data-testid="hasil-kesimpulan">
                 {hasil.kesimpulan}
               </CardTitle>
               {hasil.kategori && (
@@ -2335,18 +2283,13 @@ export default function Kalkulator() {
               <div className="divide-y">
                 {hasil.hukumHaidl && (
                   <div className="p-6 sm:p-8">
-                    <h3 className="text-lg font-medium mb-2 text-foreground">
-                      Hukum Haidl
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {hasil.hukumHaidl}
-                    </p>
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Hukum Haidl</h3>
+                    <p className="text-muted-foreground leading-relaxed">{hasil.hukumHaidl}</p>
                   </div>
                 )}
 
                 {hasil.peringatanJedaSuci && (
                   <div className="border-l-4 border-emerald-600 dark:border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/25 p-6 sm:p-8">
-                    {/* Header */}
                     <div className="flex items-start gap-3 mb-4">
                       <Info className="w-5 h-5 mt-0.5 flex-shrink-0 text-emerald-700 dark:text-emerald-400" />
                       <div>
@@ -2359,8 +2302,6 @@ export default function Kalkulator() {
                         </h3>
                       </div>
                     </div>
-
-                    {/* Penjelasan kewajiban dzahir — berbeda untuk Hukum Jam'u vs Istihadloh */}
                     <div className="rounded-xl bg-emerald-100/70 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 p-4 mb-5 text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed space-y-2">
                       <p>
                         Pada saat darah berhenti sementara, Anda <strong>wajib mandi besar dan melaksanakan sholat serta puasa</strong> — karena secara dzahir (tampak) Anda dihukumi <strong>suci</strong> pada hari-hari tersebut. Tindakan Anda <strong>benar secara syariat</strong> saat itu.
@@ -2375,8 +2316,6 @@ export default function Kalkulator() {
                         </p>
                       )}
                     </div>
-
-                    {/* Konsekuensi Sholat */}
                     <div className="flex items-start gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 mb-3">
                       <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                       <div className="space-y-1">
@@ -2388,8 +2327,6 @@ export default function Kalkulator() {
                         </p>
                       </div>
                     </div>
-
-                    {/* Konsekuensi Puasa + Counter Qodlo */}
                     <div className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/30 p-4">
                       <div className="flex items-start gap-3">
                         <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
@@ -2424,12 +2361,8 @@ export default function Kalkulator() {
 
                 {hasil.hukumIstihadloh && (
                   <div className="p-6 sm:p-8">
-                    <h3 className="text-lg font-medium mb-2 text-foreground">
-                      Hukum Istihadloh
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {hasil.hukumIstihadloh}
-                    </p>
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Hukum Istihadloh</h3>
+                    <p className="text-muted-foreground leading-relaxed">{hasil.hukumIstihadloh}</p>
                   </div>
                 )}
 
@@ -2446,172 +2379,123 @@ export default function Kalkulator() {
                           className={cn(
                             "rounded-xl p-4 border",
                             siklus.tipe === "haidl_normal"
-                              ? "border-green-200 bg-green-50/60 dark:border-green-800 dark:bg-green-950/20"
-                              : "border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20",
+                              ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+                              : siklus.tipe === "istihadloh"
+                                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                                : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800",
                           )}
                         >
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-semibold text-sm">
-                              Siklus {siklus.nomorSiklus}
-                            </span>
-                            <span
-                              className={cn(
-                                "text-xs px-2 py-0.5 rounded-full font-semibold",
-                                siklus.tipe === "haidl_normal"
-                                  ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-                              )}
-                            >
-                              {siklus.tipe === "haidl_normal"
-                                ? "HAIDL"
-                                : "ISTIHADLOH"}
-                            </span>
-                            <span className="text-xs text-muted-foreground ml-auto">
-                              Total: {formatDurasi(siklus.totalJamSiklus)}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-sm">Siklus {siklus.nomorSiklus}</span>
+                            <span className={cn(
+                              "text-xs px-2 py-0.5 rounded-full font-semibold",
+                              siklus.tipe === "haidl_normal"
+                                ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200"
+                                : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"
+                            )}>
+                              {siklus.tipe === "haidl_normal" ? "Haid Normal" : "Istihadloh"}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {siklus.hukumDetail}
-                          </p>
-                          {siklus.bersihDalamJam > 0 && siklus.tipe === "haidl_normal" && (
-                            <div className="mt-2 flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-                              <Wind className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                              <span>
-                                Masa bersih {formatDurasi(siklus.bersihDalamJam)} di dalam siklus ini dihitung sebagai haid (Hukum Jam&apos;u — total ≤ 15 hari)
-                              </span>
-                            </div>
-                          )}
-                          {siklus.bersihDalamJam > 0 && siklus.tipe === "istihadloh" && (
-                            <div className="mt-2 flex items-start gap-1.5 text-xs text-sky-700 dark:text-sky-400">
-                              <Wind className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                              <span>
-                                Masa bersih {formatDurasi(siklus.bersihDalamJam)} ditemukan dalam siklus ini — hukumnya ditentukan berdasarkan kategori Mustahadloh (lihat kalender harian)
-                              </span>
-                            </div>
-                          )}
+                          <p className="text-sm font-medium mb-1">{siklus.kesimpulan}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{siklus.hukumDetail}</p>
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
 
-                    {hasil.adaPemisahBersih && (
-                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-700 dark:text-blue-400">
-                        <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                        <span>
-                          Siklus-siklus di atas dipisahkan oleh masa suci 15 hari atau lebih, sehingga masing-masing dihitung sebagai siklus haid yang berdiri sendiri.
-                        </span>
+                {hasil.qodloSholatMulai && (
+                  <div className="p-6 sm:p-8">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Qodlo Sholat (Datangnya Darah)</h3>
+                    <p className="text-muted-foreground leading-relaxed">{hasil.qodloSholatMulai}</p>
+                  </div>
+                )}
+
+                {hasil.qodloSholat && (
+                  <div className="p-6 sm:p-8">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Qodlo Sholat (Berhentinya Darah)</h3>
+                    <p className="text-muted-foreground leading-relaxed">{hasil.qodloSholat}</p>
+                  </div>
+                )}
+
+                {hasil.hutangIbadah && (
+                  <div className="p-6 sm:p-8 bg-orange-50/40 dark:bg-orange-950/10">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Hutang Ibadah Masa Penantian</h3>
+                    <p className="text-muted-foreground leading-relaxed">{hasil.hutangIbadah}</p>
+                  </div>
+                )}
+
+                {hasil.aturanIbadah && (
+                  <div className="p-6 sm:p-8">
+                    <h3 className="text-lg font-medium mb-4 text-foreground">{hasil.aturanIbadah.judul}</h3>
+                    {hasil.aturanIbadah.wajib.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" /> Kewajiban
+                        </p>
+                        <ul className="space-y-2">
+                          {hasil.aturanIbadah.wajib.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {hasil.aturanIbadah.haram.length > 0 && (
+                      <div>
+                        <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-2 flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4" /> Yang Dilarang
+                        </p>
+                        <ul className="space-y-2">
+                          {hasil.aturanIbadah.haram.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </div>
                 )}
 
-                {hasil.liniMasaHarian && hasil.liniMasaHarian.length > 0 && (
-                  <KalenderHarian
-                    entri={hasil.liniMasaHarian}
-                    kategoriStr={hasil.kategori || undefined}
-                    startDate={Object.keys(harianInput).sort()[0]}
-                  />
-                )}
-
-                {hasil.qodloSholatMulai && (
-                  <div className="p-6 sm:p-8 bg-rose-50/50 dark:bg-rose-950/20">
-                    <h3 className="text-lg font-medium mb-2 text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                      <Droplets className="w-5 h-5" />
-                      Qodlo Sholat — Sebab Datangnya Haid
-                    </h3>
-                    <p className="text-foreground leading-relaxed">
-                      {hasil.qodloSholatMulai}
-                    </p>
-                  </div>
-                )}
-
-                {hasil.qodloSholat && (
-                  <div className="p-6 sm:p-8 bg-primary/5">
-                    <h3 className="text-lg font-medium mb-2 text-primary flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" />
-                      Qodlo Sholat — Sebab Berhentinya Haid
-                    </h3>
-                    <p className="font-medium text-foreground">
-                      {hasil.qodloSholat}
-                    </p>
-                  </div>
-                )}
-
-                {hasil.hutangIbadah && (
-                  <div className="p-6 sm:p-8 bg-orange-50/60 dark:bg-orange-950/20 border-l-4 border-orange-400">
-                    <h3 className="text-lg font-medium mb-3 text-orange-700 dark:text-orange-400 flex items-center gap-2">
-                      <TriangleAlert className="w-5 h-5" />
-                      Hutang Ibadah Masa Penantian
-                    </h3>
-                    <p className="text-foreground leading-relaxed">
-                      {hasil.hutangIbadah}
-                    </p>
-                  </div>
-                )}
-
-                {hasil.aturanIbadah && (
-                  <div className="p-6 sm:p-8 bg-violet-50/60 dark:bg-violet-950/20 border-l-4 border-violet-400">
-                    <h3 className="text-lg font-medium mb-4 text-violet-800 dark:text-violet-300 flex items-center gap-2">
-                      <Info className="w-5 h-5" />
-                      {hasil.aturanIbadah.judul}
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-2">
-                          Wajib / Kewajiban
-                        </p>
-                        <ul className="space-y-2">
-                          {hasil.aturanIbadah.wajib.map((item, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-foreground leading-relaxed">
-                              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      {hasil.aturanIbadah.haram.length > 0 && (
-                        <div>
-                          <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wide mb-2">
-                            Haram / Larangan
-                          </p>
-                          <ul className="space-y-2">
-                            {hasil.aturanIbadah.haram.map((item, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-foreground leading-relaxed">
-                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {hasil.panduanBersuci && (
-                  <div className="p-6 sm:p-8 bg-amber-50/50 dark:bg-amber-950/20">
-                    <h3 className="text-lg font-medium mb-4 text-amber-800 dark:text-amber-500">
-                      Panduan Bersuci
-                    </h3>
-                    <div className="whitespace-pre-wrap text-sm text-amber-900/80 dark:text-amber-200/80 leading-relaxed font-medium">
+                  <div className="p-6 sm:p-8 bg-blue-50/40 dark:bg-blue-950/10">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">Panduan Bersuci Mustahadloh</h3>
+                    <pre className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
                       {hasil.panduanBersuci}
-                    </div>
+                    </pre>
                   </div>
                 )}
               </div>
             </CardContent>
-          </Card>
 
-          <div className="flex justify-center pt-8">
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              size="lg"
-              className="rounded-full px-8 gap-2"
-              data-testid="btn-reset"
-            >
-              <RotateCcw className="w-4 h-4" /> Hitung Ulang
-            </Button>
-          </div>
+            {hasil.liniMasaHarian && hasil.liniMasaHarian.length > 0 && (
+              <KalenderHarian
+                entri={hasil.liniMasaHarian}
+                kategoriStr={hasil.kategori}
+                startDate={darahKeys[0]}
+              />
+            )}
+
+            <CardFooter className="flex flex-col sm:flex-row justify-between gap-3 p-6 bg-muted/10 border-t">
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="gap-2 w-full sm:w-auto rounded-full"
+                data-testid="btn-reset"
+              >
+                <RotateCcw className="w-4 h-4" /> Hitung Ulang
+              </Button>
+              <Link href="/panduan">
+                <Button variant="ghost" className="gap-2 w-full sm:w-auto rounded-full">
+                  Baca Panduan Lengkap
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
         </div>
       )}
     </div>

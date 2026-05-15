@@ -1,0 +1,55 @@
+Prompt Update: Sistem Input 12 Hierarki Kekuatan Darah
+"Saya ingin memperbarui sistem input pada aplikasi Kalkulator Fiqh Darah saya. Sistem harus mampu menentukan status Kuat atau Lemah secara otomatis berdasarkan hierarki warna (utama) dan sifat fisik (pendukung).
+
+1. Perubahan Input Durasi:
+
+Setiap input harian memiliki Dropdown Tanggal.
+
+Tambahkan input Jam dan Menit (Contoh: Tgl 2, Keluar: 2 jam 34 menit).
+
+Logika: Sistem harus menjumlahkan total waktu ini untuk memvalidasi syarat haid minimal 24 jam.
+
+2. Sistem Input Karakteristik (Berjenjang):
+Ganti pilihan manual Kuat/Lemah menjadi 3 Dropdown:
+
+Pilih Warna: [Hitam, Merah, Saja' (Pirang), Kuning, Keruh].
+
+Pilih Tekstur: [Kental, Cair].
+
+Pilih Aroma: [Berbau, Tidak Berbau].
+
+3. Matriks Logika (12 Tingkat Kekuatan):
+Gunakan tabel skor di bawah ini untuk menentukan peringkat. Angka 1 adalah yang terkuat, angka 12 adalah yang terlemah.
+
+Peringkat	Warna	Sifat Fisik (Kekentalan & Aroma)
+1	Hitam	Kental & Berbau
+2	Hitam	Kental saja ATAU Berbau saja
+3	Hitam	Cair & Tidak Berbau
+4	Merah	Kental & Berbau
+5	Merah	Kental saja ATAU Berbau saja
+6	Merah	Cair & Tidak Berbau
+7	Saja' (Pirang)	Kental & Berbau / Salah satunya
+8	Saja' (Pirang)	Cair & Tidak Berbau
+9	Kuning	Kental & Berbau / Salah satunya
+10	Kuning	Cair & Tidak Berbau
+11	Keruh	Kental & Berbau / Salah satunya
+12	Keruh	Cair & Tidak Berbau
+4. Logika Perbandingan Otomatis:
+
+Aturan Utama: Warna mengalahkan Sifat. (Contoh: Hitam Cair [Skor 3] lebih kuat dari Merah Kental Berbau [Skor 4]).
+
+Aturan Perbandingan: Jika dalam satu siklus ada dua jenis darah berbeda, bandingkan peringkatnya. Darah dengan angka peringkat lebih kecil otomatis berstatus 'Darah Kuat', dan angka peringkat lebih besar berstatus 'Darah Lemah'.
+
+Aturan Persamaan: Jika warna dan sifat benar-benar sama, maka darah yang keluar lebih dulu diprioritaskan sebagai darah haid.
+
+5. Output Tampilan:
+Munculkan label otomatis 'Status: Darah Kuat' atau 'Status: Darah Lemah' pada setiap baris input setelah user selesai memilih karakteristik darahnya."
+
+💡 Mengapa Prompt Ini Akurat?
+Warna sebagai Panglima: Dengan tabel peringkat 1-12 di atas, sistem akan selalu memenangkan Hitam (skor 1-3) atas Merah (skor 4-6), sesuai permintaan Anda bahwa warna mengalahkan sifat fisik.
+
+Sifat sebagai Penentu Kedua: Jika user memilih warna yang sama (misal sama-sama Merah), maka pilihan "Kental" dan "Berbau" akan menentukan apakah dia masuk ke peringkat 4, 5, atau 6.
+
+Presisi Waktu: Dengan input Jam dan Menit, aplikasi Anda bisa menghitung kasus Taqothu' (putus-putus) dengan jauh lebih teliti sesuai penjelasan Ning Sheila Hasina.
+
+Apakah Anda ingin saya buatkan contoh fungsi JavaScript sederhana untuk menghitung peringkat 1-12 ini?
