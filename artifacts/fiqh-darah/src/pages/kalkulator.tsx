@@ -896,32 +896,45 @@ function DateListPanel({
         }
       >
         <div className="space-y-5">
-          {/* Warna — shown first so bersih can hide the rest */}
-          <div className="space-y-2">
+          {/* Warna — 6 circular color swatches (one-click) */}
+          <div className="space-y-3">
             <label className="text-sm font-semibold">Warna Darah</label>
-            <Select
-              value={draftKar.warna}
-              onValueChange={(v) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  kar: { ...(prev.kar ?? defaultKar), warna: v as WarnaDarahInput },
-                }))
-              }
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WARNA_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <div className="flex items-center gap-2.5">
-                      <div className={cn("w-3.5 h-3.5 rounded-full flex-shrink-0", opt.dotClass)} />
-                      {opt.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-3 gap-3">
+              {WARNA_OPTIONS.map((opt) => {
+                const isSelected = draftKar.warna === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        kar: { ...(prev.kar ?? defaultKar), warna: opt.value as WarnaDarahInput },
+                      }))
+                    }
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all duration-150 select-none",
+                      isSelected
+                        ? "border-[#B76E79] bg-[#FFD1DC]/20 shadow-md scale-[1.03]"
+                        : "border-transparent bg-muted/40 hover:border-muted hover:bg-muted/60",
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full shadow-sm border-2 border-white/60",
+                      opt.dotClass,
+                    )} />
+                    <span className="text-[11px] font-semibold text-center leading-tight text-foreground">
+                      {opt.value === "saja" ? "Saja'" : opt.value === "bersih" ? "Bersih" : opt.label}
+                    </span>
+                    {isSelected && (
+                      <div className="w-4 h-4 rounded-full bg-[#B76E79] flex items-center justify-center">
+                        <span className="text-white text-[9px] font-bold">✓</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Bersih notice */}
@@ -939,23 +952,28 @@ function DateListPanel({
           {!isBersihDraft && (
             <div className="space-y-2">
               <label className="text-sm font-semibold">Tekstur</label>
-              <Select
-                value={draftKar.tekstur}
-                onValueChange={(v) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    kar: { ...(prev.kar ?? defaultKar), tekstur: v as TeksturDarah },
-                  }))
-                }
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="kental">Kental</SelectItem>
-                  <SelectItem value="cair">Cair</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                {(["kental", "cair"] as TeksturDarah[]).map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        kar: { ...(prev.kar ?? defaultKar), tekstur: val },
+                      }))
+                    }
+                    className={cn(
+                      "h-11 rounded-2xl border-2 text-sm font-semibold transition-all",
+                      draftKar.tekstur === val
+                        ? "border-[#B76E79] bg-[#FFD1DC]/30 text-[#B76E79]"
+                        : "border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
+                    )}
+                  >
+                    {val === "kental" ? "💧 Kental" : "🌊 Cair"}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -963,23 +981,28 @@ function DateListPanel({
           {!isBersihDraft && (
             <div className="space-y-2">
               <label className="text-sm font-semibold">Aroma</label>
-              <Select
-                value={draftKar.aroma}
-                onValueChange={(v) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    kar: { ...(prev.kar ?? defaultKar), aroma: v as AromaDarah },
-                  }))
-                }
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="berbau">Berbau</SelectItem>
-                  <SelectItem value="tidak_berbau">Tidak Berbau</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                {(["berbau", "tidak_berbau"] as AromaDarah[]).map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        kar: { ...(prev.kar ?? defaultKar), aroma: val },
+                      }))
+                    }
+                    className={cn(
+                      "h-11 rounded-2xl border-2 text-sm font-semibold transition-all",
+                      draftKar.aroma === val
+                        ? "border-[#B76E79] bg-[#FFD1DC]/30 text-[#B76E79]"
+                        : "border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
+                    )}
+                  >
+                    {val === "berbau" ? "🌿 Berbau" : "✨ Tidak Berbau"}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1689,24 +1712,62 @@ export default function Kalkulator() {
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>Kondisi Saat Darah Keluar</FormLabel>
-                      <div className="flex rounded-2xl border border-muted bg-muted/30 p-1.5 gap-1.5" data-testid="radio-kondisi">
-                        {(["haidl", "nifas"] as const).map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => field.onChange(val)}
-                            data-testid={`radio-kondisi-${val}`}
-                            className={cn(
-                              "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 select-none",
-                              field.value === val
-                                ? "bg-primary text-white shadow-md scale-[1.02]"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                            )}
-                          >
-                            <span className="text-base">{val === "haidl" ? "🌸" : "💙"}</span>
-                            {val === "haidl" ? "Haidl" : "Nifas"}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 gap-3" data-testid="radio-kondisi">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("haidl")}
+                          data-testid="radio-kondisi-haidl"
+                          className={cn(
+                            "flex flex-col items-center gap-3 p-5 rounded-3xl border-2 transition-all duration-200 select-none",
+                            field.value === "haidl"
+                              ? "border-[#B76E79] bg-[#FFD1DC]/30 shadow-md"
+                              : "border-pink-100 bg-pink-50/50 hover:border-[#FFD1DC] hover:bg-[#FFD1DC]/20",
+                          )}
+                        >
+                          <div className={cn(
+                            "w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all",
+                            field.value === "haidl" ? "bg-[#FFD1DC] shadow-inner" : "bg-white/70"
+                          )}>
+                            🌸
+                          </div>
+                          <div className="text-center">
+                            <p className={cn("font-bold text-base", field.value === "haidl" ? "text-[#B76E79]" : "text-foreground")}>Haidl</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Menstruasi biasa</p>
+                          </div>
+                          {field.value === "haidl" && (
+                            <div className="w-5 h-5 rounded-full bg-[#B76E79] flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">✓</span>
+                            </div>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("nifas")}
+                          data-testid="radio-kondisi-nifas"
+                          className={cn(
+                            "flex flex-col items-center gap-3 p-5 rounded-3xl border-2 transition-all duration-200 select-none",
+                            field.value === "nifas"
+                              ? "border-sky-400 bg-sky-100/50 shadow-md"
+                              : "border-sky-100 bg-sky-50/50 hover:border-sky-200 hover:bg-sky-100/30",
+                          )}
+                        >
+                          <div className={cn(
+                            "w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all",
+                            field.value === "nifas" ? "bg-sky-200 shadow-inner" : "bg-white/70"
+                          )}>
+                            💙
+                          </div>
+                          <div className="text-center">
+                            <p className={cn("font-bold text-base", field.value === "nifas" ? "text-sky-600" : "text-foreground")}>Nifas</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Setelah melahirkan</p>
+                          </div>
+                          {field.value === "nifas" && (
+                            <div className="w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">✓</span>
+                            </div>
+                          )}
+                        </button>
                       </div>
                       <FormMessage />
                     </FormItem>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -48,7 +48,6 @@
 }
 
 :root {
-  /* Pure white background — clean Clover aesthetic */
   --background: 0 0% 100%;
   --foreground: 330 20% 18%;
 
@@ -60,18 +59,16 @@
   --popover-foreground: 330 20% 18%;
   --popover-border: 340 30% 92%;
 
-  /* Soft Pink #FF85A1 → primary */
-  --primary: 349 100% 76%;
+  /* Rose Gold primary #B76E79 */
+  --primary: 349 30% 57%;
   --primary-foreground: 0 0% 100%;
 
-  /* Lavender #E0BBE4 → secondary */
   --secondary: 294 36% 94%;
   --secondary-foreground: 294 20% 30%;
 
   --muted: 300 15% 96%;
   --muted-foreground: 330 10% 50%;
 
-  /* Mint Green #B2F7EF → accent */
   --accent: 175 86% 83%;
   --accent-foreground: 175 60% 20%;
 
@@ -80,10 +77,9 @@
 
   --border: 340 25% 90%;
   --input: 340 25% 90%;
-  --ring: 349 100% 76%;
+  --ring: 349 30% 57%;
 
-  /* Larger radius for Clover rounded feel */
-  --radius: 1.25rem;
+  --radius: 1.5rem;
 }
 
 .dark {
@@ -98,7 +94,7 @@
   --popover-foreground: 340 30% 96%;
   --popover-border: 330 10% 22%;
 
-  --primary: 349 80% 72%;
+  --primary: 349 30% 65%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 330 10% 18%;
@@ -115,7 +111,7 @@
 
   --border: 330 10% 22%;
   --input: 330 10% 22%;
-  --ring: 349 80% 72%;
+  --ring: 349 30% 65%;
 }
 
 @layer base {
@@ -124,23 +120,27 @@
   }
 
   body {
-    font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
     @apply antialiased bg-background text-foreground;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Comfortaa', 'Nunito', ui-sans-serif, system-ui, sans-serif;
   }
 }
 
-/* Clover-style soft card shadow */
+/* Soft card shadow — Clover/Flo style */
 .shadow-soft {
-  box-shadow: 0 4px 32px -4px rgba(255, 133, 161, 0.15), 0 1px 8px -1px rgba(0,0,0,0.05);
+  box-shadow: 0 8px 40px -8px rgba(183, 110, 121, 0.18), 0 2px 12px -2px rgba(0,0,0,0.06);
 }
 
 /* Glassmorphism for bottom nav */
 .glass-nav {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 133, 161, 0.15);
-  box-shadow: 0 -8px 32px -8px rgba(255, 133, 161, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 209, 220, 0.4);
+  box-shadow: 0 -8px 32px -8px rgba(183, 110, 121, 0.12);
 }
 
 /* Step fade-in animation */
@@ -163,12 +163,30 @@
   animation: floatBlob 4s ease-in-out infinite;
 }
 
-/* Gradient pill buttons */
+/* Gradient pill buttons — Sakura Serenity */
 .btn-gradient {
-  background: linear-gradient(135deg, #FF85A1, #e8629e);
+  background: linear-gradient(135deg, #FFD1DC, #B76E79);
 }
 
-/* Soft pink glow */
+/* Soft rose glow */
 .glow-pink {
-  box-shadow: 0 0 24px rgba(255, 133, 161, 0.35);
+  box-shadow: 0 0 28px rgba(255, 209, 220, 0.6);
+}
+
+/* Horizontal scroll snap for card slider */
+.card-slider {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.card-slider::-webkit-scrollbar {
+  display: none;
+}
+.card-slider > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
 }
