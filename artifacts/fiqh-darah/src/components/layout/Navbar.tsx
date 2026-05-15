@@ -12,15 +12,16 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/90 backdrop-blur-md shadow-sm shadow-primary/5">
-      <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-pink-100/60">
+      <div className="max-w-2xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5" data-testid="nav-brand">
-          <div className="w-8 h-8 rounded-full bg-primary/12 flex items-center justify-center ring-1 ring-primary/20 shadow-sm">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#FF85A1] to-[#e8629e] flex items-center justify-center shadow-md shadow-pink-200">
             <span className="text-lg leading-none select-none">🌸</span>
           </div>
-          <span className="font-semibold text-base tracking-tight text-foreground">Fiqh Darah</span>
+          <span className="font-bold text-base tracking-tight text-foreground">Fiqh Darah</span>
         </Link>
-        <div className="flex items-center gap-0.5 sm:gap-1">
+
+        <div className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = location === item.href;
             return (
@@ -29,13 +30,13 @@ export function Navbar() {
                 href={item.href}
                 data-testid={`nav-link-${item.label.toLowerCase()}`}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all duration-200",
                   isActive
-                    ? "bg-primary/15 text-primary shadow-sm shadow-primary/10"
-                    : "text-muted-foreground hover:bg-primary/8 hover:text-foreground"
+                    ? "bg-[#FF85A1]/15 text-[#e8629e]"
+                    : "text-muted-foreground hover:bg-pink-50 hover:text-foreground"
                 )}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="w-4 h-4" strokeWidth={isActive ? 2.5 : 1.75} />
                 <span className="hidden sm:inline-block">{item.label}</span>
               </Link>
             );

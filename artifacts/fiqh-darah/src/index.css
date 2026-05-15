@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -46,40 +48,42 @@
 }
 
 :root {
-  /* Creamy White background with warm undertone */
-  --background: 30 40% 98%;
-  --foreground: 330 18% 20%;
+  /* Pure white background — clean Clover aesthetic */
+  --background: 0 0% 100%;
+  --foreground: 330 20% 18%;
 
   --card: 0 0% 100%;
-  --card-foreground: 330 18% 20%;
-  --card-border: 340 25% 90%;
+  --card-foreground: 330 20% 18%;
+  --card-border: 340 30% 92%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 330 18% 20%;
-  --popover-border: 340 25% 90%;
+  --popover-foreground: 330 20% 18%;
+  --popover-border: 340 30% 92%;
 
-  /* Dusty Pink #F48FB1 → 338 80% 76% — use slightly deeper for buttons */
-  --primary: 338 65% 62%;
+  /* Soft Pink #FF85A1 → primary */
+  --primary: 349 100% 76%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 340 30% 94%;
-  --secondary-foreground: 330 15% 28%;
+  /* Lavender #E0BBE4 → secondary */
+  --secondary: 294 36% 94%;
+  --secondary-foreground: 294 20% 30%;
 
-  --muted: 30 25% 95%;
-  --muted-foreground: 330 10% 48%;
+  --muted: 300 15% 96%;
+  --muted-foreground: 330 10% 50%;
 
-  --accent: 338 55% 52%;
-  --accent-foreground: 0 0% 100%;
+  /* Mint Green #B2F7EF → accent */
+  --accent: 175 86% 83%;
+  --accent-foreground: 175 60% 20%;
 
   --destructive: 0 55% 52%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 340 22% 88%;
-  --input: 340 22% 88%;
-  --ring: 338 65% 62%;
+  --border: 340 25% 90%;
+  --input: 340 25% 90%;
+  --ring: 349 100% 76%;
 
-  /* More rounded — extra round feel */
-  --radius: 1rem;
+  /* Larger radius for Clover rounded feel */
+  --radius: 1.25rem;
 }
 
 .dark {
@@ -94,7 +98,7 @@
   --popover-foreground: 340 30% 96%;
   --popover-border: 330 10% 22%;
 
-  --primary: 338 60% 68%;
+  --primary: 349 80% 72%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 330 10% 18%;
@@ -103,7 +107,7 @@
   --muted: 330 10% 18%;
   --muted-foreground: 340 10% 58%;
 
-  --accent: 338 50% 58%;
+  --accent: 175 50% 40%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 45% 42%;
@@ -111,7 +115,7 @@
 
   --border: 330 10% 22%;
   --input: 330 10% 22%;
-  --ring: 338 60% 68%;
+  --ring: 349 80% 72%;
 }
 
 @layer base {
@@ -120,32 +124,51 @@
   }
 
   body {
-    font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
     @apply antialiased bg-background text-foreground;
   }
 }
 
-/* Soft floating card shadow */
+/* Clover-style soft card shadow */
 .shadow-soft {
-  box-shadow: 0 4px 24px -4px rgba(244, 143, 177, 0.12), 0 1px 6px -1px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 32px -4px rgba(255, 133, 161, 0.15), 0 1px 8px -1px rgba(0,0,0,0.05);
+}
+
+/* Glassmorphism for bottom nav */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 133, 161, 0.15);
+  box-shadow: 0 -8px 32px -8px rgba(255, 133, 161, 0.12);
 }
 
 /* Step fade-in animation */
 @keyframes stepFadeIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .step-enter {
-  animation: stepFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: stepFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Gentle pulse for decorative blobs */
+/* Gentle float for hero illustration */
 @keyframes floatBlob {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+  50%       { transform: translateY(-8px); }
 }
 
 .float-blob {
   animation: floatBlob 4s ease-in-out infinite;
+}
+
+/* Gradient pill buttons */
+.btn-gradient {
+  background: linear-gradient(135deg, #FF85A1, #e8629e);
+}
+
+/* Soft pink glow */
+.glow-pink {
+  box-shadow: 0 0 24px rgba(255, 133, 161, 0.35);
 }

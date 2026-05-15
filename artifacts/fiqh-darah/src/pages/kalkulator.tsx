@@ -1592,34 +1592,34 @@ export default function Kalkulator() {
     <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 w-full">
       {step < 5 && (
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4 px-2">
             {[
               { n: 1, label: "Data Diri", emoji: "🌸" },
               { n: 2, label: "Kalender",  emoji: "❤️" },
               { n: 3, label: "Kebiasaan", emoji: "💗" },
               { n: 4, label: "Ibadah",    emoji: "✨" },
             ].map(({ n, label, emoji }) => (
-              <div key={n} className="flex flex-col items-center gap-1">
+              <div key={n} className="flex flex-col items-center gap-1.5">
                 <div className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center text-base transition-all duration-300 shadow-sm select-none",
+                  "w-10 h-10 rounded-2xl flex items-center justify-center text-base transition-all duration-300 select-none font-bold",
                   step === n
-                    ? "bg-primary text-white shadow-md shadow-primary/30 scale-110"
+                    ? "bg-[#FF85A1] text-white shadow-lg shadow-pink-200 scale-110"
                     : step > n
-                      ? "bg-primary/20 text-primary"
+                      ? "bg-[#FF85A1]/25 text-[#e8629e]"
                       : "bg-muted text-muted-foreground/40",
                 )}>
                   {step > n ? "✓" : emoji}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-medium hidden sm:block transition-colors",
-                  step === n ? "text-primary" : step > n ? "text-primary/70" : "text-muted-foreground/40"
+                  "text-[10px] font-bold hidden sm:block transition-colors tracking-wide",
+                  step === n ? "text-[#e8629e]" : step > n ? "text-[#e8629e]/70" : "text-muted-foreground/40"
                 )}>{label}</span>
               </div>
             ))}
           </div>
-          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-pink-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500 ease-out rounded-full"
+              className="h-full bg-gradient-to-r from-[#FF85A1] to-[#e8629e] transition-all duration-500 ease-out rounded-full"
               style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
@@ -1627,13 +1627,15 @@ export default function Kalkulator() {
       )}
 
       {step === 1 && (
-        <Card className="border-0 shadow-soft step-enter overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-primary/8 to-primary/3 pb-6 border-b border-primary/10">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl select-none">🌸</span>
-              <CardTitle className="text-2xl font-bold">Tentang Kamu</CardTitle>
+        <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
+          <CardHeader className="bg-gradient-to-br from-[#FF85A1]/10 via-[#E0BBE4]/10 to-white pb-6 border-b border-pink-100">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-2xl bg-[#FF85A1]/20 flex items-center justify-center">
+                <span className="text-xl select-none">🌸</span>
+              </div>
+              <CardTitle className="text-2xl font-extrabold">Tentang Kamu</CardTitle>
             </div>
-            <CardDescription className="text-sm">
+            <CardDescription className="text-sm font-medium">
               Ceritakan kondisimu saat ini — kami siapkan panduan yang tepat untukmu 💕
             </CardDescription>
           </CardHeader>
@@ -1757,22 +1759,24 @@ export default function Kalkulator() {
       )}
 
       {step === 2 && (
-        <Card className="border-0 shadow-soft step-enter overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-rose-50/80 to-primary/3 dark:from-rose-950/20 pb-6 border-b border-primary/10">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
+          <CardHeader className="bg-gradient-to-br from-rose-50/70 via-pink-50/40 to-white pb-6 border-b border-pink-100">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setStep(1)}
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-[#e8629e] rounded-full"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl select-none">❤️</span>
-                <CardTitle className="text-2xl font-bold">Kalender & Karakteristik Darah</CardTitle>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center">
+                  <span className="text-xl select-none">❤️</span>
+                </div>
+                <CardTitle className="text-2xl font-extrabold">Kalender & Karakteristik Darah</CardTitle>
               </div>
-              <CardDescription className="mt-1">
+              <CardDescription className="mt-1 font-medium">
                 Tandai hari-hari darah pada kalender, lalu isi karakteristik dan durasi untuk setiap harinya.
               </CardDescription>
             </div>
@@ -1958,23 +1962,25 @@ export default function Kalkulator() {
       )}
 
       {step === 3 && (
-        <Card className="border-0 shadow-soft step-enter overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-pink-50/80 to-primary/3 dark:from-pink-950/20 pb-6 border-b border-primary/10">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
+          <CardHeader className="bg-gradient-to-br from-pink-50/70 via-[#E0BBE4]/15 to-white pb-6 border-b border-pink-100">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setStep(2)}
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-[#e8629e] rounded-full"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl select-none">💗</span>
-              <CardTitle className="text-2xl font-bold">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-2xl bg-pink-100 flex items-center justify-center">
+                <span className="text-xl select-none">💗</span>
+              </div>
+              <CardTitle className="text-2xl font-extrabold">
                 {formData.kondisiAwal === "nifas" ? "Kebiasaan Nifasmu" : "Kebiasaan Haidmu"}
               </CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="font-medium">
               {formData.kondisiAwal === "nifas"
                 ? "Ceritakan kebiasaan nifas sebelumnya ya — ini membantu kami menentukan batas nifasmu yang sebenarnya 🌸"
                 : "Ceritakan kebiasaan siklus haidmu sebelumnya ya — ini membantu kami memberi panduan yang akurat 🌸"}
@@ -2167,21 +2173,23 @@ export default function Kalkulator() {
       )}
 
       {step === 4 && (
-        <Card className="border-0 shadow-soft step-enter overflow-hidden">
-          <CardHeader className="bg-gradient-to-br from-purple-50/60 to-primary/3 dark:from-purple-950/20 pb-6 border-b border-primary/10">
+        <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
+          <CardHeader className="bg-gradient-to-br from-[#E0BBE4]/25 via-purple-50/30 to-white pb-6 border-b border-purple-100">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setStep(formData.statusPengalaman === "mubtadiah" ? 2 : 3)}
-              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-primary"
+              className="w-fit mb-4 gap-2 -ml-3 text-muted-foreground hover:text-[#e8629e] rounded-full"
             >
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl select-none">✨</span>
-              <CardTitle className="text-2xl font-bold">Waktu Ibadah</CardTitle>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
+                <span className="text-xl select-none">✨</span>
+              </div>
+              <CardTitle className="text-2xl font-extrabold">Waktu Ibadah</CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="font-medium">
               Bantu kami menghitung kewajiban qodlo sholatmu — jawab sesuai yang kamu ingat ya 💕
             </CardDescription>
           </CardHeader>
@@ -2350,7 +2358,7 @@ export default function Kalkulator() {
                   <Button
                     type="submit"
                     size="lg"
-                    className="rounded-full px-8 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="rounded-full px-8 gap-2 btn-gradient text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:opacity-90 transition-all"
                     data-testid="btn-submit-calculate"
                   >
                     <Calculator className="w-4 h-4" /> Hitung Hasil
@@ -2392,43 +2400,52 @@ export default function Kalkulator() {
             </div>
           )}
 
-          <div className="flex justify-center mb-2">
-            <div className="relative">
+          <div className="flex flex-col items-center mb-4 text-center">
+            <div className="relative mb-5">
               <div className={cn(
-                "w-24 h-24 rounded-3xl flex items-center justify-center shadow-soft ring-1",
+                "w-28 h-28 rounded-[2rem] flex items-center justify-center shadow-soft",
                 hasil.tipeHasil === "haidl_normal"
-                  ? "bg-green-100 dark:bg-green-900/30 ring-green-200 dark:ring-green-800"
+                  ? "bg-gradient-to-br from-rose-100 to-pink-100"
                   : hasil.tipeHasil === "nifas"
-                    ? "bg-teal-100 dark:bg-teal-900/30 ring-teal-200 dark:ring-teal-800"
+                    ? "bg-gradient-to-br from-teal-100 to-cyan-100"
                     : hasil.tipeHasil === "istihadloh"
-                      ? "bg-amber-100 dark:bg-amber-900/30 ring-amber-200 dark:ring-amber-800"
-                      : "bg-red-100 dark:bg-red-900/30 ring-red-200 dark:ring-red-800",
+                      ? "bg-gradient-to-br from-amber-100 to-yellow-100"
+                      : "bg-gradient-to-br from-red-100 to-orange-100",
               )}>
-                <span className="text-4xl select-none float-blob">
+                <span className="text-5xl select-none float-blob">
                   {hasil.tipeHasil === "error" ? "⚠️" : hasil.tipeHasil === "haidl_normal" ? "🌸" : hasil.tipeHasil === "nifas" ? "💗" : "✨"}
                 </span>
               </div>
-              <span className="absolute -top-1 -right-1 text-xl select-none">💕</span>
+              <span className="absolute -top-2 -right-2 text-2xl select-none animate-bounce">💕</span>
             </div>
           </div>
 
           <Card className={cn(
-            "border-t-4 shadow-soft overflow-hidden",
+            "border-0 shadow-soft overflow-hidden rounded-3xl",
             hasil.tipeHasil === "haidl_normal"
-              ? "border-t-green-400"
+              ? "ring-2 ring-rose-200"
               : hasil.tipeHasil === "nifas"
-                ? "border-t-teal-400"
+                ? "ring-2 ring-teal-200"
                 : hasil.tipeHasil === "istihadloh"
-                  ? "border-t-amber-400"
-                  : "border-t-red-400",
+                  ? "ring-2 ring-amber-200"
+                  : "ring-2 ring-red-200",
           )}>
-            <CardHeader className="text-center pb-8 border-b bg-gradient-to-b from-muted/30 to-background">
-              <CardTitle className="text-2xl sm:text-3xl font-bold leading-tight mb-2" data-testid="hasil-kesimpulan">
+            <CardHeader className={cn(
+              "text-center pb-8 border-b",
+              hasil.tipeHasil === "haidl_normal"
+                ? "bg-gradient-to-br from-rose-50 to-pink-50/50"
+                : hasil.tipeHasil === "nifas"
+                  ? "bg-gradient-to-br from-teal-50 to-cyan-50/50"
+                  : hasil.tipeHasil === "istihadloh"
+                    ? "bg-gradient-to-br from-amber-50 to-yellow-50/50"
+                    : "bg-gradient-to-br from-red-50 to-orange-50/50",
+            )}>
+              <CardTitle className="text-2xl sm:text-3xl font-extrabold leading-tight mb-3" data-testid="hasil-kesimpulan">
                 {hasil.kesimpulan}
               </CardTitle>
               {hasil.kategori && (
                 <div
-                  className="inline-block px-4 py-1.5 bg-background border border-border rounded-full text-sm font-medium text-muted-foreground shadow-sm mt-2"
+                  className="inline-block px-5 py-1.5 bg-white border border-pink-100 rounded-full text-sm font-semibold text-muted-foreground shadow-sm mt-1"
                   data-testid="hasil-kategori"
                 >
                   {hasil.kategori}

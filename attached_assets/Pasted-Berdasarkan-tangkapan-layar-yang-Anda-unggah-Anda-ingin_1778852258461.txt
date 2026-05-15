@@ -1,0 +1,39 @@
+Berdasarkan tangkapan layar yang Anda unggah, Anda ingin menggabungkan elemen fungsional dari kalkulator **"Fiqh Darah"** dengan estetika modern, bersih, dan lembut dari aplikasi **"Clover"**.
+
+Berikut adalah prompt instruksi (dalam bahasa Inggris untuk hasil optimal pada AI generator) untuk memodifikasi tata letak dan gaya tampilan aplikasi Anda agar terlihat profesional namun tetap ramah pengguna:
+
+### **Prompt Modifikasi UI/UX**
+
+> **Role:** Expert UI/UX Mobile App Designer.
+> **Objective:** Redesign the current "Fiqh Darah" calculator interface by adopting the "Clover Personalized Wellness" visual style.
+> **Visual Style Guidelines:**
+> * **Color Palette:** Use a clean white background with soft pastel accents. Primary color: Soft Pink (#FF85A1) for active states, Lavender (#E0BBE4) for secondary elements, and Mint Green (#B2F7EF) for positive status updates.
+> * **Typography:** Use a modern, rounded sans-serif font (like 'Quicksand' or 'Nunito') to create a friendly and approachable feel.
+> * **Card Design:** Replace rigid lines with soft-edged cards (border-radius: 24px) that have very subtle drop shadows or light borders.
+> * **Icons:** Use playful, high-quality 2D/3D illustrative icons (like the flower or heart icons in the reference) with a cohesive aesthetic.
+> 
+> 
+> **Layout Structure:**
+> 1. **Header:** A minimalist top bar with a custom logo (Sakura flower) on the left and utility icons (Home, Calculator, Guide) on the right using thin-line icons.
+> 2. **Hero Section:** A prominent status card at the top (e.g., "Semua darah (9 hari) adalah HAID") with a large illustrative graphic above it, similar to Clover’s "Haid Hari 1" screen.
+> 3. **Calendar Integration:** A horizontal date picker or a compact monthly grid. Use circles to highlight dates. Use different colored fills for different blood statuses (e.g., Red for Haid, Yellow for Istihadloh) instead of just icons.
+> 4. **Daily Details:** Use a list of rounded cards for "Karakteristik per Tanggal". Each card should have a clear number, date, and a "chevron-right" icon to indicate it's clickable.
+> 5. **Status Badges:** Create pill-shaped labels for statuses (e.g., "Darah Haid", "Hukm"). Each pill should have a soft background color matching the icon color.
+> 6. **Navigation:** A floating bottom navigation bar with blurred background (Glassmorphism effect) containing: "My Cycle", "Calendar", "Wellness", and "Profile".
+> 
+> 
+> **Specific Element Modification:**
+> * Convert the "Qodlo Sholat" text blocks into alert-style cards with soft background tints (e.g., light blue for info, light orange for warnings).
+> * Ensure "Call to Action" buttons (like "Hitung Hasil" or "Analisis") are large, rounded, and use a vibrant gradient or solid soft pink color.
+> 
+> 
+
+---
+
+### **Tips Tambahan untuk Implementasi:**
+
+* **Scannability:** Pastikan teks hukum yang penting (seperti status "HAID") memiliki ukuran font yang lebih besar (Bold) dibandingkan teks penjelasan di bawahnya.
+* **Whitespace:** Berikan jarak (padding) yang cukup antar elemen. Aplikasi "Clover" terasa premium karena tidak menumpuk terlalu banyak informasi dalam satu layar.
+* **Interaktivitas:** Gunakan *toggle switches* yang estetik (seperti pada Screenshot Clover) untuk pertanyaan "Sudah sholat sebelum darah keluar?".
+
+Apakah Anda ingin saya memfokuskan modifikasi pada bagian spesifik, seperti bagian **Kalkulator** saja atau **Halaman Utama**?
