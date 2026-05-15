@@ -216,36 +216,72 @@ function warnaDarahInputToEngine(w: WarnaDarahInput): WarnaDarah {
 }
 
 // Determine kuat/lemah for each darah day based on 15-rank comparison (Uyunul Masa-il Linnisa)
+// RULE: Warna (color) is ALWAYS the primary factor.
+//   - When multiple different colors exist: ALL days of the strongest color = kuat,
+//     ALL other days = lemah. Sifat (tekstur/aroma) does NOT override color hierarchy.
+//   - When ALL days share the same color: compare by sifat (rank within color block).
+//     The day(s) with the strongest sifat = kuat, others = lemah.
+//   - Bersih (clean) days are excluded from comparison and always = "bersih".
 function tentukanStatusKuatLemah(
   darahKeys: string[],
   harianKarakteristik: Record<string, KarakteristikHari>,
 ): Record<string, StatusHariInput> {
   if (darahKeys.length === 0) return {};
-  // Exclude bersih days from ranking comparison
+
+  const COLOR_STRENGTH: Record<string, number> = {
+    hitam: 0, merah: 1, saja: 2, kuning: 3, keruh: 4,
+  };
+
+  // Separate bersih days
   const bersihSet = new Set(
     darahKeys.filter((k) => harianKarakteristik[k]?.warna === "bersih"),
   );
-  const ranks: Record<string, number> = {};
-  for (const k of darahKeys) {
-    if (bersihSet.has(k)) continue;
-    const kar = harianKarakteristik[k];
-    ranks[k] = kar ? hitungPeringkat(kar) : 15;
-  }
-  const rankedKeys = Object.keys(ranks);
-  const minRank = rankedKeys.length > 0 ? Math.min(...rankedKeys.map((k) => ranks[k])) : 15;
-  const maxRank = rankedKeys.length > 0 ? Math.max(...rankedKeys.map((k) => ranks[k])) : 15;
+  const darahOnlyKeys = darahKeys.filter((k) => !bersihSet.has(k));
+
   const result: Record<string, StatusHariInput> = {};
   for (const k of darahKeys) {
-    if (bersihSet.has(k)) {
-      result[k] = "bersih";
-    } else if (ranks[k] === undefined) {
-      result[k] = "kuat";
-    } else if (minRank === maxRank) {
-      result[k] = "kuat";
-    } else {
-      result[k] = ranks[k] === minRank ? "kuat" : "lemah";
+    if (bersihSet.has(k)) result[k] = "bersih";
+  }
+
+  if (darahOnlyKeys.length === 0) return result;
+
+  // Determine color strength for each darah day
+  const dayColorStrength: Record<string, number> = {};
+  for (const k of darahOnlyKeys) {
+    const kar = harianKarakteristik[k];
+    const base = kar ? (COLOR_STRENGTH[kar.warna] ?? 4) : 1;
+    dayColorStrength[k] = base;
+  }
+
+  // Find the STRONGEST color among all darah days
+  const minColorStrength = Math.min(...darahOnlyKeys.map((k) => dayColorStrength[k]));
+
+  // Check if all days share the same color
+  const allSameColor = darahOnlyKeys.every((k) => dayColorStrength[k] === minColorStrength);
+
+  if (!allSameColor) {
+    // Multiple colors: strongest color WINS entirely — sifat is irrelevant across colors
+    for (const k of darahOnlyKeys) {
+      result[k] = dayColorStrength[k] === minColorStrength ? "kuat" : "lemah";
+    }
+  } else {
+    // All same color: compare by sifat (rank within the color block)
+    const ranks: Record<string, number> = {};
+    for (const k of darahOnlyKeys) {
+      const kar = harianKarakteristik[k];
+      ranks[k] = kar ? hitungPeringkat(kar) : 15;
+    }
+    const minRank = Math.min(...darahOnlyKeys.map((k) => ranks[k]));
+    const maxRank = Math.max(...darahOnlyKeys.map((k) => ranks[k]));
+    for (const k of darahOnlyKeys) {
+      if (minRank === maxRank) {
+        result[k] = "kuat"; // All same sifat → all kuat
+      } else {
+        result[k] = ranks[k] === minRank ? "kuat" : "lemah";
+      }
     }
   }
+
   return result;
 }
 
@@ -352,15 +388,27 @@ const WARNA_OPTIONS: { value: WarnaDarahInput; label: string; dotClass: string }
 ];
 
 // ─── Simplified Calendar (darah / hapus only) ────────────────────────────────
+// Map warna darah to a colored dot class for calendar display
+const WARNA_DOT_CLASS: Record<WarnaDarahInput, string> = {
+  hitam:  "bg-gray-900",
+  merah:  "bg-red-500",
+  saja:   "bg-amber-700",
+  kuning: "bg-yellow-400",
+  keruh:  "bg-gray-400",
+  bersih: "bg-emerald-300",
+};
+
 function KalenderInputTanggal({
   harianDarah,
   harianStatus,
+  harianKarakteristik,
   onChange,
   kondisiAwal,
   onEditDay,
 }: {
   harianDarah: Record<string, boolean>;
   harianStatus: Record<string, StatusHariInput>;
+  harianKarakteristik: Record<string, KarakteristikHari>;
   onChange: (h: Record<string, boolean>, autoFill?: { sourceKey: string; newKeys: string[] }) => void;
   kondisiAwal?: "haidl" | "nifas";
   onEditDay?: (key: string) => void;
@@ -619,11 +667,18 @@ function KalenderInputTanggal({
                 )}>
                   {dayNum}
                 </span>
-                {isDarah && (
-                  <span className="text-sm leading-none mt-0.5">
-                    {status === "kuat" ? "❤️" : "🩸"}
-                  </span>
-                )}
+                {isDarah && (() => {
+                  const warna = harianKarakteristik[key]?.warna;
+                  const dotCls = warna ? WARNA_DOT_CLASS[warna] : "bg-red-500";
+                  return (
+                    <div className="flex items-center gap-0.5 mt-0.5">
+                      <div className={cn("w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm", dotCls)} />
+                      {status === "lemah" && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })()}
                 {!isDarah && isAfterNifasZone && kondisiAwal === "nifas" && (
                   <span className="text-[8px] text-muted-foreground/40 leading-none mt-0.5">≥61</span>
                 )}
@@ -1876,6 +1931,7 @@ export default function Kalkulator() {
             <KalenderInputTanggal
               harianDarah={harianDarah}
               harianStatus={harianStatus}
+              harianKarakteristik={harianKarakteristik}
               onEditDay={(key) => setEditTrigger((prev) => ({ key, v: (prev?.v ?? 0) + 1 }))}
               onChange={(next, autoFill) => {
                 setHarianDarah(next);
