@@ -334,7 +334,7 @@ function KalenderInputTanggal({
 }: {
   harianDarah: Record<string, boolean>;
   harianStatus: Record<string, StatusHariInput>;
-  onChange: (h: Record<string, boolean>) => void;
+  onChange: (h: Record<string, boolean>, autoFill?: { sourceKey: string; newKeys: string[] }) => void;
   kondisiAwal?: "haidl" | "nifas";
 }) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
@@ -379,20 +379,29 @@ function KalenderInputTanggal({
       const updated = { ...harianDarah };
       delete updated[key];
       onChange(updated);
+      setAnchor(null);
+      setHoverDate(null);
       return;
     }
     if (!anchor) {
-      setAnchor(key);
-    } else if (anchor === key) {
+      // First click: immediately mark day as darah AND set as anchor
+      // so user can edit characteristics in the panel right away
       const updated = { ...harianDarah };
       updated[key] = true;
       onChange(updated);
+      setAnchor(key);
+    } else if (anchor === key) {
+      // Click same day again: cancel anchor (day stays marked)
       setAnchor(null);
       setHoverDate(null);
     } else {
+      // Second click on different day: fill range + auto-copy anchor's characteristics
       const startKey = anchor < key ? anchor : key;
       const endKey = anchor < key ? key : anchor;
-      onChange(fillRange(startKey, endKey, true));
+      const newMap = fillRange(startKey, endKey, true);
+      // Collect keys that were NOT already darah (newly added)
+      const newKeys = Object.keys(newMap).filter((k) => !harianDarah[k]);
+      onChange(newMap, { sourceKey: anchor, newKeys });
       setAnchor(null);
       setHoverDate(null);
     }
@@ -457,11 +466,15 @@ function KalenderInputTanggal({
 
       {/* ── Anchor indicator ── */}
       {anchor && (
-        <div className="flex items-center gap-2 rounded-xl bg-primary/8 border border-primary/20 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
           <span className="text-base select-none flex-shrink-0">📍</span>
           <div className="flex-1 min-w-0">
-            <span className="font-semibold">Titik awal: {formatDateId(anchor)}</span>
-            <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">— klik tanggal lain untuk mengisi range</span>
+            <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+              Titik awal: {formatDateId(anchor)}
+            </span>
+            <span className="text-emerald-700 dark:text-emerald-400 ml-2 text-xs">
+              — isi karakteristiknya di panel bawah, lalu klik tanggal akhir untuk <strong>mengisi rentang otomatis</strong>
+            </span>
           </div>
           <button
             type="button"
@@ -1648,16 +1661,25 @@ export default function Kalkulator() {
             <KalenderInputTanggal
               harianDarah={harianDarah}
               harianStatus={harianStatus}
-              onChange={(next) => {
+              onChange={(next, autoFill) => {
                 setHarianDarah(next);
-                // Clean up karakteristik & durasi for removed days
+                // Clean up karakteristik for removed days; auto-fill for new range days
                 setHarianKarakteristik((prev) => {
                   const cleaned: Record<string, KarakteristikHari> = {};
                   for (const k of Object.keys(prev)) {
                     if (next[k]) cleaned[k] = prev[k];
                   }
+                  // If a range was completed and the source day has characteristics,
+                  // copy them to all newly added days that don't already have data
+                  if (autoFill && prev[autoFill.sourceKey]) {
+                    const sourceKar = prev[autoFill.sourceKey];
+                    for (const k of autoFill.newKeys) {
+                      if (!cleaned[k]) cleaned[k] = { ...sourceKar };
+                    }
+                  }
                   return cleaned;
                 });
+                // Clean up durasi for removed days; auto-filled days keep default (24h)
                 setHarianDurasi((prev) => {
                   const cleaned: Record<string, DurasiHari> = {};
                   for (const k of Object.keys(prev)) {
