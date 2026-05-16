@@ -1,0 +1,26 @@
+Master Prompt: Transformasi Total UI/UX (Clover Stealth Mode)
+​Berikut adalah teks instruksi lengkap yang harus Anda berikan kepada Replit Agent untuk melakukan perombakan total. Prompt ini sudah saya susun sangat detail agar AI tidak salah arah:
+​Tugas: Perombakan Total UI/UX ke Gaya "Clover" (SIM Card Mode)
+​Tujuan: Ubah semua tampilan dan warna aplikasi saya agar 100% percis dengan estetika aplikasi Clover (Minimalis, Modern, Pastel Sakura), namun tetap pertahankan seluruh fitur logika Fiqh Darah yang sudah ada.
+​1. Navigasi & Struktur Utama:
+​Bottom Navigation: Gunakan hanya 3 menu: Beranda, Kalkulator, dan Profil. Hapus navigasi "Panduan".
+​Integrasi Panduan: Pindahkan semua isi konten panduan harian ke halaman Beranda dalam bentuk Horizontal Banner Slider yang bisa di-swipe di bagian atas.
+​SIM Card Mode: Ubah seluruh tampilan list atau baris informasi yang panjang menjadi sistem kartu kompak (SIM Card Mode) dengan horizontal scroll agar tidak memakan ruang ke bawah.
+​2. Kalkulator & Kalender (No-Scroll Mode):
+​Hapus List Vertikal: Hilangkan daftar "Karakteristik per Tanggal" yang memanjang di bawah kalender.
+​Input Modal System: Implementasikan sistem Modal Pop-up (Bottom Sheet) bergaya Clover. Saat pengguna mengetuk sebuah tanggal di kalender, munculkan jendela pop-up untuk memilih warna darah (6 warna) dan durasi hari itu saja.
+​Hasil Analisis Slider: Tampilkan hasil hukum (Haid, Istihadloh, Qodlo) dalam bentuk kartu-kartu cantik yang bisa digeser ke samping (Swipeable Cards) di bawah kalender.
+​3. Aktivasi Halaman Profil:
+​Aktifkan fungsi menu Profil dengan fitur logis:
+​Pilihan Status: Mubtadi'ah atau Mu'tadah.
+​Input Usia Hijriyah dan Data Adat (Haid & Suci terakhir).
+​Kartu Ringkasan Statistik Ibadah (Total Hutang Sholat & Puasa).
+​Tombol Export Laporan PDF dan Reset Seluruh Data.
+​4. Panel Admin Tersembunyi (God Mode):
+​Akses tersembunyi: Ketuk logo Sakura di header sebanyak 5 kali untuk login ke panel admin rahasia.
+​Di dalam panel admin, tambahkan fitur edit dinamis untuk: Banner Slider, Logo Utama, Tema Warna Global, Font Family, dan Catatan Fiqh Harian.
+​5. Gaya Visual & Warna:
+​Palet Warna: Gunakan Background Cream (#FFFBFD), Secondary Pink Pastel (#FFF1F2), Accent Rose Gold/Magenta (#BE185D), dan Text Brown (#4A1D1D).
+​Typography: Gunakan font 'Comfortaa' untuk judul/heading dan 'Inter' untuk teks isi.
+​Border Radius: Pastikan semua kartu, tombol, dan modal memiliki sudut Extra-Rounded (minimal 24px-32px).
+​Implementasikan perubahan ini menggunakan Tailwind CSS untuk responsivitas mobile yang sempurna
