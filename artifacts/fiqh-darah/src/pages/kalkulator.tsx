@@ -839,105 +839,57 @@ function DateListPanel({
 
   return (
     <>
-      <div className="space-y-3 animate-in fade-in duration-300">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Droplets className="w-4 h-4 text-rose-600" />
-            <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
-              Karakteristik per Tanggal
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {kuatCount > 0 && <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-medium">{kuatCount} Kuat</span>}
-            {lemahCount > 0 && <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">{lemahCount} Lemah</span>}
-            {bersihCount > 0 && <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-medium">{bersihCount} Bersih</span>}
+      <div className="space-y-2 animate-in fade-in duration-300">
+        {/* Compact summary bar */}
+        <div className="flex items-center gap-2">
+          <Droplets className="w-4 h-4 text-rose-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-rose-600">Detail Darah</span>
+          <div className="flex items-center gap-1.5 ml-auto">
+            {kuatCount > 0 && <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-semibold">{kuatCount} Kuat</span>}
+            {lemahCount > 0 && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">{lemahCount} Lemah</span>}
+            {bersihCount > 0 && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">{bersihCount} Bersih</span>}
           </div>
         </div>
 
-        {/* Date list */}
-        <div className="rounded-2xl border overflow-hidden divide-y">
-          {darahKeys.map((k, idx) => {
-            const status = harianStatus[k] ?? "kuat";
-            const rank = harianRank[k];
-            const kar = harianKarakteristik[k];
-            const durasi = harianDurasi[k] ?? { jam: 0, menit: 0 };
-            const totalMenit = durasi.jam * 60 + durasi.menit;
-            const isBersihDay = kar?.warna === "bersih";
-            const isKuat = status === "kuat";
+        {/* SIM Card: tap-to-edit instruction */}
+        <div className="rounded-[24px] bg-rose-50 border border-rose-100 px-4 py-3.5 flex items-center gap-3">
+          <span className="text-2xl select-none">👆</span>
+          <div>
+            <p className="text-sm font-bold text-rose-700">Ketuk tanggal di kalender</p>
+            <p className="text-xs text-rose-500 mt-0.5">untuk mengisi warna, tekstur, aroma, dan durasi darah</p>
+          </div>
+        </div>
 
+        {/* Compact color legend row */}
+        <div className="flex gap-2 flex-wrap">
+          {darahKeys.slice(0, 8).map((k) => {
+            const kar = harianKarakteristik[k];
+            const status = harianStatus[k] ?? "kuat";
+            const warna = kar?.warna ?? null;
+            const dotColor = !warna ? "bg-muted-foreground/30" : warna === "hitam" ? "bg-gray-900" : warna === "merah" ? "bg-red-500" : warna === "saja" ? "bg-amber-700" : warna === "kuning" ? "bg-yellow-400" : warna === "keruh" ? "bg-gray-400" : "bg-emerald-400";
+            const day = parseInt(k.split("-")[2]);
             return (
               <button
                 key={k}
                 type="button"
                 onClick={() => openSheet(k)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 active:bg-muted/70 transition-colors text-left"
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-2xl border transition-all active:scale-95 min-w-[44px]",
+                  status === "kuat" ? "bg-rose-50 border-rose-200" : status === "lemah" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200",
+                  !kar && "border-dashed border-muted-foreground/30 bg-muted/20",
+                )}
               >
-                {/* Day number circle */}
-                <div className={cn(
-                  "w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white",
-                  isBersihDay
-                    ? "bg-emerald-500"
-                    : !kar
-                    ? "bg-muted-foreground/40"
-                    : isKuat
-                    ? "bg-rose-500"
-                    : "bg-amber-400",
-                )}>
-                  {idx + 1}
-                </div>
-
-                {/* Date & status summary */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{formatDateId(k)}</span>
-                    {isBersihDay ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-medium">
-                        Bersih (An-Naqo')
-                      </span>
-                    ) : kar ? (
-                      <span className={cn(
-                        "text-xs px-2 py-0.5 rounded-full border font-medium",
-                        isKuat
-                          ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700"
-                          : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700",
-                      )}>
-                        {isKuat ? "Kuat" : "Lemah"}{rank !== undefined ? ` #${rank}` : ""}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Tap untuk mengisi →</span>
-                    )}
-                  </div>
-                  {kar && !isBersihDay && (
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {WARNA_OPTIONS.find(o => o.value === kar.warna)?.label}
-                      {" · "}{kar.tekstur === "kental" ? "Kental" : "Cair"}
-                      {" · "}{kar.aroma === "berbau" ? "Berbau" : "Tidak Berbau"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Duration + chevron */}
-                <div className="flex-shrink-0 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {totalMenit === 0 ? "24 jam" : `${durasi.jam}j ${durasi.menit > 0 ? `${durasi.menit}m` : ""}`}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                </div>
+                <div className={cn("w-3 h-3 rounded-full", dotColor)} />
+                <span className="text-[10px] font-bold text-gray-600">{day}</span>
               </button>
             );
           })}
+          {darahKeys.length > 8 && (
+            <div className="flex flex-col items-center justify-center p-2 rounded-2xl border border-dashed border-muted-foreground/30 min-w-[44px]">
+              <span className="text-[10px] font-bold text-muted-foreground">+{darahKeys.length - 8}</span>
+            </div>
+          )}
         </div>
-
-        {/* Kuat/Lemah comparison note */}
-        {lemahCount > 0 && kuatCount > 0 && (
-          <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-4 py-3 text-xs text-blue-800 dark:text-blue-300">
-            <p className="font-semibold">Perbandingan Otomatis:</p>
-            <p className="mt-0.5 text-muted-foreground">
-              Darah dengan peringkat terkecil = <span className="text-rose-600 font-medium">Kuat</span>. Peringkat lebih besar = <span className="text-amber-600 font-medium">Lemah</span>. Warna mengalahkan sifat fisik.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* ── Bottom Sheet ── */}

@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Home from "@/pages/home";
 import Kalkulator from "@/pages/kalkulator";
 import Panduan from "@/pages/panduan";
+import Profil from "@/pages/profil";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/kalkulator" component={Kalkulator} />
         <Route path="/panduan" component={Panduan} />
+        <Route path="/profil" component={Profil} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
