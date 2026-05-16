@@ -9,12 +9,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showAdmin, setShowAdmin] = useState(false);
   const [config] = useState(getAdminConfig);
 
-  // Apply saved branding on mount
   useEffect(() => {
     applyBranding(getAdminConfig());
   }, []);
 
-  // 5-tap secret trigger
   const handleLogoTap = useCallback(() => {
     setTapCount(prev => {
       const next = prev + 1;
@@ -22,15 +20,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         setShowPin(true);
         return 0;
       }
-      // Reset after 2 seconds of inactivity
       setTimeout(() => setTapCount(0), 2000);
       return next;
     });
   }, []);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#fffaf1] selection:bg-primary/20">
-      {/* Invisible logo tap target — top-left corner, accessible */}
+    <div className="min-h-[100dvh] flex flex-col bg-[#F5F5FA] selection:bg-[#6C63FF]/20">
       <div
         onClick={handleLogoTap}
         className="fixed top-0 left-0 w-12 h-12 z-40 opacity-0 select-none cursor-default"
@@ -40,7 +36,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col pb-[64px]">{children}</main>
       <BottomNav />
 
-      {/* Admin PIN modal */}
       {showPin && (
         <PinModal
           config={config}
@@ -48,7 +43,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Admin panel */}
       <AdminPanel open={showAdmin} onClose={() => setShowAdmin(false)} />
     </div>
   );

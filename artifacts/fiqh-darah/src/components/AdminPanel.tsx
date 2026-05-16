@@ -90,7 +90,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
               className={cn(
                 "flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap",
                 activeTab === t.id
-                  ? "bg-[#be185d] text-white"
+                  ? "bg-[#6C63FF] text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
@@ -110,23 +110,23 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                 <p className="text-xs font-semibold text-gray-600">Kelola banner slide di beranda</p>
                 <button
                   type="button"
-                  onClick={() => setEditBanner({ id: generateId(), emoji: "🌸", title: "Banner Baru", desc: "Deskripsi", bg: "#be185d", link: "/panduan" })}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#be185d] text-white text-xs font-bold"
+                  onClick={() => setEditBanner({ id: generateId(), emoji: "🌸", title: "Banner Baru", desc: "Deskripsi", bg: "#6C63FF", link: "/panduan" })}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#6C63FF] text-white text-xs font-bold"
                 >
                   <Plus className="w-3 h-3" /> Tambah
                 </button>
               </div>
 
               {editBanner && (
-                <div className="bg-[#fffaf1] rounded-2xl p-4 border border-[#ffccd5] space-y-3">
-                  <p className="text-xs font-bold text-[#be185d]">
+                <div className="bg-[#F5F5FA] rounded-2xl p-4 border border-[#EDE9FE] space-y-3">
+                  <p className="text-xs font-bold text-[#6C63FF]">
                     {config.banners.find(b => b.id === editBanner.id) ? "Edit Banner" : "Banner Baru"}
                   </p>
                   {[
                     { key: "emoji" as const, label: "Emoji", placeholder: "🌸" },
                     { key: "title" as const, label: "Judul", placeholder: "Judul banner" },
                     { key: "desc" as const, label: "Deskripsi", placeholder: "Deskripsi singkat" },
-                    { key: "bg" as const, label: "Warna BG (hex)", placeholder: "#be185d" },
+                    { key: "bg" as const, label: "Warna BG (hex)", placeholder: "#6C63FF" },
                     { key: "link" as const, label: "Link", placeholder: "/panduan" },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key}>
@@ -136,7 +136,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                         value={editBanner[key]}
                         onChange={e => setEditBanner(prev => prev ? { ...prev, [key]: e.target.value } : null)}
                         placeholder={placeholder}
-                        className="w-full h-9 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#be185d]"
+                        className="w-full h-9 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#6C63FF]"
                       />
                     </div>
                   ))}
@@ -154,7 +154,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                         });
                         setEditBanner(null);
                       }}
-                      className="flex-1 h-9 rounded-xl bg-[#be185d] text-white text-xs font-bold"
+                      className="flex-1 h-9 rounded-xl bg-[#6C63FF] text-white text-xs font-bold"
                     >
                       Simpan Banner
                     </button>
@@ -204,7 +204,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
             <div className="space-y-4">
               <p className="text-xs font-semibold text-gray-600">Ubah tampilan visual aplikasi secara global</p>
               {[
-                { key: "primaryColor" as const, label: "Warna Utama (Primary)", type: "color", placeholder: "#be185d" },
+                { key: "primaryColor" as const, label: "Warna Utama (Primary)", type: "color", placeholder: "#6C63FF" },
                 { key: "fontFamily" as const, label: "Font Family", type: "text", placeholder: "Inter" },
                 { key: "borderRadius" as const, label: "Border Radius", type: "text", placeholder: "28px" },
                 { key: "logoUrl" as const, label: "URL Logo (opsional)", type: "text", placeholder: "https://..." },
@@ -225,7 +225,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                       value={config.branding[key]}
                       onChange={e => setConfig(prev => ({ ...prev, branding: { ...prev.branding, [key]: e.target.value } }))}
                       placeholder={placeholder}
-                      className="flex-1 h-10 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#be185d]"
+                      className="flex-1 h-10 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#6C63FF]"
                     />
                   </div>
                 </div>
@@ -238,7 +238,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                   onChange={e => setConfig(prev => ({ ...prev, pin: e.target.value }))}
                   placeholder="****"
                   maxLength={8}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#be185d]"
+                  className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#6C63FF]"
                 />
               </div>
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700">
@@ -255,7 +255,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                 <button
                   type="button"
                   onClick={() => setConfig(prev => ({ ...prev, tips: [...prev.tips, "Tip baru..."] }))}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#be185d] text-white text-xs font-bold"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#6C63FF] text-white text-xs font-bold"
                 >
                   <Plus className="w-3 h-3" /> Tambah
                 </button>
@@ -266,7 +266,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                     value={tip}
                     onChange={e => setConfig(prev => ({ ...prev, tips: prev.tips.map((t, j) => j === i ? e.target.value : t) }))}
                     rows={2}
-                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#be185d] resize-none"
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-[#6C63FF] resize-none"
                   />
                   <button
                     type="button"
@@ -299,7 +299,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
                     onClick={() => setConfig(prev => ({ ...prev, featureToggles: { ...prev.featureToggles, [key]: !prev.featureToggles[key] } }))}
                     className={cn(
                       "w-12 h-6 rounded-full relative transition-all duration-200",
-                      config.featureToggles[key] ? "bg-[#be185d]" : "bg-gray-300"
+                      config.featureToggles[key] ? "bg-[#6C63FF]" : "bg-gray-300"
                     )}
                   >
                     <div className={cn(
@@ -327,7 +327,7 @@ export function AdminPanel({ open, onClose }: AdminPanelProps) {
             onClick={handleSave}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl text-sm font-bold text-white transition-all",
-              saved ? "bg-emerald-500" : "bg-[#be185d]"
+              saved ? "bg-emerald-500" : "bg-[#6C63FF]"
             )}
           >
             <Save className="w-4 h-4" />
@@ -403,7 +403,7 @@ export function PinModal({ onSuccess, config }: { onSuccess: () => void; config:
             <div key={i} className={cn(
               "w-4 h-4 rounded-full border-2 transition-all",
               pin.length > i
-                ? error ? "bg-red-400 border-red-400" : "bg-[#be185d] border-[#be185d]"
+                ? error ? "bg-red-400 border-red-400" : "bg-[#6C63FF] border-[#6C63FF]"
                 : "bg-transparent border-gray-300"
             )} />
           ))}
@@ -416,7 +416,7 @@ export function PinModal({ onSuccess, config }: { onSuccess: () => void; config:
               key={d + i}
               type="button"
               onClick={() => d === "⌫" ? setPin(p => p.slice(0, -1)) : handleDigit(d)}
-              className="h-12 rounded-2xl bg-gray-50 text-gray-800 font-bold text-lg hover:bg-[#ffccd5] active:scale-95 transition-all"
+              className="h-12 rounded-2xl bg-gray-50 text-gray-800 font-bold text-lg hover:bg-[#EDE9FE] active:scale-95 transition-all"
             >
               {d}
             </button>

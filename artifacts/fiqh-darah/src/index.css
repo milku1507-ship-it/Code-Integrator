@@ -40,64 +40,64 @@
 }
 
 :root {
-  /* Cream background */
-  --background: 40 60% 97%;
-  --foreground: 330 20% 16%;
+  /* White/near-white background — Clover style */
+  --background: 0 0% 97%;
+  --foreground: 240 10% 16%;
 
   --card: 0 0% 100%;
-  --card-foreground: 330 20% 16%;
-  --card-border: 30 30% 90%;
+  --card-foreground: 240 10% 16%;
+  --card-border: 240 10% 92%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 330 20% 16%;
-  --popover-border: 30 30% 90%;
+  --popover-foreground: 240 10% 16%;
+  --popover-border: 240 10% 92%;
 
-  /* Rose Gold / Deep Pink primary */
-  --primary: 335 72% 40%;
+  /* Purple/Indigo primary — Clover style */
+  --primary: 249 82% 62%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 335 40% 94%;
-  --secondary-foreground: 335 30% 35%;
+  --secondary: 249 60% 94%;
+  --secondary-foreground: 249 50% 35%;
 
-  --muted: 30 20% 93%;
-  --muted-foreground: 330 10% 48%;
+  --muted: 240 10% 93%;
+  --muted-foreground: 240 10% 50%;
 
-  --accent: 15 80% 88%;
-  --accent-foreground: 15 60% 25%;
+  --accent: 249 60% 94%;
+  --accent-foreground: 249 50% 40%;
 
-  --destructive: 0 60% 52%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 30 20% 88%;
-  --input: 30 20% 88%;
-  --ring: 335 72% 40%;
+  --border: 240 10% 90%;
+  --input: 240 10% 90%;
+  --ring: 249 82% 62%;
 
   /* Extra-rounded */
   --radius: 1.75rem;
 }
 
 .dark {
-  --background: 330 18% 10%;
-  --foreground: 340 30% 96%;
-  --card: 330 14% 13%;
-  --card-foreground: 340 30% 96%;
-  --card-border: 330 10% 22%;
-  --popover: 330 14% 13%;
-  --popover-foreground: 340 30% 96%;
-  --popover-border: 330 10% 22%;
-  --primary: 335 65% 55%;
+  --background: 249 18% 10%;
+  --foreground: 249 20% 96%;
+  --card: 249 14% 13%;
+  --card-foreground: 249 20% 96%;
+  --card-border: 249 10% 22%;
+  --popover: 249 14% 13%;
+  --popover-foreground: 249 20% 96%;
+  --popover-border: 249 10% 22%;
+  --primary: 249 72% 65%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 330 10% 18%;
-  --secondary-foreground: 340 20% 80%;
-  --muted: 330 10% 18%;
-  --muted-foreground: 340 10% 58%;
-  --accent: 15 50% 40%;
+  --secondary: 249 10% 18%;
+  --secondary-foreground: 249 20% 80%;
+  --muted: 249 10% 18%;
+  --muted-foreground: 249 10% 58%;
+  --accent: 249 40% 35%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 45% 42%;
   --destructive-foreground: 0 0% 100%;
-  --border: 330 10% 22%;
-  --input: 330 10% 22%;
-  --ring: 335 65% 55%;
+  --border: 249 10% 22%;
+  --input: 249 10% 22%;
+  --ring: 249 72% 65%;
 }
 
 @layer base {
@@ -111,21 +111,21 @@
   }
 }
 
-/* Card soft shadow */
+/* Card soft shadow — Clover uses clean neutral shadows */
 .shadow-soft {
-  box-shadow: 0 2px 16px -2px rgba(190, 24, 93, 0.10), 0 1px 6px -1px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 16px -2px rgba(108, 99, 255, 0.10), 0 1px 6px -1px rgba(0,0,0,0.05);
 }
 .shadow-card {
   box-shadow: 0 1px 12px -2px rgba(0,0,0,0.07), 0 1px 4px -1px rgba(0,0,0,0.04);
 }
 
-/* Glassmorphism bottom nav */
+/* Bottom nav — Clover style: white, clean border */
 .glass-nav {
-  background: rgba(255, 250, 241, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(190, 24, 93, 0.10);
-  box-shadow: 0 -2px 20px -4px rgba(190, 24, 93, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 -2px 20px -4px rgba(0, 0, 0, 0.06);
 }
 
 /* Step fade-in */
@@ -144,15 +144,15 @@
 }
 .float-blob { animation: floatBlob 4s ease-in-out infinite; }
 
-/* Primary gradient button */
+/* Purple gradient button — Clover style */
 .btn-gradient {
-  background: linear-gradient(135deg, #f472b6, #be185d);
+  background: linear-gradient(135deg, #8b7ef8, #6C63FF);
 }
 .btn-gradient:hover { opacity: 0.92; }
 
-/* Pink glow */
+/* Purple glow hero */
 .glow-hero {
-  background: radial-gradient(ellipse 80% 55% at 50% 55%, rgba(255, 204, 213, 0.45) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 55% at 50% 55%, rgba(172, 166, 255, 0.28) 0%, transparent 70%);
 }
 
 /* Horizontal scroll cards */
@@ -167,3 +167,13 @@
 }
 .card-slider::-webkit-scrollbar { display: none; }
 .card-slider > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* Notification banner — Clover coral/salmon style */
+.banner-upgrade {
+  background: linear-gradient(135deg, #FF6B6B, #FF5252);
+}
+
+/* Clover period indicators */
+.day-haid { background-color: #F8BBD9; color: #C2185B; }
+.day-today { background-color: #FF4081; color: white; }
+.day-suci { background-color: #E8E0FF; color: #6C63FF; }

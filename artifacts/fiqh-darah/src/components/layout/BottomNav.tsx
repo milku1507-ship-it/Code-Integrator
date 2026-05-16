@@ -10,12 +10,12 @@ function HomeIcon({ className }: { className?: string }) {
   );
 }
 
-function CalcIcon({ className }: { className?: string }) {
+function CalcIcon({ className, active }: { className?: string; active?: boolean }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} viewBox="0 0 24 24" fill={active ? "#6C63FF" : "none"} stroke={active ? "#6C63FF" : "currentColor"} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="2" width="16" height="20" rx="3" />
-      <path d="M8 6h8M8 10h8M8 14h4" />
-      <circle cx="16" cy="17" r="2" />
+      <path d="M8 6h8M8 10h8M8 14h4" stroke={active ? "white" : "currentColor"} />
+      <circle cx="16" cy="17" r="2" fill={active ? "white" : "none"} stroke={active ? "white" : "currentColor"} />
     </svg>
   );
 }
@@ -30,9 +30,9 @@ function PersonIcon({ className }: { className?: string }) {
 }
 
 const NAV_ITEMS = [
-  { href: "/", label: "Beranda", Icon: HomeIcon },
-  { href: "/kalkulator", label: "Kalkulator", Icon: CalcIcon },
-  { href: "/profil", label: "Profil", Icon: PersonIcon },
+  { href: "/", label: "Beranda", renderIcon: (active: boolean) => <HomeIcon className={cn("w-[20px] h-[20px] transition-all duration-200", active ? "stroke-[#6C63FF]" : "stroke-gray-400")} /> },
+  { href: "/kalkulator", label: "Kalkulator", renderIcon: (active: boolean) => <CalcIcon className="w-[20px] h-[20px] transition-all duration-200" active={active} /> },
+  { href: "/profil", label: "Profil", renderIcon: (active: boolean) => <PersonIcon className={cn("w-[20px] h-[20px] transition-all duration-200", active ? "stroke-[#6C63FF]" : "stroke-gray-400")} /> },
 ];
 
 export function BottomNav() {
@@ -44,23 +44,20 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="glass-nav fixed bottom-0 left-0 right-0 z-50 h-[64px] flex items-center justify-around px-4">
-      {NAV_ITEMS.map(({ href, label, Icon }) => {
+    <nav className="glass-nav fixed bottom-0 left-0 right-0 z-50 h-[64px] flex items-center justify-around px-2">
+      {NAV_ITEMS.map(({ href, label, renderIcon }) => {
         const active = isActive(href);
         return (
           <Link key={href} href={href} className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full select-none">
             <div className={cn(
               "w-12 h-8 rounded-full flex items-center justify-center transition-all duration-200",
-              active ? "bg-[#ffccd5]" : ""
+              active ? "bg-[#EDE9FE]" : ""
             )}>
-              <Icon className={cn(
-                "w-[18px] h-[18px] transition-all duration-200",
-                active ? "stroke-[#be185d]" : "stroke-gray-400"
-              )} />
+              {renderIcon(active)}
             </div>
             <span className={cn(
               "text-[10px] font-semibold leading-none tracking-wide",
-              active ? "text-[#be185d]" : "text-gray-400"
+              active ? "text-[#6C63FF]" : "text-gray-400"
             )}>
               {label}
             </span>

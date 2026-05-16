@@ -512,13 +512,13 @@ function KalenderInputTanggal({
           onClick={() => { setMode("darah"); }}
           className={cn(
             "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border-2 transition-all select-none",
-            "bg-rose-100 dark:bg-rose-900/50 border-rose-400 dark:border-rose-600 text-rose-900 dark:text-rose-100",
+            "bg-violet-100 dark:bg-violet-900/50 border-violet-400 dark:border-violet-600 text-violet-900 dark:text-violet-100",
             mode === "darah"
               ? "shadow-md scale-105 ring-2 ring-offset-1 ring-primary/50"
               : "opacity-60 hover:opacity-90",
           )}
         >
-          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-rose-500" />
+          <span className="w-2 h-2 rounded-full flex-shrink-0 bg-violet-500" />
           Tandai Darah ❤️
         </button>
         <button
@@ -628,7 +628,7 @@ function KalenderInputTanggal({
             const isToday = key === dateKey(new Date());
 
             const bgClass = status === "kuat"
-              ? "bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100 font-semibold"
+              ? "bg-violet-100 dark:bg-violet-900/50 text-violet-900 dark:text-violet-100 font-semibold"
               : status === "lemah"
                 ? "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100 font-semibold"
                 : "";
@@ -662,7 +662,7 @@ function KalenderInputTanggal({
                 <span className={cn(
                   "text-[11px] leading-none font-medium",
                   isDarah
-                    ? status === "kuat" ? "text-rose-900 dark:text-rose-100" : "text-amber-900 dark:text-amber-100"
+                    ? status === "kuat" ? "text-violet-900 dark:text-violet-100" : "text-amber-900 dark:text-amber-100"
                     : isAfterNifasZone ? "text-muted-foreground/40" : "text-muted-foreground",
                 )}>
                   {dayNum}
@@ -707,9 +707,9 @@ function KalenderInputTanggal({
             <span className="font-bold">{totalDays} hari</span>
             <span className="text-xs text-muted-foreground hidden sm:inline">({formatDateId(firstDate)} – {formatDateId(lastDate)})</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5">
-            <span className="font-medium text-rose-700 dark:text-rose-400">Darah:</span>
-            <span className="font-bold text-rose-700 dark:text-rose-400">{totalDarah} hari</span>
+          <div className="flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/30 px-3 py-1.5">
+            <span className="font-medium text-violet-700 dark:text-violet-400">Darah:</span>
+            <span className="font-bold text-violet-700 dark:text-violet-400">{totalDarah} hari</span>
           </div>
           {exceedsLimit && (
             <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 px-3 py-1.5">
@@ -842,21 +842,21 @@ function DateListPanel({
       <div className="space-y-2 animate-in fade-in duration-300">
         {/* Compact summary bar */}
         <div className="flex items-center gap-2">
-          <Droplets className="w-4 h-4 text-rose-500 flex-shrink-0" />
-          <span className="text-sm font-semibold text-rose-600">Detail Darah</span>
+          <Droplets className="w-4 h-4 text-violet-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-violet-600">Detail Darah</span>
           <div className="flex items-center gap-1.5 ml-auto">
-            {kuatCount > 0 && <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-semibold">{kuatCount} Kuat</span>}
+            {kuatCount > 0 && <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">{kuatCount} Kuat</span>}
             {lemahCount > 0 && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">{lemahCount} Lemah</span>}
             {bersihCount > 0 && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">{bersihCount} Bersih</span>}
           </div>
         </div>
 
         {/* SIM Card: tap-to-edit instruction */}
-        <div className="rounded-[24px] bg-rose-50 border border-rose-100 px-4 py-3.5 flex items-center gap-3">
+        <div className="rounded-[24px] bg-violet-50 border border-violet-100 px-4 py-3.5 flex items-center gap-3">
           <span className="text-2xl select-none">👆</span>
           <div>
-            <p className="text-sm font-bold text-rose-700">Ketuk tanggal di kalender</p>
-            <p className="text-xs text-rose-500 mt-0.5">untuk mengisi warna, tekstur, aroma, dan durasi darah</p>
+            <p className="text-sm font-bold text-violet-700">Ketuk tanggal di kalender</p>
+            <p className="text-xs text-violet-500 mt-0.5">untuk mengisi warna, tekstur, aroma, dan durasi darah</p>
           </div>
         </div>
 
@@ -875,7 +875,7 @@ function DateListPanel({
                 onClick={() => openSheet(k)}
                 className={cn(
                   "flex flex-col items-center gap-1 p-2 rounded-2xl border transition-all active:scale-95 min-w-[44px]",
-                  status === "kuat" ? "bg-rose-50 border-rose-200" : status === "lemah" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200",
+                  status === "kuat" ? "bg-violet-50 border-violet-200" : status === "lemah" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200",
                   !kar && "border-dashed border-muted-foreground/30 bg-muted/20",
                 )}
               >
@@ -922,7 +922,7 @@ function DateListPanel({
                     className={cn(
                       "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all duration-150 select-none",
                       isSelected
-                        ? "border-[#B76E79] bg-[#FFD1DC]/20 shadow-md scale-[1.03]"
+                        ? "border-[#B76E79] bg-[#DDD6FE]/20 shadow-md scale-[1.03]"
                         : "border-transparent bg-muted/40 hover:border-muted hover:bg-muted/60",
                     )}
                   >
@@ -973,7 +973,7 @@ function DateListPanel({
                     className={cn(
                       "h-11 rounded-2xl border-2 text-sm font-semibold transition-all",
                       draftKar.tekstur === val
-                        ? "border-[#B76E79] bg-[#FFD1DC]/30 text-[#B76E79]"
+                        ? "border-[#B76E79] bg-[#DDD6FE]/30 text-[#B76E79]"
                         : "border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
                     )}
                   >
@@ -1002,7 +1002,7 @@ function DateListPanel({
                     className={cn(
                       "h-11 rounded-2xl border-2 text-sm font-semibold transition-all",
                       draftKar.aroma === val
-                        ? "border-[#B76E79] bg-[#FFD1DC]/30 text-[#B76E79]"
+                        ? "border-[#B76E79] bg-[#DDD6FE]/30 text-[#B76E79]"
                         : "border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/40",
                     )}
                   >
@@ -1083,10 +1083,10 @@ const HUKUM_CONFIG: Record<HukumHari, {
   haid: {
     label: "Haid",
     labelRingkas: "H",
-    bgClass: "bg-rose-100 dark:bg-rose-900/40",
-    textClass: "text-rose-800 dark:text-rose-200",
-    borderClass: "border-rose-300 dark:border-rose-700",
-    dotClass: "bg-rose-500",
+    bgClass: "bg-violet-100 dark:bg-violet-900/40",
+    textClass: "text-violet-800 dark:text-rose-200",
+    borderClass: "border-violet-300 dark:border-violet-700",
+    dotClass: "bg-violet-500",
   },
   nifas: {
     label: "Nifas",
@@ -1156,7 +1156,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 shadow-sm">
+        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border bg-violet-100 dark:bg-violet-900/40 text-violet-800 dark:text-rose-200 border-violet-300 dark:border-violet-700 shadow-sm">
           <span className="text-sm leading-none select-none">❤️</span>
           Darah Haid
         </div>
@@ -1259,7 +1259,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
                   selIsBersihHaid ? "text-green-600" : selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-sky-500"
                 )} />
               ) : (
-                <Droplets className={cn("w-4 h-4", selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-rose-600")} />
+                <Droplets className={cn("w-4 h-4", selIsIhtiyath ? "text-violet-500" : selIsNifas ? "text-teal-600" : "text-violet-600")} />
               )}
               <span className="font-bold text-sm">
                 {entryDateLabel(selected.hari)
@@ -1307,7 +1307,7 @@ function KalenderHarian({ entri, kategoriStr, startDate }: { entri: EntriHarian[
               )}>
                 {selIsBersihHaid ? (
                   <>
-                    <span className="inline-block w-2 h-2 rounded-full bg-rose-500 flex-shrink-0 mt-0.5" />
+                    <span className="inline-block w-2 h-2 rounded-full bg-violet-500 flex-shrink-0 mt-0.5" />
                     <span>Sholat wajib dikerjakan namun <strong>TIDAK SAH</strong> — tidak perlu qodlo &nbsp;|&nbsp; Puasa <strong>TIDAK SAH — wajib diqodlo</strong></span>
                   </>
                 ) : selIsBersihNifas ? (
@@ -1655,9 +1655,9 @@ export default function Kalkulator() {
                 <div className={cn(
                   "w-10 h-10 rounded-2xl flex items-center justify-center text-base transition-all duration-300 select-none font-bold",
                   step === n
-                    ? "bg-[#FF85A1] text-white shadow-lg shadow-pink-200 scale-110"
+                    ? "bg-[#8B7EF8] text-white shadow-lg shadow-violet-200 scale-110"
                     : step > n
-                      ? "bg-[#FF85A1]/25 text-[#e8629e]"
+                      ? "bg-[#8B7EF8]/25 text-[#e8629e]"
                       : "bg-muted text-muted-foreground/40",
                 )}>
                   {step > n ? "✓" : emoji}
@@ -1669,9 +1669,9 @@ export default function Kalkulator() {
               </div>
             ))}
           </div>
-          <div className="h-2 w-full bg-pink-100 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-violet-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-[#FF85A1] to-[#e8629e] transition-all duration-500 ease-out rounded-full"
+              className="h-full bg-gradient-to-r from-[#8B7EF8] to-[#e8629e] transition-all duration-500 ease-out rounded-full"
               style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
@@ -1680,9 +1680,9 @@ export default function Kalkulator() {
 
       {step === 1 && (
         <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
-          <CardHeader className="bg-gradient-to-br from-[#FF85A1]/10 via-[#E0BBE4]/10 to-white pb-6 border-b border-pink-100">
+          <CardHeader className="bg-gradient-to-br from-[#8B7EF8]/10 via-[#EDE9FE]/10 to-white pb-6 border-b border-violet-100">
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-2xl bg-[#FF85A1]/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-[#8B7EF8]/20 flex items-center justify-center">
                 <span className="text-xl select-none">🌸</span>
               </div>
               <CardTitle className="text-2xl font-extrabold">Tentang Kamu</CardTitle>
@@ -1727,13 +1727,13 @@ export default function Kalkulator() {
                           className={cn(
                             "flex flex-col items-center gap-3 p-5 rounded-3xl border-2 transition-all duration-200 select-none",
                             field.value === "haidl"
-                              ? "border-[#B76E79] bg-[#FFD1DC]/30 shadow-md"
-                              : "border-pink-100 bg-pink-50/50 hover:border-[#FFD1DC] hover:bg-[#FFD1DC]/20",
+                              ? "border-[#B76E79] bg-[#DDD6FE]/30 shadow-md"
+                              : "border-violet-100 bg-violet-50/50 hover:border-[#DDD6FE] hover:bg-[#DDD6FE]/20",
                           )}
                         >
                           <div className={cn(
                             "w-14 h-14 rounded-full flex items-center justify-center text-3xl transition-all",
-                            field.value === "haidl" ? "bg-[#FFD1DC] shadow-inner" : "bg-white/70"
+                            field.value === "haidl" ? "bg-[#DDD6FE] shadow-inner" : "bg-white/70"
                           )}>
                             🌸
                           </div>
@@ -1843,7 +1843,7 @@ export default function Kalkulator() {
 
       {step === 2 && (
         <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
-          <CardHeader className="bg-gradient-to-br from-rose-50/70 via-pink-50/40 to-white pb-6 border-b border-pink-100">
+          <CardHeader className="bg-gradient-to-br from-violet-50/70 via-violet-50/40 to-white pb-6 border-b border-violet-100">
             <Button
               variant="ghost"
               size="sm"
@@ -1854,7 +1854,7 @@ export default function Kalkulator() {
             </Button>
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
                   <span className="text-xl select-none">❤️</span>
                 </div>
                 <CardTitle className="text-2xl font-extrabold">Kalender & Karakteristik Darah</CardTitle>
@@ -1996,7 +1996,7 @@ export default function Kalkulator() {
                       { r: 14, w: "Keruh",  s: "Kental saja ATAU Berbau saja" },
                       { r: 15, w: "Keruh",  s: "Cair & Tidak Berbau" },
                     ].map(({ r, w, s }) => (
-                      <tr key={r} className={r <= 3 ? "bg-rose-50/40 dark:bg-rose-950/10" : r <= 6 ? "bg-orange-50/40 dark:bg-orange-950/10" : "bg-background"}>
+                      <tr key={r} className={r <= 3 ? "bg-violet-50/40 dark:bg-rose-950/10" : r <= 6 ? "bg-orange-50/40 dark:bg-orange-950/10" : "bg-background"}>
                         <td className="px-3 py-1.5 font-bold text-center">{r}</td>
                         <td className="px-3 py-1.5 font-medium">{w}</td>
                         <td className="px-3 py-1.5 text-muted-foreground">{s}</td>
@@ -2052,7 +2052,7 @@ export default function Kalkulator() {
 
       {step === 3 && (
         <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
-          <CardHeader className="bg-gradient-to-br from-pink-50/70 via-[#E0BBE4]/15 to-white pb-6 border-b border-pink-100">
+          <CardHeader className="bg-gradient-to-br from-pink-50/70 via-[#EDE9FE]/15 to-white pb-6 border-b border-violet-100">
             <Button
               variant="ghost"
               size="sm"
@@ -2062,7 +2062,7 @@ export default function Kalkulator() {
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Button>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-2xl bg-pink-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
                 <span className="text-xl select-none">💗</span>
               </div>
               <CardTitle className="text-2xl font-extrabold">
@@ -2114,8 +2114,8 @@ export default function Kalkulator() {
                   form3.watch("ingatKebiasaan") === "ingat_durasi") && (
                   <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
                     {formData.kondisiAwal !== "nifas" && (
-                      <div className="rounded-2xl border bg-pink-50/60 dark:bg-pink-950/20 border-pink-200 dark:border-pink-800 p-4 space-y-3">
-                        <p className="text-sm font-semibold text-pink-800 dark:text-pink-300">Tipe Adat / Kebiasaan Haid</p>
+                      <div className="rounded-2xl border bg-violet-50/60 dark:bg-pink-950/20 border-violet-200 dark:border-violet-800 p-4 space-y-3">
+                        <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">Tipe Adat / Kebiasaan Haid</p>
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
@@ -2263,7 +2263,7 @@ export default function Kalkulator() {
 
       {step === 4 && (
         <Card className="border-0 shadow-soft step-enter overflow-hidden rounded-3xl">
-          <CardHeader className="bg-gradient-to-br from-[#E0BBE4]/25 via-purple-50/30 to-white pb-6 border-b border-purple-100">
+          <CardHeader className="bg-gradient-to-br from-[#EDE9FE]/25 via-purple-50/30 to-white pb-6 border-b border-purple-100">
             <Button
               variant="ghost"
               size="sm"
@@ -2366,18 +2366,18 @@ export default function Kalkulator() {
                 <hr className="border-muted" />
 
                 {/* Saat Darah Mulai Keluar */}
-                <div className="rounded-2xl border bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800 p-5 space-y-5">
+                <div className="rounded-2xl border bg-violet-50/40 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800 p-5 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
-                    <Droplets className="w-4 h-4 text-rose-600" />
-                    <span className="font-semibold text-rose-700 dark:text-rose-400 text-sm">
+                    <Droplets className="w-4 h-4 text-violet-600" />
+                    <span className="font-semibold text-violet-700 dark:text-violet-400 text-sm">
                       Saat Darah Mulai Keluar
                     </span>
                   </div>
                   <div className="rounded-xl bg-background border px-4 py-3 space-y-1">
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Waktu shalat (berdasarkan tanggal pertama darah)</p>
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-rose-500" />
-                      <span className="font-semibold text-rose-700 dark:text-rose-300">
+                      <Clock className="w-4 h-4 text-violet-500" />
+                      <span className="font-semibold text-violet-700 dark:text-violet-300">
                         {darahKeys.length > 0 ? formatDateId(darahKeys[0]) : "—"} —{" "}
                         {formData.waktuMulaiDarah
                           ? SHALAT_LABEL[formData.waktuMulaiDarah]
@@ -2447,7 +2447,7 @@ export default function Kalkulator() {
                   <Button
                     type="submit"
                     size="lg"
-                    className="rounded-full px-8 gap-2 btn-gradient text-white shadow-lg shadow-pink-200 hover:shadow-pink-300 hover:opacity-90 transition-all"
+                    className="rounded-full px-8 gap-2 btn-gradient text-white shadow-lg shadow-violet-200 hover:shadow-violet-300 hover:opacity-90 transition-all"
                     data-testid="btn-submit-calculate"
                   >
                     <Calculator className="w-4 h-4" /> Hitung Hasil
@@ -2494,7 +2494,7 @@ export default function Kalkulator() {
               <div className={cn(
                 "w-28 h-28 rounded-[2rem] flex items-center justify-center shadow-soft",
                 hasil.tipeHasil === "haidl_normal"
-                  ? "bg-gradient-to-br from-rose-100 to-pink-100"
+                  ? "bg-gradient-to-br from-violet-100 to-violet-100"
                   : hasil.tipeHasil === "nifas"
                     ? "bg-gradient-to-br from-teal-100 to-cyan-100"
                     : hasil.tipeHasil === "istihadloh"
@@ -2522,7 +2522,7 @@ export default function Kalkulator() {
             <CardHeader className={cn(
               "text-center pb-8 border-b",
               hasil.tipeHasil === "haidl_normal"
-                ? "bg-gradient-to-br from-rose-50 to-pink-50/50"
+                ? "bg-gradient-to-br from-violet-50 to-pink-50/50"
                 : hasil.tipeHasil === "nifas"
                   ? "bg-gradient-to-br from-teal-50 to-cyan-50/50"
                   : hasil.tipeHasil === "istihadloh"
@@ -2534,7 +2534,7 @@ export default function Kalkulator() {
               </CardTitle>
               {hasil.kategori && (
                 <div
-                  className="inline-block px-5 py-1.5 bg-white border border-pink-100 rounded-full text-sm font-semibold text-muted-foreground shadow-sm mt-1"
+                  className="inline-block px-5 py-1.5 bg-white border border-violet-100 rounded-full text-sm font-semibold text-muted-foreground shadow-sm mt-1"
                   data-testid="hasil-kategori"
                 >
                   {hasil.kategori}
@@ -2590,27 +2590,27 @@ export default function Kalkulator() {
                         </p>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/30 p-4">
+                    <div className="rounded-xl border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/30 p-4">
                       <div className="flex items-start gap-3">
-                        <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
+                        <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-600 dark:text-violet-400" />
                         <div className="flex-1 space-y-2">
-                          <p className="text-sm font-bold text-rose-700 dark:text-rose-300">
+                          <p className="text-sm font-bold text-violet-700 dark:text-violet-300">
                             Puasa — Tidak Sah, <span className="underline decoration-wavy">Wajib Diqodlo</span>
                           </p>
                           <p className="text-sm text-foreground leading-relaxed">
                             Karena hari-hari jeda berubah status menjadi haid, puasa yang Anda kerjakan saat itu menjadi <strong>batal</strong>. Puasa tersebut wajib diganti (diqodlo), sebab Anda memang berkewajiban berpuasa saat darah tidak terlihat — namun ternyata masa itu masih dalam rangkaian haid.
                           </p>
                           {hasil.peringatanJedaSuci.qodloPuasaHari !== undefined && (
-                            <div className="mt-3 flex items-center gap-4 rounded-lg bg-rose-100 dark:bg-rose-900/40 border border-rose-300 dark:border-rose-700 px-4 py-3">
+                            <div className="mt-3 flex items-center gap-4 rounded-lg bg-violet-100 dark:bg-violet-900/40 border border-violet-300 dark:border-violet-700 px-4 py-3">
                               <div className="text-center">
-                                <p className="text-3xl font-extrabold text-rose-700 dark:text-rose-300 leading-none">
+                                <p className="text-3xl font-extrabold text-violet-700 dark:text-violet-300 leading-none">
                                   {hasil.peringatanJedaSuci.qodloPuasaHari}
                                 </p>
-                                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-0.5">hari</p>
+                                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mt-0.5">hari</p>
                               </div>
                               <div>
-                                <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Wajib Qodlo Puasa</p>
-                                <p className="text-xs text-rose-600/80 dark:text-rose-400/80 leading-snug mt-0.5">
+                                <p className="text-sm font-bold text-violet-700 dark:text-violet-300">Wajib Qodlo Puasa</p>
+                                <p className="text-xs text-violet-600/80 dark:text-violet-400/80 leading-snug mt-0.5">
                                   Ganti puasa sebanyak ini karena masa berhenti sementara ({formatDurasi(hasil.peringatanJedaSuci.totalJedaJam)}) dihukumi haid.
                                 </p>
                               </div>
@@ -2708,13 +2708,13 @@ export default function Kalkulator() {
                     )}
                     {hasil.aturanIbadah.haram.length > 0 && (
                       <div>
-                        <p className="text-sm font-semibold text-rose-700 dark:text-rose-400 mb-2 flex items-center gap-1.5">
+                        <p className="text-sm font-semibold text-violet-700 dark:text-violet-400 mb-2 flex items-center gap-1.5">
                           <AlertCircle className="w-4 h-4" /> Yang Dilarang
                         </p>
                         <ul className="space-y-2">
                           {hasil.aturanIbadah.haram.map((item, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0" />
                               {item}
                             </li>
                           ))}

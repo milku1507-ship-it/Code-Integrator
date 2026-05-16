@@ -28,14 +28,14 @@ export const DEFAULT_CONFIG: AdminConfig = {
   pin: "1234",
   banners: [
     { id: "1", emoji: "🌙", title: "Panduan Haidl", desc: "Aturan lengkap fiqh Syafi'i", bg: "#7c3aed", link: "/panduan" },
-    { id: "2", emoji: "📿", title: "Sholat & Ibadah", desc: "Hukum sholat saat haidl", bg: "#be185d", link: "/panduan" },
+    { id: "2", emoji: "📿", title: "Sholat & Ibadah", desc: "Hukum sholat saat haidl", bg: "#6C63FF", link: "/panduan" },
     { id: "3", emoji: "💧", title: "Panduan Nifas", desc: "Hukum setelah melahirkan", bg: "#0e7490", link: "/panduan" },
     { id: "4", emoji: "✨", title: "7 Golongan Wanita", desc: "Kamu termasuk golongan mana?", bg: "#b45309", link: "/panduan" },
     { id: "5", emoji: "🕌", title: "Qodlo Sholat", desc: "Hitung hutang sholatmu", bg: "#065f46", link: "/panduan" },
     { id: "6", emoji: "🩺", title: "Istihadloh", desc: "Darah penyakit & hukumnya", bg: "#9f1239", link: "/panduan" },
   ],
   branding: {
-    primaryColor: "#be185d",
+    primaryColor: "#6C63FF",
     fontFamily: "Inter",
     borderRadius: "28px",
     logoUrl: "",
