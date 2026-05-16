@@ -49,25 +49,25 @@
 
 :root {
   --background: 0 0% 100%;
-  --foreground: 330 20% 18%;
+  --foreground: 220 15% 15%;
 
   --card: 0 0% 100%;
-  --card-foreground: 330 20% 18%;
-  --card-border: 340 30% 92%;
+  --card-foreground: 220 15% 15%;
+  --card-border: 220 13% 91%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 330 20% 18%;
-  --popover-border: 340 30% 92%;
+  --popover-foreground: 220 15% 15%;
+  --popover-border: 220 13% 91%;
 
-  /* Rose Gold primary #B76E79 */
-  --primary: 349 30% 57%;
+  /* Rose/Pink primary */
+  --primary: 349 72% 60%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 294 36% 94%;
-  --secondary-foreground: 294 20% 30%;
+  --secondary: 349 60% 95%;
+  --secondary-foreground: 349 30% 40%;
 
-  --muted: 300 15% 96%;
-  --muted-foreground: 330 10% 50%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 50%;
 
   --accent: 175 86% 83%;
   --accent-foreground: 175 60% 20%;
@@ -75,33 +75,33 @@
   --destructive: 0 55% 52%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 340 25% 90%;
-  --input: 340 25% 90%;
-  --ring: 349 30% 57%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 349 72% 60%;
 
-  --radius: 1.5rem;
+  --radius: 1.25rem;
 }
 
 .dark {
-  --background: 330 18% 10%;
-  --foreground: 340 30% 96%;
+  --background: 220 18% 10%;
+  --foreground: 220 20% 95%;
 
-  --card: 330 14% 13%;
-  --card-foreground: 340 30% 96%;
-  --card-border: 330 10% 22%;
+  --card: 220 14% 13%;
+  --card-foreground: 220 20% 95%;
+  --card-border: 220 10% 20%;
 
-  --popover: 330 14% 13%;
-  --popover-foreground: 340 30% 96%;
-  --popover-border: 330 10% 22%;
+  --popover: 220 14% 13%;
+  --popover-foreground: 220 20% 95%;
+  --popover-border: 220 10% 20%;
 
-  --primary: 349 30% 65%;
+  --primary: 349 72% 65%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 330 10% 18%;
-  --secondary-foreground: 340 20% 80%;
+  --secondary: 349 20% 18%;
+  --secondary-foreground: 349 30% 80%;
 
-  --muted: 330 10% 18%;
-  --muted-foreground: 340 10% 58%;
+  --muted: 220 10% 18%;
+  --muted-foreground: 220 8% 55%;
 
   --accent: 175 50% 40%;
   --accent-foreground: 0 0% 100%;
@@ -109,9 +109,9 @@
   --destructive: 0 45% 42%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 330 10% 22%;
-  --input: 330 10% 22%;
-  --ring: 349 30% 65%;
+  --border: 220 10% 22%;
+  --input: 220 10% 22%;
+  --ring: 349 72% 65%;
 }
 
 @layer base {
@@ -129,48 +129,48 @@
   }
 }
 
-/* Soft card shadow — Clover/Flo style */
+/* Soft card shadow */
 .shadow-soft {
-  box-shadow: 0 8px 40px -8px rgba(183, 110, 121, 0.18), 0 2px 12px -2px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.08), 0 1px 8px -1px rgba(0,0,0,0.04);
 }
 
-/* Glassmorphism for bottom nav */
+/* Bottom nav white */
 .glass-nav {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(255, 209, 220, 0.4);
-  box-shadow: 0 -8px 32px -8px rgba(183, 110, 121, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -2px 20px -4px rgba(0, 0, 0, 0.08);
 }
 
 /* Step fade-in animation */
 @keyframes stepFadeIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .step-enter {
-  animation: stepFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: stepFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Gentle float for hero illustration */
 @keyframes floatBlob {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+  50%       { transform: translateY(-6px); }
 }
 
 .float-blob {
   animation: floatBlob 4s ease-in-out infinite;
 }
 
-/* Gradient pill buttons — Sakura Serenity */
+/* Gradient pill buttons */
 .btn-gradient {
-  background: linear-gradient(135deg, #FFD1DC, #B76E79);
+  background: linear-gradient(135deg, #FF85A1, #E0426E);
 }
 
-/* Soft rose glow */
-.glow-pink {
-  box-shadow: 0 0 28px rgba(255, 209, 220, 0.6);
+/* Pink hero glow */
+.glow-hero {
+  background: radial-gradient(ellipse 70% 60% at 50% 60%, rgba(255, 133, 161, 0.25) 0%, rgba(255, 209, 220, 0.12) 60%, transparent 100%);
 }
 
 /* Horizontal scroll snap for card slider */
