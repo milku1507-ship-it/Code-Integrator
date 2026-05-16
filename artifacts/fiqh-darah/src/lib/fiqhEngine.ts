@@ -115,14 +115,26 @@ export function formatDurasi(jam: number): string {
 }
 
 function skorWarnaSifat(fase: FaseDarahItem): number {
+  // Urutan kekuatan warna (Mazhab Syafi'i):
+  //   Hitam > Merah > Merah Kekuningan > Kuning > Keruh
+  //
+  // PENTING — Gap antar warna WAJIB > maks bonus sifat (2 poin).
+  // Dengan basis dikalikan 3, gap antar warna = 3, sehingga sifat (maks +2)
+  // TIDAK PERNAH bisa membuat warna lebih lemah mengalahkan warna lebih kuat.
+  //
+  //   Hitam (max 17) > Merah+kental+berbau (14) ✓
+  //   Merah (max 14) > MerahKekuningan+kental+berbau (11) ✓
+  //   MerahKekuningan (max 11) > Kuning+kental+berbau (8) ✓
+  //   Kuning (max 8) > Keruh+kental+berbau (5) ✓
   const hierarki: Record<WarnaDarah, number> = {
-    hitam: 5,
-    merah: 4,
-    "merah kekuningan": 3,
-    kuning: 2,
-    keruh: 1,
+    hitam:              15,  // 5 × 3
+    merah:              12,  // 4 × 3
+    "merah kekuningan":  9,  // 3 × 3
+    kuning:              6,  // 2 × 3
+    keruh:               3,  // 1 × 3
   };
   let skor = hierarki[fase.warna] ?? 0;
+  // Sifat hanya membedakan dalam WARNA YANG SAMA (maks +2, tidak pernah overflow antar warna)
   if (fase.kental) skor += 1;
   if (fase.bau) skor += 1;
   return skor;
